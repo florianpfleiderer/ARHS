@@ -12,10 +12,12 @@ import sys
 
 #CONSTANTS
 KINECT_FOV = 62
-AREA_MIN = 400
+AREA_MIN = 800
 AREA_YELLOW = 800
-CANNY_THRESHOLD_UPPER = 25
-CANNY_THRESHOLD_LOWER = 50
+CANNY_THRESHOLD_UPPER = 40
+CANNY_THRESHOLD_LOWER = 40
+CANNY_SMOOTHING = 5
+COLOR_MASK_SMOOTHING = 5
 
 OBJECTS = [('robot', 'red'),
            ('pole', 'green'),
@@ -33,7 +35,7 @@ COLORS = {'green': ([55, 50, 50], [65, 255, 255]),
 #ratio_min, ratio_max
 RATIOS = {'pole': [None, 0.4],
           'puk': [None, 0.6],
-          'goal': [1.7, None],
+          'goal': [4, None],
           'robot': [None, None]}
 
 
@@ -108,7 +110,7 @@ class ObjectDetector:
         hsv =  cv2.cvtColor(self.rgb_img, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, np.array([[color_min]]), np.array([[color_max]]))
         #reduce noise
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((COLOR_MASK_SMOOTHING, COLOR_MASK_SMOOTHING),np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         return mask
@@ -136,7 +138,7 @@ class ObjectDetector:
             thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
         canny =  cv2.Canny(img, thresh_lower, thresh_upper)
         #reduce noise
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((CANNY_SMOOTHING, CANNY_SMOOTHING),np.uint8)
         canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
         return canny
     
@@ -146,17 +148,13 @@ class ObjectDetector:
         good_contours = []
         contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         try:
-            #for robot get biggest contour
-            if object == 'robot':   
-                good_contours.append(contours[0])
-            else:
-                #get inner contours
-                hierarchy = hierarchy[0]
-                for component in zip(contours, hierarchy):
-                    currentContour = component[0]
-                    currentHierarchy = component[1]
-                    if currentHierarchy[2] < 0: #if there is no child contour
-                        good_contours.append(currentContour)
+            #get inner contours
+            hierarchy = hierarchy[0]
+            for component in zip(contours, hierarchy):
+                currentContour = component[0]
+                currentHierarchy = component[1]
+                if currentHierarchy[2] < 0: #if there is no child contour
+                    good_contours.append(currentContour)
         except:
             pass
         return good_contours
@@ -193,6 +191,8 @@ class ObjectDetector:
             
             cx, cy = self.get_center(x, y, w, h)
             distance = self.get_distance(cx, cy)
+            if np.isnan(distance) :
+                continue
             angle = self.get_direction(x)
             
             found_objects.append({'color': color,
