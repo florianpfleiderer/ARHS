@@ -128,10 +128,12 @@ class ObjectDetector:
     
     def edge_detection(self, img):
         #TODO: maybe need to blur bevor canny in real life
+        thresh_lower = CANNY_THRESHOLD_LOWER
+        thresh_upper = CANNY_THRESHOLD_UPPER
         if self.testmode:
-            CANNY_THRESHOLD_UPPER = cv2.getTrackbarPos('upper', 'Object detector')  
-            CANNY_THRESHOLD_LOWER = cv2.getTrackbarPos('lower', 'Object detector')
-        canny =  cv2.Canny(img, CANNY_THRESHOLD_LOWER, CANNY_THRESHOLD_UPPER)
+            thresh_upper = cv2.getTrackbarPos('upper', 'Object detector')  
+            thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
+        canny =  cv2.Canny(img, thresh_lower, thresh_upper)
         #reduce noise
         kernel = np.ones((3,3),np.uint8)
         canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
@@ -155,7 +157,7 @@ class ObjectDetector:
                     if currentHierarchy[2] < 0: #if there is no child contour
                         good_contours.append(currentContour)
         except:
-            rospy.loginfo('hierarchy fail')
+            pass
         return good_contours
                 
     def detect_object(self, type, color):        
