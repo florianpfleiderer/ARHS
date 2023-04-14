@@ -14,8 +14,8 @@ import sys
 KINECT_FOV = 62
 AREA_MIN = 400
 AREA_YELLOW = 800
-CANNY_THRESHOLD_UPPER = 40
-CANNY_THRESHOLD_LOWER = 40
+CANNY_THRESHOLD_UPPER = 25
+CANNY_THRESHOLD_LOWER = 50
 
 OBJECTS = [('robot', 'red'),
            ('pole', 'green'),
@@ -38,7 +38,6 @@ RATIOS = {'pole': [None, 0.4],
 
 
 class ObjectDetector:
-
     def __init__(self):
         rospy.init_node("object_detector_node")
         rospy.loginfo("Initialised ObjectDetector")
@@ -75,7 +74,6 @@ class ObjectDetector:
         self.new_rgb_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, self.rgb_camera_cb)
         self.new_depth_raw_sub = rospy.Subscriber("robot1/kinect/depth/image_raw", Image, self.depth_camera_cb)
  
-
     def rgb_camera_cb(self, msg):
         try:
             self.new_rgb_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -99,6 +97,9 @@ class ObjectDetector:
         if scale is not None:
             self.rgb_img = cv2.resize(self.rgb_img, (0, 0), fx = scale, fy = scale, interpolation = cv2.INTER_BITS2)
         cv2.imshow('Object detector', self.rgb_img)
+        if self.testmode:
+            cv2.imshow('depth_raw', self.depth_raw)
+            cv2.imshow('depth_img', self.depth_img)
         cv2.waitKey(10)
    
     def color_mask(self, color):
@@ -135,7 +136,7 @@ class ObjectDetector:
             thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
         canny =  cv2.Canny(img, thresh_lower, thresh_upper)
         #reduce noise
-        kernel = np.ones((3,3),np.uint8)
+        kernel = np.ones((5,5),np.uint8)
         canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
         return canny
     
@@ -312,8 +313,8 @@ class ObjectDetector:
         def nothing(x):
             pass
         cv2.namedWindow('Object detector')
-        cv2.createTrackbar('upper', 'Object detector', 40, 255, nothing)
-        cv2.createTrackbar('lower', 'Object detector', 40, 255, nothing)
+        cv2.createTrackbar('upper', 'Object detector', CANNY_THRESHOLD_UPPER, 255, nothing)
+        cv2.createTrackbar('lower', 'Object detector', CANNY_THRESHOLD_LOWER, 255, nothing)
         
 if __name__ == '__main__':
     od = ObjectDetector()
@@ -325,7 +326,7 @@ if __name__ == '__main__':
             od.copy_sensordata()              
             found_objects = od.detect_multiple_objects(OBJECTS)
             od.visualize(found_objects)
-            od.show_imgs(1.5)
+            od.show_imgs()
         else:
             rospy.loginfo("Waiting for images to process...")
         
