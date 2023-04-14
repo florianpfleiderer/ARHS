@@ -114,10 +114,10 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-)
+#include_directories(
+#  ${catkin_INCLUDE_DIRS}
+#  ${OpenCV_INCLUDE_DIRS}
+#)
 
 ## Declare a C++ library
 # add_library(robohockey
@@ -130,24 +130,20 @@ include_directories(
 # add_dependencies(robohockey ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(player_node src/playnode.cpp)
-add_executable(player_node_class src/playnode_class.cpp)
+#add_executable(player_node src/playnode.cpp)
+#add_executable(player_node_class src/playnode_class.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(player_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(player_node_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(player_smach ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(player_node_class ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(player_node
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-)
+#target_link_libraries(player_smach
+#  ${catkin_LIBRARIES}
+#  ${OpenCV_LIBRARIES}
+#)
 
-target_link_libraries(player_node_class
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-)
 
 #############
 ## Install ##
@@ -160,7 +156,13 @@ catkin_python_setup()
 
 # This script replaces the line #!/usr/bin/env python in the installed script
 # with the correct system specific version
-catkin_install_python(PROGRAMS scripts/player_node.py
+catkin_install_python(
+  PROGRAMS
+  scripts/player_smach.py
+  scripts/object_detector.py
+  scripts/color_calibrator.py
+  scripts/states/avoid_obstacle_server.py
+  scripts/states/drive_randomly_server.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # all install targets should use catkin DESTINATION variables
