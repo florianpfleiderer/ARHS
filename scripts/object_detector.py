@@ -14,10 +14,12 @@ from player.msg import FieldComponent, PolarVector2, ScreenPosition
 #CONSTANTS
 KINECT_FOV = 62
 KINECT_TAN = math.tan(KINECT_FOV/2 * math.pi / 180)
-AREA_MIN = 400
+AREA_MIN = 800
 AREA_YELLOW = 800
 CANNY_THRESHOLD_UPPER = 40
 CANNY_THRESHOLD_LOWER = 40
+CANNY_SMOOTHING = 5
+COLOR_MASK_SMOOTHING = 5
 
 
 OBJECTS = [('robot', 'red'),
@@ -45,8 +47,10 @@ class ScreenObject:
     def __init__(self, properties):
         if type(properties) is tuple:
             self.x, self.y, self.w, self.h = properties
+            self.properties = ScreenPosition(x=self.x, y=self.y, w=self.w, h=self.h)
 
         else:
+            self.properties = properties
             self.x = properties.x
             self.y = properties.y
             self.w = properties.w
@@ -167,6 +171,9 @@ class ObjectDetector:
         if scale is not None:
             self.rgb_img = cv2.resize(self.rgb_img, (0, 0), fx = scale, fy = scale, interpolation = cv2.INTER_BITS2)
         cv2.imshow('Object detector', self.rgb_img)
+        if self.testmode:
+            cv2.imshow('depth_raw', self.depth_raw)
+            cv2.imshow('depth_img', self.depth_img)
         cv2.waitKey(10)
    
     def color_mask(self, color):
@@ -175,7 +182,7 @@ class ObjectDetector:
         hsv =  cv2.cvtColor(self.rgb_img, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, np.array([[color_min]]), np.array([[color_max]]))
         #reduce noise
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((COLOR_MASK_SMOOTHING, COLOR_MASK_SMOOTHING),np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         return mask
@@ -203,7 +210,7 @@ class ObjectDetector:
             thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
         canny =  cv2.Canny(img, thresh_lower, thresh_upper)
         #reduce noise
-        kernel = np.ones((3,3),np.uint8)
+        kernel = np.ones((CANNY_SMOOTHING, CANNY_SMOOTHING),np.uint8)
         canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
         return canny
     
@@ -213,17 +220,13 @@ class ObjectDetector:
         good_contours = []
         contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         try:
-            #for robot get biggest contour
-            if object == 'robot':   
-                good_contours.append(contours[0])
-            else:
-                #get inner contours
-                hierarchy = hierarchy[0]
-                for component in zip(contours, hierarchy):
-                    currentContour = component[0]
-                    currentHierarchy = component[1]
-                    if currentHierarchy[2] < 0: #if there is no child contour
-                        good_contours.append(currentContour)
+            #get inner contours
+            hierarchy = hierarchy[0]
+            for component in zip(contours, hierarchy):
+                currentContour = component[0]
+                currentHierarchy = component[1]
+                if currentHierarchy[2] < 0: #if there is no child contour
+                    good_contours.append(currentContour)
         except:
             pass
         return good_contours
@@ -276,33 +279,26 @@ class ObjectDetector:
             found_objects = found_objects + self.detect_object(type, color)
         return found_objects
 
-    def combine_objects(self, objects):        
-        x_min = min(o.screen_x for o in objects)
-        y_min = min(o.screen_y for o in objects)
-        x_max = max(o.screen_x + o.screen_w for o in objects)
-        y_max = max(o.screen_y + o.screen_h for o in objects)
+    def combine_objects(self, objects):     
+        screen_objects = [o.screen_obj for o in objects]
+        x_min = min(o.x for o in screen_objects)
+        y_min = min(o.y for o in screen_objects)
+        x_max = max(o.x + o.w for o in screen_objects)
+        y_max = max(o.y + o.h for o in screen_objects)
         
         h = y_max - y_min
         w = x_max - x_min
         
-        distances = [o.distance.r for o in objects]
+        new_screen_object = ScreenObject((x_min, y_min, w, h))
+
+        distances = [o.get_field_distance(self.depth_raw) for o in screen_objects]
         distance = (min(distances) + max(distances))/2
         
-        cx, cy = get_center(x_min, y_min, w, h)
-        angle = self.get_direction(cx)
+        angle = new_screen_object.get_field_angle(self.depth_raw)
         
-        field_object_properties = FieldComponent(objects[0].color_name, objects[0].type, PolarVector2(distance, angle), x_min, y_min, w, h)
+        field_object_properties = FieldComponent(objects[0].color_name, objects[0].type, PolarVector2(distance, angle), new_screen_object.properties)
 
         return FieldObject(field_object_properties)
-    
-    def get_direction(self, x):
-        h, w, _ = self.rgb_img.shape
-        angle = 180 - KINECT_FOV/2 + (KINECT_FOV*x)/w
-        return angle
-    
-    def get_distance(self, x, y):
-        dist = self.depth_raw[y, x]   
-        return dist
       
     def visualize(self, field_objects):
         for field_object in field_objects:
@@ -322,8 +318,8 @@ class ObjectDetector:
         def nothing(x):
             pass
         cv2.namedWindow('Object detector')
-        cv2.createTrackbar('upper', 'Object detector', 40, 255, nothing)
-        cv2.createTrackbar('lower', 'Object detector', 40, 255, nothing)
+        cv2.createTrackbar('upper', 'Object detector', CANNY_THRESHOLD_UPPER, 255, nothing)
+        cv2.createTrackbar('lower', 'Object detector', CANNY_THRESHOLD_LOWER, 255, nothing)
         
 if __name__ == '__main__':
     od = ObjectDetector()
@@ -335,7 +331,7 @@ if __name__ == '__main__':
             od.copy_sensordata()              
             found_objects = od.detect_multiple_objects(OBJECTS)
             od.visualize(found_objects)
-            od.show_imgs(1.5)
+            od.show_imgs()
         else:
             rospy.loginfo("Waiting for images to process...")
         
