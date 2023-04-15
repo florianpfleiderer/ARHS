@@ -76,12 +76,6 @@ class Color(Enum):
     def __str__(self) -> str:
         return self.name.lower()
 
-    def get_color_mask(self, hsv_img):
-        mask = cv2.inRange(hsv_img, self.min, self.max)
-        mask = cv2.medianBlur(mask, COLOR_MASK_SMOOTHING)
-        return mask    
-
-
 class ScreenObject:
     def __init__(self, properties):
         if type(properties) is tuple:
@@ -224,9 +218,6 @@ class ObjectDetector:
         if self.testmode:
             cv2.imshow('depth_raw', self.depth_raw)
             cv2.imshow('depth_img', self.depth_img)
-
-            print(self.depth_raw[200])
-            print(max(self.depth_raw.flatten()), min(self.depth_raw.flatten()))
         cv2.waitKey(10)
    
     def color_mask(self, color):
