@@ -7,20 +7,23 @@ import cv2
 import numpy as np
 import copy
 import sys
+import math
 
-
+from player.msg import FieldComponent, PolarVector2, ScreenPosition
 
 #CONSTANTS
 KINECT_FOV = 62
+KINECT_TAN = math.tan(KINECT_FOV/2 * math.pi / 180)
 AREA_MIN = 400
 AREA_YELLOW = 800
 CANNY_THRESHOLD_UPPER = 40
 CANNY_THRESHOLD_LOWER = 40
 
+
 OBJECTS = [('robot', 'red'),
            ('pole', 'green'),
-           ('puk', 'blue'),
-           ('puk', 'yellow'),
+           ('puck', 'blue'),
+           ('puck', 'yellow'),
            ('goal', 'blue'),
            ('goal', 'yellow')]
 
@@ -32,13 +35,79 @@ COLORS = {'green': ([55, 50, 50], [65, 255, 255]),
 
 #ratio_min, ratio_max
 RATIOS = {'pole': [None, 0.4],
-          'puk': [None, 0.6],
+          'puck': [None, 0.6],
           'goal': [1.7, None],
           'robot': [None, None]}
 
 
-class ObjectDetector:
 
+class ScreenObject:
+    def __init__(self, properties):
+        if type(properties) is tuple:
+            self.x, self.y, self.w, self.h = properties
+
+        else:
+            self.x = properties.x
+            self.y = properties.y
+            self.w = properties.w
+            self.h = properties.h
+
+    def get_center(self):
+        cx = int(self.x + self.w/2)
+        cy = int(self.y + self.h/2)
+        return cx, cy
+
+    def get_corner_points(self):
+        return ((self.x, self.y), (self.x + self.w, self.y + self.h))
+    
+    def get_area(self):
+        return self.w * self.h
+
+    def get_ratio(self):
+        return self.w / self.h
+    
+    def get_field_distance(self, depth_img):
+        cx, cy = self.get_center()
+        return depth_img[cy, cx]
+    
+    def get_field_angle(self, depth_img):
+        cx = self.get_center()[0]
+        w = depth_img.shape[1]
+        return math.atan((1 - 2 * cx / w) * KINECT_TAN) * 180 / math.pi
+
+
+class FieldObject:
+    def __init__(self, properties):
+        self.color_name = properties.color_name
+        self.type = properties.type
+        self.distance = properties.player_distance
+        self.screen_pos = properties.screen_position
+        self.screen_obj = ScreenObject(properties.screen_position)
+
+    def draw_rectangle(self, window):
+        corners = self.screen_obj.get_corner_points()
+        cv2.rectangle(window, corners[0], corners[1],(0 ,255, 255), 1)
+    
+    def draw_center(self, window):
+        cv2.circle(window, self.screen_obj.get_center(), 2, (50, 125,255), -1)
+    
+    def draw_text(self, window):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = 0.25
+        color = (0 ,255, 255)
+        thickness = 1
+        
+        cv2.putText(window, str(self), (self.screen_pos.x, self.screen_pos.y-10), font, fontScale, color, thickness, cv2.LINE_AA)
+
+    def draw(self, window):
+        self.draw_rectangle(window)
+        self.draw_center(window)
+        self.draw_text(window)
+
+    def __str__(self) -> str:
+        return f"{self.color_name} {self.type} {self.distance.r:.2f}m {self.distance.theta:.1f}d"
+
+class ObjectDetector:
     def __init__(self):
         rospy.init_node("object_detector_node")
         rospy.loginfo("Initialised ObjectDetector")
@@ -75,7 +144,6 @@ class ObjectDetector:
         self.new_rgb_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, self.rgb_camera_cb)
         self.new_depth_raw_sub = rospy.Subscriber("robot1/kinect/depth/image_raw", Image, self.depth_camera_cb)
  
-
     def rgb_camera_cb(self, msg):
         try:
             self.new_rgb_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -182,26 +250,19 @@ class ObjectDetector:
         
         found_objects = []
         for contour in contours:
-            x,y,w,h = cv2.boundingRect(contour)
-            area = w*h
-            ratio = w/h      
-            if area < area_min:
+            screen_obj = ScreenObject(cv2.boundingRect(contour))
+
+            if screen_obj.get_area() < area_min:
                 continue
-            if ratio < ratio_min or ratio > ratio_max:
-                continue  
+            if not ratio_min <= screen_obj.get_ratio() <= ratio_max:
+                continue
             
-            cx, cy = self.get_center(x, y, w, h)
-            distance = self.get_distance(cx, cy)
-            angle = self.get_direction(x)
+            distance = PolarVector2(screen_obj.get_field_distance(self.depth_raw), screen_obj.get_field_angle(self.depth_raw))
             
-            found_objects.append({'color': color,
-                                  'type': type,
-                                  'distance': distance,
-                                  'angle': angle,
-                                  'x': x,
-                                  'y': y,
-                                  'w': w,
-                                  'h': h})
+            field_object_properties = FieldComponent(color, type, distance, screen_obj)
+
+            found_objects.append(FieldObject(field_object_properties))
+
         #for objects that exist only one time on the field -> combine seperatet detections
         if (type == 'goal' or type == 'robot') and len(found_objects) > 1:
             found_objects = [self.combine_objects(found_objects)]
@@ -215,47 +276,24 @@ class ObjectDetector:
             found_objects = found_objects + self.detect_object(type, color)
         return found_objects
 
-    def combine_objects(self, objects):
-        x_min_list = []
-        y_min_list = []
-        x_max_list = []
-        y_max_list = []
-        distances = []
-        
-        for object in objects:
-            x_min_list.append(object['x'])
-            y_min_list.append(object['y'])
-            x_max_list.append(object['x'] + object['w'])
-            y_max_list.append(object['y'] + object['h'])
-            distances.append(object['distance'])
-
-        x_min = min(x_min_list)
-        y_min = min(y_min_list)
-        x_max = max(x_max_list)
-        y_max = max(y_max_list)
+    def combine_objects(self, objects):        
+        x_min = min(o.screen_x for o in objects)
+        y_min = min(o.screen_y for o in objects)
+        x_max = max(o.screen_x + o.screen_w for o in objects)
+        y_max = max(o.screen_y + o.screen_h for o in objects)
         
         h = y_max - y_min
         w = x_max - x_min
         
+        distances = [o.distance.r for o in objects]
         distance = (min(distances) + max(distances))/2
         
-        cx, cy = self.get_center(x_min, y_min, w, h)
+        cx, cy = get_center(x_min, y_min, w, h)
         angle = self.get_direction(cx)
         
-        object = {'color': objects[0]['color'],
-                  'type': objects[0]['type'],
-                  'distance': distance,
-                  'angle': angle,
-                  'x': x_min,
-                  'y': y_min,
-                  'w': w,
-                  'h': h}
-        return object
+        field_object_properties = FieldComponent(objects[0].color_name, objects[0].type, PolarVector2(distance, angle), x_min, y_min, w, h)
 
-    def get_center(self, x, y, w, h):
-        cx = int(x + w/2)
-        cy = int(y + h/2)
-        return cx, cy
+        return FieldObject(field_object_properties)
     
     def get_direction(self, x):
         h, w, _ = self.rgb_img.shape
@@ -266,37 +304,9 @@ class ObjectDetector:
         dist = self.depth_raw[y, x]   
         return dist
       
-    def draw_rectangle(self, x, y, w, h):
-        cv2.rectangle(self.rgb_img,(x,y),(x+w,y+h),(0 ,255, 255), 1)
-    
-    def draw_center(self, x, y, w, h):
-        cx, cy = self.get_center(x, y, w, h)
-        cv2.circle(self.rgb_img,(cx,cy), 2, (50, 125,255), -1)
-    
-    def draw_text(self, x, y, text):
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        fontScale = 0.35
-        color = (0 ,255, 255)
-        thickness = 1
-        
-        cv2.putText(self.rgb_img, text, (x, y-10), font, fontScale, color, thickness, cv2.LINE_AA)
-    
-    def visualize(self, objects):
-        for object in objects:
-            color = object['color']
-            type = object['type']
-            x = object['x']
-            y = object['y']
-            w = object['w']
-            h = object['h']
-            
-            if type == 'pole':
-                text = f"{object['type']} {object['distance']:.1f}m"
-            else:
-                text = f"{object['color']} {object['type']} {object['distance']:.1f}m"
-            self.draw_rectangle(x, y, w, h)
-            self.draw_center(x, y, w, h)
-            self.draw_text(x, y, text)
+    def visualize(self, field_objects):
+        for field_object in field_objects:
+            field_object.draw(self.rgb_img)
 
     def test_function(self, color, mask_color, mask_depth, edges, contours):
         for testcolor in self.testcolor:
