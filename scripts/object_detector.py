@@ -10,16 +10,23 @@ import sys
 import math
 
 from player.msg import FieldComponent, PolarVector2, ScreenPosition
+from enum import Enum
 
 #CONSTANTS
 KINECT_FOV = 62
 KINECT_TAN = math.tan(KINECT_FOV/2 * math.pi / 180)
+KINECT_MAX_RANGE = 5.0
+
 AREA_MIN = 800
 AREA_YELLOW = 800
 CANNY_THRESHOLD_UPPER = 40
 CANNY_THRESHOLD_LOWER = 40
 CANNY_SMOOTHING = 5
 COLOR_MASK_SMOOTHING = 5
+
+CV2_DEFAULT_FONT = cv2.FONT_HERSHEY_SIMPLEX
+CV2_DEFAULT_FONT_SCALE = 0.25
+CV2_DEFAULT_THICKNESS = 1
 
 
 OBJECTS = [('robot', 'red'),
@@ -41,6 +48,38 @@ RATIOS = {'pole': [None, 0.4],
           'goal': [1.7, None],
           'robot': [None, None]}
 
+# enum for colors with default, min and max values
+class Color(Enum):
+    RED = ((0, 0, 255), (0, 50, 50), (5, 255, 255))
+    GREEN = ((0, 255, 0), (55, 50, 50), (65, 255, 255))
+    BLUE = ((255, 0, 0), (115, 50, 50), (125, 255, 255))
+    YELLOW = ((0, 255, 255), (25, 50, 50), (35, 255, 255))
+    ORANGE = ((0, 165, 255), (10, 50, 50), (20, 255, 255))
+
+    def __init__(self, default, min, max):
+        self.default = default
+        self.min = min
+        self.max = max
+
+    def default(self):
+        return self.default
+    
+    def min(self):
+        return self.min
+
+    def max(self):
+        return self.max
+
+    def get_range(self):
+        return self.min, self.max
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+    def get_color_mask(self, hsv_img):
+        mask = cv2.inRange(hsv_img, self.min, self.max)
+        mask = cv2.medianBlur(mask, COLOR_MASK_SMOOTHING)
+        return mask    
 
 
 class ScreenObject:
@@ -79,33 +118,40 @@ class ScreenObject:
         w = depth_img.shape[1]
         return math.atan((1 - 2 * cx / w) * KINECT_TAN) * 180 / math.pi
 
+    def draw_bounds(self, window):
+        corners = self.get_corner_points()
+        cv2.rectangle(window, corners[0], corners[1], Color.YELLOW.default, CV2_DEFAULT_THICKNESS)
+
+    def draw_center(self, window):
+        cv2.circle(window, self.get_center(), 2, Color.ORANGE.default, -CV2_DEFAULT_THICKNESS)
+
+    def draw(self, window):
+        self.draw_bounds(window)
+        self.draw_center(window)
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y}) {self.w}x{self.h}"
 
 class FieldObject:
     def __init__(self, properties):
-        self.color_name = properties.color_name
-        self.type = properties.type
-        self.distance = properties.player_distance
-        self.screen_pos = properties.screen_position
-        self.screen_obj = ScreenObject(properties.screen_position)
+        if type(properties) is tuple:
+            self.color_name, self.type, self.distance, self.screen_pos = properties
 
-    def draw_rectangle(self, window):
-        corners = self.screen_obj.get_corner_points()
-        cv2.rectangle(window, corners[0], corners[1],(0 ,255, 255), 1)
-    
-    def draw_center(self, window):
-        cv2.circle(window, self.screen_obj.get_center(), 2, (50, 125,255), -1)
+        else: 
+            self.color_name = properties.color_name
+            self.type = properties.type
+            self.distance = properties.player_distance
+            self.screen_pos = properties.screen_position
+
+        self.screen_obj = ScreenObject(properties.screen_position)
     
     def draw_text(self, window):
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        fontScale = 0.25
-        color = (0 ,255, 255)
-        thickness = 1
-        
-        cv2.putText(window, str(self), (self.screen_pos.x, self.screen_pos.y-10), font, fontScale, color, thickness, cv2.LINE_AA)
+        cv2.putText(window, str(self), (self.screen_pos.x, self.screen_pos.y-10),
+                    CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
+                    Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
 
     def draw(self, window):
-        self.draw_rectangle(window)
-        self.draw_center(window)
+        self.screen_obj.draw(window)
         self.draw_text(window)
 
     def __str__(self) -> str:
@@ -165,7 +211,11 @@ class ObjectDetector:
     def copy_sensordata(self):
         self.rgb_img = copy.deepcopy(self.new_rgb_img)
         self.depth_raw = copy.deepcopy(self.new_depth_raw)
-        self.depth_img = cv2.normalize(src=self.depth_raw, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+        depth_norm = self.depth_raw / KINECT_MAX_RANGE
+        depth_map = cv2.applyColorMap(np.uint8((depth_norm * 255)), cv2.COLORMAP_JET)
+        self.depth_img = cv2.cvtColor(depth_map, cv2.COLOR_BGR2GRAY)
+        # self.depth_img = cv2.normalize(src=self.depth_raw, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     
     def show_imgs(self, scale=None):
         if scale is not None:
@@ -174,6 +224,9 @@ class ObjectDetector:
         if self.testmode:
             cv2.imshow('depth_raw', self.depth_raw)
             cv2.imshow('depth_img', self.depth_img)
+
+            print(self.depth_raw[200])
+            print(max(self.depth_raw.flatten()), min(self.depth_raw.flatten()))
         cv2.waitKey(10)
    
     def color_mask(self, color):
@@ -305,14 +358,13 @@ class ObjectDetector:
             field_object.draw(self.rgb_img)
 
     def test_function(self, color, mask_color, mask_depth, edges, contours):
-        for testcolor in self.testcolor:
-            if testcolor == color:
-                cv2.imshow(f'{color} mask', mask_color)
-                cv2.imshow(f'{color} depth_mask', mask_depth)
-                cv2.imshow(f'{color} edges', edges)
-                contour_test = self.rgb_img.copy()
-                cv2.drawContours(contour_test, contours, -1, (0, 255, 0), 1)
-                cv2.imshow(f'{color} contours', contour_test)
+        if color in self.testcolor:
+            cv2.imshow(f'{color} mask', mask_color)
+            cv2.imshow(f'{color} depth_mask', mask_depth)
+            cv2.imshow(f'{color} edges', edges)
+            contour_test = self.rgb_img.copy()
+            cv2.drawContours(contour_test, contours, -1, (0, 255, 0), 1)
+            cv2.imshow(f'{color} contours', contour_test)
                 
     def init_trackbars(self):
         def nothing(x):
