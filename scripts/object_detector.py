@@ -9,13 +9,24 @@ import copy
 import sys
 import math
 
+from sensor_msgs.msg import LaserScan
 from player.msg import FieldComponent, PolarVector2, ScreenPosition
 from enum import Enum
 
+def tand(x):
+    return math.tan(x * math.pi / 180)
+
+def atand(x):
+    return math.atan(x) * 180 / math.pi
+
 #CONSTANTS
-KINECT_FOV = 62
-KINECT_TAN = math.tan(KINECT_FOV/2 * math.pi / 180)
+KINECT_FOV_X = 62
+KINECT_TAN_X = tand(KINECT_FOV_X / 2)
+KINECT_FOV_Y = 48.6
+KINECT_TAN_Y = tand(KINECT_FOV_Y / 2)
 KINECT_MAX_RANGE = 5.0
+KINECT_HEIGHT = 0.7
+KINECT_ANGLE = 0
 
 AREA_MIN = 800
 AREA_YELLOW = 800
@@ -27,6 +38,11 @@ COLOR_MASK_SMOOTHING = 5
 CV2_DEFAULT_FONT = cv2.FONT_HERSHEY_SIMPLEX
 CV2_DEFAULT_FONT_SCALE = 0.25
 CV2_DEFAULT_THICKNESS = 1
+
+LASER_MIN_ANGLE = -100
+LASER_MAX_ANGLE = 100
+LASER_EDGE_THRESHOLD = 0.1
+LASER_HEIGHT = 0.4
 
 
 OBJECTS = [('robot', 'red'),
@@ -77,17 +93,13 @@ class Color(Enum):
         return self.name.lower()
 
 class ScreenObject:
-    def __init__(self, properties):
-        if type(properties) is tuple:
-            self.x, self.y, self.w, self.h = properties
-            self.properties = ScreenPosition(x=self.x, y=self.y, w=self.w, h=self.h)
+    def __init__(self, x, y, w, h):
+        self.x = int(x)
+        self.y = int(y)
+        self.w = int(w)
+        self.h = int(h)
 
-        else:
-            self.properties = properties
-            self.x = properties.x
-            self.y = properties.y
-            self.w = properties.w
-            self.h = properties.h
+        self.properties = ScreenPosition(x=self.x, y=self.y, w=self.w, h=self.h)
 
     def get_center(self):
         cx = int(self.x + self.w/2)
@@ -110,7 +122,7 @@ class ScreenObject:
     def get_field_angle(self, depth_img):
         cx = self.get_center()[0]
         w = depth_img.shape[1]
-        return math.atan((1 - 2 * cx / w) * KINECT_TAN) * 180 / math.pi
+        return atand((1 - 2 * cx / w) * KINECT_TAN_X)
 
     def draw_bounds(self, window):
         corners = self.get_corner_points()
@@ -125,6 +137,40 @@ class ScreenObject:
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y}) {self.w}x{self.h}"
+    
+    def get_angles(self):
+        ax_min = self.pos_to_angle(self.x)
+        ax_max = self.pos_to_angle(self.x + self.w)
+        ay_min = self.pos_to_angle(self.y)
+        ay_max = self.pos_to_angle(self.y + self.h)
+        return ax_min, ax_max, ay_min, ay_max
+
+    @classmethod
+    def angle_to_pos(cls, angle, image_dimension, FOV):
+        return (1 - tand(angle) / tand(FOV / 2)) * image_dimension / 2
+    
+    @classmethod
+    def pos_to_angle(cls, pos, image_dimension, FOV):
+        return atand((1 - 2 * pos / image_dimension) * tand(FOV / 2))
+    
+    @classmethod
+    def from_angles(cls, ax_min, ay_min, ax_max, ay_max, image_w, image_h, FOV_x, FOV_y):
+        x_min = cls.angle_to_pos(ax_min, image_w, FOV_x)
+        x_max = cls.angle_to_pos(ax_max, image_w, FOV_x)
+        y_min = cls.angle_to_pos(ay_min, image_h, FOV_y)
+        y_max = cls.angle_to_pos(ay_max, image_h, FOV_y)
+
+        w = x_max - x_min
+        h = y_max - y_min
+        return cls(x_min, y_min, w, h)
+    
+    @classmethod
+    def from_screen_position(cls, scp):
+        return cls(scp.x, scp.y, scp.w, scp.h)
+    
+    @classmethod
+    def from_tuple(cls, properties):
+        return cls(properties[0], properties[1], properties[2], properties[3])
 
 class FieldObject:
     def __init__(self, properties):
@@ -137,7 +183,7 @@ class FieldObject:
             self.distance = properties.player_distance
             self.screen_pos = properties.screen_position
 
-        self.screen_obj = ScreenObject(properties.screen_position)
+        self.screen_obj = ScreenObject.from_screen_position(properties.screen_position)
     
     def draw_text(self, window):
         cv2.putText(window, str(self), (self.screen_pos.x, self.screen_pos.y-10),
@@ -151,11 +197,8 @@ class FieldObject:
     def __str__(self) -> str:
         return f"{self.color_name} {self.type} {self.distance.r:.2f}m {self.distance.theta:.1f}d"
 
-class ObjectDetector:
+class KinectDetector:
     def __init__(self):
-        rospy.init_node("object_detector_node")
-        rospy.loginfo("Initialised ObjectDetector")
-
         #newest data
         self.new_rgb_img = None
         self.new_depth_raw = None
@@ -297,7 +340,7 @@ class ObjectDetector:
         
         found_objects = []
         for contour in contours:
-            screen_obj = ScreenObject(cv2.boundingRect(contour))
+            screen_obj = ScreenObject.from_tuple(cv2.boundingRect(contour))
 
             if screen_obj.get_area() < area_min:
                 continue
@@ -363,18 +406,113 @@ class ObjectDetector:
         cv2.namedWindow('Object detector')
         cv2.createTrackbar('upper', 'Object detector', CANNY_THRESHOLD_UPPER, 255, nothing)
         cv2.createTrackbar('lower', 'Object detector', CANNY_THRESHOLD_LOWER, 255, nothing)
+
+class LaserScanDetector:
+    def __init__(self):
+        self.laser_scan_sub = rospy.Subscriber("robot1/front_laser/scan", LaserScan, self.laser_scan_cb)
+        self.laser_scan = LaserScan()
+
+        self.bridge = CvBridge()
+
+        self.rgb_image_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, self.rgb_camera_cb)
+        self.rgb_image = None
+
+    def rgb_camera_cb(self, msg):
+        try:
+            self.rgb_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(e)
+            return
         
+    def laser_scan_cb(self, msg):
+        self.laser_scan = msg
+
+    def detect_objects(self):
+        new_object = True
+        min_theta = 0
+        max_theta = 0
+
+        previous_range = 0
+        previous_theta = -180
+
+        detected_objects = []
+
+        for index, range in enumerate(self.laser_scan.ranges):
+            current_theta = index * self.laser_scan.angle_increment
+
+            if not LASER_MIN_ANGLE <= current_theta <= LASER_MAX_ANGLE:
+                continue
+
+            if abs(previous_range - range) > LASER_EDGE_THRESHOLD:
+                if new_object:
+                    new_object = False
+                    min_index = index
+                    min_theta = current_theta
+
+                    print(f"new min theta {min_theta}")
+
+                else:
+                    max_index = previous_index
+                    max_theta = previous_theta
+
+                    center_theta = (max_theta - min_theta) / 2
+                    center_index = int((max_index - min_index) / 2)
+
+                    imw = self.rgb_image.shape[0]
+                    imh = self.rgb_image.shape[1]
+
+                    d = self.laser_scan.ranges[min_index]
+                    min_alpha = atand((KINECT_HEIGHT - LASER_HEIGHT - 0.2) / d)
+
+                    d = self.laser_scan.ranges[max_index]
+                    max_alpha = atand((KINECT_HEIGHT - LASER_HEIGHT - 0.2) / d)
+
+                    d = self.laser_scan.ranges[center_index]
+
+                    new_distance = PolarVector2(d, center_theta)
+                    screen_obj = ScreenObject.from_angles(min_theta, min_alpha + KINECT_ANGLE, max_theta, max_alpha + KINECT_ANGLE, imw, imh, KINECT_FOV_X, KINECT_FOV_Y)
+                    print(f"{screen_obj.get_corner_points()}")
+                    detected_objects.append(FieldObject(FieldComponent("?", "?", new_distance, screen_obj.properties)))
+
+                    new_object = True
+
+                    print(f"new max theta {max_theta}, object found")
+
+            previous_index = index
+            previous_theta = current_theta
+            previous_range = range
+
+        return detected_objects
+    
+    def visualize(self, field_objects):
+        cv2.imshow("Laser Scan", self.rgb_image)
+
+        for field_object in field_objects:
+            field_object.draw(self.rgb_image)
+            
+
 if __name__ == '__main__':
-    od = ObjectDetector()
+    rospy.init_node("object_detector_node")
+    rospy.loginfo("Initialised ObjectDetector")
+
+    kd = KinectDetector()
+    ld = LaserScanDetector()
+
     loop_rate = rospy.Rate(10)
 
     rospy.loginfo("Starting loop")
     while not rospy.is_shutdown():
-        if od.new_rgb_img is not None and od.new_depth_raw is not None:
-            od.copy_sensordata()              
-            found_objects = od.detect_multiple_objects(OBJECTS)
-            od.visualize(found_objects)
-            od.show_imgs()
+        # if kd.new_rgb_img is not None and kd.new_depth_raw is not None:
+        #     kd.copy_sensordata()              
+        #     found_objects = kd.detect_multiple_objects(OBJECTS)
+        #     kd.visualize(found_objects)
+        #     kd.show_imgs()
+        # else:
+        #     rospy.loginfo("Waiting for images to process...")
+
+        if ld.rgb_image is not None:
+            found_objects = ld.detect_objects()
+            ld.visualize(found_objects)
         else:
             rospy.loginfo("Waiting for images to process...")
         
