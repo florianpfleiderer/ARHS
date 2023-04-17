@@ -4,17 +4,8 @@ import math
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from player.msg import *
-from player_utils.velocity_calculator import VelocityCalculator
 
-MAX_ANGULAR_SPEED = math.pi / 2
-MAX_LINEAR_SPEED = 0.5
-TARGET_SIZE = 0.04
-REPELLING_FORCE_SIZE = 0.1
-REPELLING_FORCE_THRESHOLD = 0.5
-REPELLING_FORCE_MULTIPLIER = -0.1
-
-SCAN_MIN_ANGLE = -100
-SCAN_MAX_ANGLE = 100
+from globals.globals import *
 
 class VelocityCalculator:
     def __init__(self):
