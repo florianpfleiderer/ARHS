@@ -4,15 +4,17 @@ import rospy
 import cv2
 import numpy as np
 import sys
+import time
 
 from player.msg import FieldComponent, PolarVector2
 
-from src.field_components.field_components import *
-from src.visualization.screen_components import *
-from src.globals.globals import *
-from src.math_utils.math_function_utils import *
-from src.data_utils.topic_handlers import ImageSubscriber, LaserSubscriber
-
+from field_components.field_components import *
+from visualization.screen_components import *
+import visualization.imgops as imgops
+from globals.globals import *
+from math_utils.math_function_utils import *
+from data_utils.topic_handlers import ImageSubscriber, LaserSubscriber
+from list_utils.filtering import *
 
 OBJECTS = [('robot', 'red'),
            ('pole', 'green'),
@@ -33,21 +35,20 @@ RATIOS = {'pole': [None, 0.4],
           'goal': [1.7, None],
           'robot': [None, None]}
 
-
 class KinectDetector:
     def __init__(self):
-        #newest data
-        self.new_rgb_img = None
-        self.new_depth_raw = None
+        # #newest data
+        # self.new_rgb_img = None
+        # self.new_depth_raw = None
         
-        #copied data to work on
-        self.rgb_img = None
-        self.depth_raw = None
-        self.depth_img = None
+        # #copied data to work on
+        # self.rgb_img = None
+        # self.depth_raw = None
+        # self.depth_img = None
         
-        #testmode
-        self.testmode = False
-        self.testcolor = []
+        # #testmode
+        # self.testmode = False
+        # self.testcolor = []
         
         try:
             args = rospy.myargv(argv=sys.argv)
@@ -58,8 +59,10 @@ class KinectDetector:
         except:
             rospy.loginfo('wrong args')
                 
-        if self.testmode:
-            self.init_trackbars()
+        # if self.testmode:
+        #     self.init_trackbars()
+
+        self.testmode = True
         
         self.rgb_sub = ImageSubscriber("rgb image", "robot1/kinect/rgb/image_raw", "bgr8")
         self.depth_sub = ImageSubscriber("depth image", "robot1/kinect/depth/image_raw", "32FC1")
@@ -67,133 +70,182 @@ class KinectDetector:
     def is_valid_data(self):
         return self.rgb_sub.is_valid() and self.depth_sub.is_valid()
 
-    def copy_sensordata(self):
-        self.rgb_img = self.rgb_sub.get_image()
-        self.depth_raw = self.depth_sub.get_image()
+    # def copy_sensordata(self):
+    #     self.rgb_img = self.rgb_sub.get_image()
+    #     self.depth_raw = self.depth_sub.get_image()
 
-        depth_norm = self.depth_raw / KINECT_MAX_RANGE
-        depth_map = cv2.applyColorMap(np.uint8((depth_norm * 255)), cv2.COLORMAP_JET)
-        self.depth_img = cv2.cvtColor(depth_map, cv2.COLOR_BGR2GRAY)
-        # self.depth_img = cv2.normalize(src=self.depth_raw, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    #     depth_norm = self.depth_raw / KINECT_MAX_RANGE
+    #     depth_map = cv2.applyColorMap(np.uint8((depth_norm * 255)), cv2.COLORMAP_JET)
+    #     self.depth_img = cv2.cvtColor(depth_map, cv2.COLOR_BGR2GRAY)
+    #     # self.depth_img = cv2.normalize(src=self.depth_raw, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     
-    def show_imgs(self, scale=None):
-        if scale is not None:
-            self.rgb_img = cv2.resize(self.rgb_img, (0, 0), fx = scale, fy = scale, interpolation = cv2.INTER_BITS2)
-        cv2.imshow('Object detector', self.rgb_img)
-        if self.testmode:
-            cv2.imshow('depth_raw', self.depth_raw)
-            cv2.imshow('depth_img', self.depth_img)
-        cv2.waitKey(10)
+    # def show_imgs(self, scale=None):
+    #     if scale is not None:
+    #         self.rgb_img = cv2.resize(self.rgb_img, (0, 0), fx = scale, fy = scale, interpolation = cv2.INTER_BITS2)
+    #     cv2.imshow('Object detector', self.rgb_img)
+    #     if self.testmode:
+    #         cv2.imshow('depth_raw', self.depth_raw)
+    #         cv2.imshow('depth_img', self.depth_img)
+    #     cv2.waitKey(10)
    
-    def color_mask(self, color):
-        #filter color
-        color_min, color_max = COLORS[color]
-        hsv =  cv2.cvtColor(self.rgb_img, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, np.array([[color_min]]), np.array([[color_max]]))
-        #reduce noise
-        kernel = np.ones((COLOR_MASK_SMOOTHING, COLOR_MASK_SMOOTHING),np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        return mask
+    # def color_mask(self, color):
+    #     #filter color
+    #     color_min, color_max = COLORS[color]
+    #     hsv =  cv2.cvtColor(self.rgb_img, cv2.COLOR_BGR2HSV)
+    #     mask = cv2.inRange(hsv, np.array([[color_min]]), np.array([[color_max]]))
+    #     #reduce noise
+    #     kernel = np.ones((COLOR_MASK_SMOOTHING, COLOR_MASK_SMOOTHING),np.uint8)
+    #     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    #     mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    #     return mask
     
-    def depth_mask_gs(self, mask_color):
-        #create greenscreen
-        gs = np.empty_like(self.rgb_img)
-        gs[:] = (0, 255, 0)
-        #subtract color mask
-        mask_color_invert = cv2.bitwise_not(mask_color)
-        gs = cv2.bitwise_and(gs, gs, mask=mask_color_invert)
-        #create depth mask
-        mask_depth = cv2.bitwise_and(self.depth_img, self.depth_img, mask=mask_color)
-        mask_depth = cv2.cvtColor(mask_depth, cv2.COLOR_GRAY2BGR)
-        #add gs and depth mask
-        mask_depth = cv2.add(gs, mask_depth)
-        return mask_depth
+    # def depth_mask_gs(self, mask_color):
+    #     #create greenscreen
+    #     gs = np.empty_like(self.rgb_img)
+    #     gs[:] = (0, 255, 0)
+    #     #subtract color mask
+    #     mask_color_invert = cv2.bitwise_not(mask_color)
+    #     gs = cv2.bitwise_and(gs, gs, mask=mask_color_invert)
+    #     #create depth mask
+    #     mask_depth = cv2.bitwise_and(self.depth_img, self.depth_img, mask=mask_color)
+    #     mask_depth = cv2.cvtColor(mask_depth, cv2.COLOR_GRAY2BGR)
+    #     #add gs and depth mask
+    #     mask_depth = cv2.add(gs, mask_depth)
+    #     return mask_depth
     
-    def edge_detection(self, img):
-        #TODO: maybe need to blur bevor canny in real life
-        thresh_lower = CANNY_THRESHOLD_LOWER
-        thresh_upper = CANNY_THRESHOLD_UPPER
-        if self.testmode:
-            thresh_upper = cv2.getTrackbarPos('upper', 'Object detector')  
-            thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
-        canny =  cv2.Canny(img, thresh_lower, thresh_upper)
-        #reduce noise
-        kernel = np.ones((CANNY_SMOOTHING, CANNY_SMOOTHING),np.uint8)
-        canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
-        return canny
+    # def edge_detection(self, img):
+    #     #TODO: maybe need to blur bevor canny in real life
+    #     thresh_lower = CANNY_THRESHOLD_LOWER
+    #     thresh_upper = CANNY_THRESHOLD_UPPER
+    #     if self.testmode:
+    #         thresh_upper = cv2.getTrackbarPos('upper', 'Object detector')  
+    #         thresh_lower = cv2.getTrackbarPos('lower', 'Object detector')
+    #     canny =  cv2.Canny(img, thresh_lower, thresh_upper)
+    #     #reduce noise
+    #     kernel = np.ones((CANNY_SMOOTHING, CANNY_SMOOTHING),np.uint8)
+    #     canny = cv2.morphologyEx(canny, cv2.MORPH_CLOSE, kernel)
+    #     return canny
     
-    def get_contours(self, img, object=None):
+    # def get_contours(self, img, object=None):
         #TODO: there may be problems with getting the innner contours in real life
         
-        good_contours = []
-        contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-        try:
-            #get inner contours
-            hierarchy = hierarchy[0]
-            for component in zip(contours, hierarchy):
-                currentContour = component[0]
-                currentHierarchy = component[1]
-                if currentHierarchy[2] < 0: #if there is no child contour
-                    good_contours.append(currentContour)
-        except:
-            pass
-        return good_contours
-                
+        # good_contours = []
+        # contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        # try:
+        #     #get inner contours
+        #     hierarchy = hierarchy[0]
+        #     for component in zip(contours, hierarchy):
+        #         currentContour = component[0]
+        #         currentHierarchy = component[1]
+        #         if currentHierarchy[2] < 0: #if there is no child contour
+        #             good_contours.append(currentContour)
+        # except:
+        #     pass
+        # return good_contours
+
     def detect_field_objects(self, base_class):
-        objects = []
-        color_mask = base_class.color.mask()
-        return objects
+        detection_start_time = time.time()
 
-    def detect_object(self, type, color):        
-        mask_color = self.color_mask(color)
-        mask_depth = self.depth_mask_gs(mask_color)
-        canny = self.edge_detection(mask_depth)
-        contours = self.get_contours(canny, type)
+        rgb_image = self.rgb_sub.get_image()
+        depth_image = self.depth_sub.get_image()
+
+        rgb_image = imgops.denoise(rgb_image, COLOR_MASK_SMOOTHING)
+
+        color_mask = imgops.mask_color(rgb_image, base_class.color)
+        depth_masked = imgops.apply_mask(color_mask, depth_image)
+        depth_masked_image = imgops.convert_gray2bgr(depth_masked)
+
+        rgb_image = imgops.denoise(depth_masked_image, CANNY_SMOOTHING)
+
+        thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "rgb image")
+        thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "rgb image")
+
+        edges = imgops.edges(depth_masked_image, thresh_lower.get_value(self.testmode), thresh_upper.get_value(self.testmode))
+
+        contours = imgops.get_contours(edges)
+
+        if contours == ((), None):
+            return []
         
-        #for testmode
+        contours = imgops.get_inner_contours(*contours)
+
+        # show images if testmode is enabled
         if self.testmode:
-            self.test_function(color, mask_color, mask_depth, canny, contours)
-        
-        area_min = AREA_MIN
-        if color == 'yellow':   #other min area because of yellow parts of the robot
-            area_min = AREA_YELLOW
-        
-        ratio_min, ratio_max = RATIOS[type]
-        if ratio_min is None:
-            ratio_min = 0
-        if ratio_max is None:
-            ratio_max = 999999
-        
-        found_objects = []
-        for contour in contours:
-            screen_obj = ScreenObject.from_tuple(cv2.boundingRect(contour))
+            cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
+            cv2.imshow('depth_masked', depth_masked_image)
+            cv2.imshow('edges', edges)
+            cv2.imshow('contours', rgb_image)
+            cv2.waitKey(10)
 
-            if screen_obj.get_area() < area_min:
-                continue
-            if not ratio_min <= screen_obj.get_ratio() <= ratio_max:
-                continue
+        def filter_cb(contour):
+            x, y, w, h = cv2.boundingRect(contour)
+            result = check_range(w*h, *base_class.area_detect_range)
+            result &= check_range(w/h, *base_class.ratio_detect_range)
+
+            return result
+
+        contours = filter_list(contours, filter_cb)
+
+        screen_objects = [ScreenObject(*cv2.boundingRect(contour)) for contour in contours]
+
+        if type(base_class) in [YellowGoal, BlueGoal, Robot] and len(screen_objects) > 1:
+            screen_objects = [screen_objects[0].merge(screen_objects[1:])]
+
+        distances = [screen_obj.get_field_vector(depth_image) for screen_obj in screen_objects]
+
+        field_objects = [base_class(distance, screen_obj) for distance, screen_obj in zip(distances, screen_objects)]
+
+        return field_objects
+
+    # def detect_object(self, type, color):        
+    #     mask_color = self.color_mask(color)
+    #     mask_depth = self.depth_mask_gs(mask_color)
+    #     canny = self.edge_detection(mask_depth)
+    #     contours = self.get_contours(canny, type)
+        
+    #     #for testmode
+    #     if self.testmode:
+    #         self.test_function(color, mask_color, mask_depth, canny, contours)
+        
+    #     area_min = AREA_MIN
+    #     if color == 'yellow':   #other min area because of yellow parts of the robot
+    #         area_min = AREA_YELLOW
+        
+    #     ratio_min, ratio_max = RATIOS[type]
+    #     if ratio_min is None:
+    #         ratio_min = 0
+    #     if ratio_max is None:
+    #         ratio_max = 999999
+        
+    #     found_objects = []
+    #     for contour in contours:
+    #         screen_obj = ScreenObject.from_tuple(cv2.boundingRect(contour))
+
+    #         if screen_obj.get_area() < area_min:
+    #             continue
+    #         if not ratio_min <= screen_obj.get_ratio() <= ratio_max:
+    #             continue
             
-            distance = PolarVector2(screen_obj.get_field_distance(self.depth_raw), screen_obj.get_field_angle(self.depth_raw))
+    #         distance = PolarVector2(screen_obj.get_field_distance(self.depth_raw), screen_obj.get_field_angle(self.depth_raw))
             
-            field_object_properties = FieldComponent(color, type, distance, screen_obj)
+    #         field_object_properties = FieldComponent(color, type, distance, screen_obj)
 
-            found_objects.append(FieldObject(field_object_properties))
+    #         found_objects.append(FieldObject(field_object_properties))
 
-        #for objects that exist only one time on the field -> combine seperatet detections
-        if (type == 'goal' or type == 'robot') and len(found_objects) > 1:
-            found_objects = [self.combine_objects(found_objects)]
+    #     #for objects that exist only one time on the field -> combine seperatet detections
+    #     if (type == 'goal' or type == 'robot') and len(found_objects) > 1:
+    #         found_objects = [self.combine_objects(found_objects)]
         
-        return found_objects
+    #     return found_objects
         
-    def detect_multiple_objects(self, objects):
-        found_objects = []
-        for object in objects:
-            type, color = object
-            found_objects = found_objects + self.detect_object(type, color)
-        return found_objects
+    # def detect_multiple_objects(self, objects):
+    #     found_objects = []
+    #     for object in objects:
+    #         type, color = object
+    #         found_objects = found_objects + self.detect_object(type, color)
+    #     return found_objects
 
-    def combine_objects(self, objects):     
+    # def combine_objects(self, objects):     
         screen_objects = [o.screen_obj for o in objects]
         x_min = min(o.x for o in screen_objects)
         y_min = min(o.y for o in screen_objects)
@@ -318,12 +370,12 @@ if __name__ == '__main__':
 
     rospy.loginfo("Starting loop")
     while not rospy.is_shutdown():
-        if kinect_det.is_valid_data():
-            kinect_det.copy_sensordata()              
-            found_objects = kinect_det.detect_multiple_objects(OBJECTS)
+        if kinect_det.is_valid_data():          
+            kinect_det.rgb_sub.show_image() 
+            found_objects = kinect_det.detect_field_objects(Pole)
 
+            kinect_det.rgb_sub.draw_objects(found_objects)     
             kinect_det.rgb_sub.show_image()
-            # kinect_det.rgb_sub.draw_objects(found_objects)
             # kinect_det.show_imgs()
         else:
             rospy.loginfo("Waiting for images to process...")

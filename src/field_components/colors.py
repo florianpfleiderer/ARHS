@@ -37,16 +37,6 @@ class Color(Enum):
     def __str__(self) -> str:
         return self.name.lower()
     
-    def mask(self, image):
-        #filter color
-        hsv =  cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, np.array([[self.min_hsv]]), np.array([[self.max_hsv]]))
-        #reduce noise
-        kernel = np.ones((COLOR_MASK_SMOOTHING, COLOR_MASK_SMOOTHING),np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        return mask
-    
     @classmethod
     def from_string(cls, color_name):
         return Color._member_map_[color_name]

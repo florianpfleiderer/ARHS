@@ -6,3 +6,8 @@ def tand(x):
 
 def atand(x):
     return math.atan(x) * 180 / math.pi
+
+def check_range(value, min, max):
+    low = value if min is None else min
+    high = value if max is None else max
+    return low <= value <= high

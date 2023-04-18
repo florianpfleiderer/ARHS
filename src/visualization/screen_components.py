@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from player.msg import ScreenPosition
+from player.msg import ScreenPosition, PolarVector2
 from globals.globals import *
 from math_utils.math_function_utils import *
 from field_components.colors import *
@@ -37,6 +37,9 @@ class ScreenObject:
         cx = self.get_center()[0]
         w = depth_img.shape[1]
         return atand((1 - 2 * cx / w) * KINECT_TAN_X)
+    
+    def get_field_vector(self, depth_img):
+        return PolarVector2(self.get_field_distance(depth_img), self.get_field_angle(depth_img))
 
     def draw_bounds(self, window):
         corners = self.get_corner_points()
@@ -85,25 +88,54 @@ class ScreenObject:
     @classmethod
     def from_tuple(cls, properties):
         return cls(properties[0], properties[1], properties[2], properties[3])
+    
+    def merge(self, *screen_objects):
+        x_min, y_min = min([(so.x, so.y) for so in [self, *screen_objects]])
+        x_max, y_max = max([(so.x + so.w, so.y + so.h) for so in [self, *screen_objects]])
+        return ScreenObject(x_min, y_min, x_max - x_min, y_max - y_min)
 
 class ImageViewer:
-    def __init__(self, name, image):
+    def __init__(self, name):
         self.name = name
-        self.image = image
         self.v = Validator()
 
-    def is_valid(self):
-        return self.v.guard_none(self.image)
-
-    def show(self):
-        if not self.is_valid():
+    def show(self, image):
+        if not self.v.guard_none(image):
             return
         
-        cv2.imshow(self.name, self.image)
+        cv2.imshow(self.name, image)
 
-    def draw_objects(self, objects):
-        if not self.is_valid():
+    def draw_objects(self, objects, image):
+        if not self.v.guard_none(image):
             return
         
         for obj in objects:
-            obj.draw(self.image)
+            obj.draw(image)
+
+class TestParameter:
+    def __init__(self, default):
+        self._default = default
+        self._test_value = default
+
+    def get_value(self, is_testing):
+        return self._test_value if is_testing else self._default
+    
+    def set_value(self, value):
+        self._test_value = value
+
+    def get_default(self):
+        return self._default
+
+class TrackbarParameter(TestParameter):
+    def __init__(self, default, trackbar_name, window_name):
+        super().__init__(default)
+        self.trackbar_name = trackbar_name
+        self.window = window_name
+        cv2.createTrackbar(self.trackbar_name, self.window, default, 255, self.update_value)
+        
+    def set_value(self, value):
+        cv2.setTrackbarPos(self.trackbar_name, self.window, value)
+
+    def update_value(self, value):
+        super().set_value(value)
+        print("updated value: " + str(self._test_value))

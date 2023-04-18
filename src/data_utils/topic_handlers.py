@@ -3,7 +3,7 @@
 import rospy
 import copy
 from cv_bridge import CvBridge, CvBridgeError
-from data_validation import *
+from data_utils.data_validation import *
 from visualization.screen_components import *
 from sensor_msgs.msg import Image, LaserScan
 
@@ -19,7 +19,7 @@ class ImageSubscriber:
 
         self.v = Validator()
 
-        self.viewer = ImageViewer(name, self._image)
+        self.viewer = ImageViewer(self._imgname)
 
     def img_cb(self, msg):
         try:
@@ -35,10 +35,10 @@ class ImageSubscriber:
         return self.v.guard_none(self._image)
 
     def show_image(self):
-        self.viewer.show()
+        self.viewer.show(self._image)
 
     def draw_objects(self, objects):
-        self.viewer.draw_objects(objects)
+        self.viewer.draw_objects(objects, self._image)
 
 class LaserSubscriber:
     def __init__(self, name, topic):

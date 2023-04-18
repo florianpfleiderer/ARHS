@@ -20,11 +20,6 @@ class FieldObject:
         return cls(properties.color_name, properties.type, properties.player_distance, properties.screen_position)
 
     def check_parameters(self, color, ratio, area):
-        def check_range(tuple, value):
-            low = value if low is None else tuple[0]
-            high = value if low is None else tuple[1]
-            return low <= value <= high
-
         if not self.color.in_range(color):
             return False
         
