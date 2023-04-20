@@ -113,9 +113,10 @@ class ImageViewer:
             obj.draw(image)
 
 class TestParameter:
-    def __init__(self, default):
+    def __init__(self, name, default):
         self._default = default
         self._test_value = default
+        self.name = name
 
     def get_value(self, is_testing):
         return self._test_value if is_testing else self._default
@@ -125,10 +126,13 @@ class TestParameter:
 
     def get_default(self):
         return self._default
+    
+    def show(self):
+        print(f"{self.name}: {str(self._test_value)}")
 
 class TrackbarParameter(TestParameter):
     def __init__(self, default, trackbar_name, window_name):
-        super().__init__(default)
+        super().__init__(trackbar_name, default)
         self.trackbar_name = trackbar_name
         self.window = window_name
         cv2.createTrackbar(self.trackbar_name, self.window, default, 255, self.update_value)
@@ -138,4 +142,10 @@ class TrackbarParameter(TestParameter):
 
     def update_value(self, value):
         super().set_value(value)
-        print("updated value: " + str(self._test_value))
+
+class TestImage(TestParameter):
+    def __init__(self, name, image):
+        super().__init__(name, image)
+    
+    def show(self):
+        ImageViewer(self.name).show(self.get_value(is_testing=True))
