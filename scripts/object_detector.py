@@ -93,7 +93,7 @@ class KinectDetector(Detector):
 
         edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
         edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
-        edges = cv2.blur(edges, (3, 3))
+        edges = cv2.blur(edges, (3, 3)) # needed?
 
         self.add_test_parameters(TestImage("rgb image", rgb_image),
                                  TestImage("depth_masked_image", depth_masked_image),
