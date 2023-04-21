@@ -54,7 +54,7 @@ class Robot(FieldObject):
 class YellowPuck(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (None, 0.6)
+    ratio_detect_range = (0.2, 0.7)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("YELLOW", "puck", player_distance, screen_pos)
@@ -62,7 +62,7 @@ class YellowPuck(FieldObject):
 class BluePuck(FieldObject):
     color = Color.BLUE
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (None, 0.6)
+    ratio_detect_range = (0.2, 0.7)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("BLUE", "puck", player_distance, screen_pos)
@@ -70,7 +70,7 @@ class BluePuck(FieldObject):
 class YellowGoal(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (1.7, None)
+    ratio_detect_range = (1.5, None)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("YELLOW", "goal", player_distance, screen_pos)
@@ -78,7 +78,7 @@ class YellowGoal(FieldObject):
 class BlueGoal(FieldObject):
     color = Color.BLUE
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (1.7, None)
+    ratio_detect_range = (1.5, None)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("BLUE", "goal", player_distance, screen_pos)
@@ -87,6 +87,8 @@ class Pole(FieldObject):
     color = Color.GREEN
     area_detect_range = (AREA_MIN, None)
     ratio_detect_range = (None, 0.4)
+
+    ratio_detect_range = (None, None)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("GREEN", "pole", player_distance, screen_pos)

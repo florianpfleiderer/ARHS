@@ -3,15 +3,26 @@
 import cv2
 import numpy as np
 
-def denoise(image, factor):
-    kernel = np.ones((factor, factor),np.uint8)
+def denoise(image, kernel_size, do_open=True):
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
     mask = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
-    mask =  cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
+
+    if do_open:
+        mask = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
     return mask
 
 def mask_color(image, color):
     hsv =  cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, np.array([*color.min_hsv()]), np.array([*color.max_hsv()]))
+
+    min_hsv = color.min_hsv()
+    max_hsv = color.max_hsv()
+
+    if min_hsv[0] > max_hsv[0]:
+        mask = cv2.inRange(hsv, np.array([*min_hsv]), np.array([255, max_hsv[1], max_hsv[2]]))
+        mask += cv2.inRange(hsv, np.array([0, min_hsv[1], min_hsv[2]]), np.array([*max_hsv]))
+    else:
+        mask = cv2.inRange(hsv, np.array([*min_hsv]), np.array([*max_hsv]))
+
     return mask
 
 def invert_mask(mask):

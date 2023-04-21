@@ -38,7 +38,7 @@ class ImageSubscriber:
         self.viewer.show(self._image)
 
     def draw_objects(self, objects):
-        self.viewer.draw_objects(objects, self._image)
+        self.viewer.draw_objects(objects)
 
 class LaserSubscriber:
     def __init__(self, name, topic):

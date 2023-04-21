@@ -98,6 +98,7 @@ class ImageViewer:
     def __init__(self, name):
         self.name = name
         self.v = Validator()
+        self.window = cv2.namedWindow(self.name)
 
     def show(self, image):
         if not self.v.guard_none(image):
@@ -105,12 +106,12 @@ class ImageViewer:
         
         cv2.imshow(self.name, image)
 
-    def draw_objects(self, objects, image):
-        if not self.v.guard_none(image):
+    def draw_objects(self, objects):
+        if not self.v.guard_none(self.window):
             return
         
         for obj in objects:
-            obj.draw(image)
+            obj.draw(self.window)
 
 class TestParameter:
     def __init__(self, name, default):
@@ -135,6 +136,8 @@ class TrackbarParameter(TestParameter):
         super().__init__(trackbar_name, default)
         self.trackbar_name = trackbar_name
         self.window = window_name
+
+        cv2.namedWindow(self.window)
         cv2.createTrackbar(self.trackbar_name, self.window, default, 255, self.update_value)
         
     def set_value(self, value):
