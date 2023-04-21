@@ -12,7 +12,7 @@ import sys
 
 #CONSTANTS
 KINECT_FOV = 62
-AREA_MIN = 400
+AREA_MIN = 1000
 AREA_YELLOW = 800
 CANNY_THRESHOLD_UPPER = 40
 CANNY_THRESHOLD_LOWER = 40
@@ -25,15 +25,15 @@ OBJECTS = [('robot', 'red'),
            ('goal', 'yellow')]
 
 #color_min, color_max
-COLORS = {'green': ([55, 50, 50], [65, 255, 255]),
-          'blue': ([115, 50, 50], [125, 255, 255]),
-          'yellow': ([25, 50, 50], [35, 255, 255]),
-          'red':([0, 50, 50], [5, 255, 255])}
+COLORS = {'green': ([65, 80, 50], [83, 255, 255]),
+          'blue': ([90, 70, 90], [110, 255, 255]),
+          'yellow': ([22, 70, 50], [30, 255, 255]),
+          'red':([171, 40, 50], [179, 255, 180])}
 
 #ratio_min, ratio_max
 RATIOS = {'pole': [None, 0.4],
-          'puk': [None, 0.6],
-          'goal': [1.7, None],
+          'puk': [0.2, 0.4],
+          'goal': [3, 7],
           'robot': [None, None]}
 
 
@@ -73,7 +73,7 @@ class ObjectDetector:
         
         #subscriber
         self.new_rgb_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, self.rgb_camera_cb)
-        self.new_depth_raw_sub = rospy.Subscriber("robot1/kinect/depth/image_raw", Image, self.depth_camera_cb)
+        self.new_depth_raw_sub = rospy.Subscriber("/robot1/kinect/depth_registered/image_raw", Image, self.depth_camera_cb)
  
 
     def rgb_camera_cb(self, msg):
@@ -105,6 +105,10 @@ class ObjectDetector:
         #filter color
         color_min, color_max = COLORS[color]
         hsv =  cv2.cvtColor(self.rgb_img, cv2.COLOR_BGR2HSV)
+        
+        hsv = cv2.fastNlMeansDenoisingColored(hsv, None, 10, 10, 7, 21)
+
+        
         mask = cv2.inRange(hsv, np.array([[color_min]]), np.array([[color_max]]))
         #reduce noise
         kernel = np.ones((5,5),np.uint8)
@@ -143,7 +147,7 @@ class ObjectDetector:
         #TODO: there may be problems with getting the innner contours in real life
         
         good_contours = []
-        contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        contours, hierarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         try:
             #for robot get biggest contour
             if object == 'robot':   
@@ -192,6 +196,10 @@ class ObjectDetector:
             
             cx, cy = self.get_center(x, y, w, h)
             distance = self.get_distance(cx, cy)
+            
+            if np.isnan(distance):
+                continue
+            
             angle = self.get_direction(x)
             
             found_objects.append({'color': color,

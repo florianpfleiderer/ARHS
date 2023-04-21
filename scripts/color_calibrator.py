@@ -45,7 +45,7 @@ class ColorCalibrator:
         center_y = (h//4)*3
         pixel_center = img_hsv[center_y, center_x]
         cv2.circle(img_cpy, (center_x, center_y), 5, (255, 0, 0), 2)
-        rospy.loginfo(pixel_center)
+        #rospy.loginfo(pixel_center)
         return img_cpy
     
     def get_img_mask(self, img):
@@ -55,10 +55,16 @@ class ColorCalibrator:
         h_l = cv2.getTrackbarPos('H_L', 'Color Mask')
         s_l = cv2.getTrackbarPos('S_L', 'Color Mask')
         v_l = cv2.getTrackbarPos('V_L', 'Color Mask')
+
+        img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
+
         
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(img_hsv, np.array([[[h_l, s_l, v_l]]]), np.array([[[h_u, s_u, v_u]]]))
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((5, 5),np.uint8)
+        
+        
+        
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask =  cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         return cv2.bitwise_and(img, img, mask=mask)
