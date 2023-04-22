@@ -2,11 +2,14 @@
 
 from player.msg import ScreenPosition, PolarVector2
 from globals.globals import *
+from globals.tick import *
 from math_utils.math_function_utils import *
 from field_components.colors import *
 from data_utils.data_validation import *
 from enum import Enum
 import numpy as np
+from field_components.field_components import *
+from field_components.colors import *
 
 class ProjectionType(Enum):
     PLANAR = 0
@@ -33,10 +36,10 @@ class ScreenObject:
         self.properties = ScreenPosition(theta_min=theta_min, theta_max=theta_max, alpha_min=alpha_min, alpha_max=alpha_max)
 
     def calculate_xywh(self):
-        self.x = int(ScreenObject.angle_to_pos(self.theta_min, self.dimensions[0], self.FOV[0], self.projection_type))
-        self.y = int(ScreenObject.angle_to_pos(self.alpha_min, self.dimensions[1], self.FOV[1], self.projection_type))
-        self.w = int(ScreenObject.angle_to_pos(self.theta_max, self.dimensions[0], self.FOV[0], self.projection_type) - self.x)
-        self.h = int(ScreenObject.angle_to_pos(self.alpha_max, self.dimensions[1], self.FOV[1], self.projection_type) - self.y)
+        self.x = int(ScreenObject.angle_to_pos(self.theta_min, self.dimensions[1], self.FOV[0], self.projection_type))
+        self.y = int(ScreenObject.angle_to_pos(self.alpha_min, self.dimensions[0], self.FOV[1], self.projection_type))
+        self.w = int(ScreenObject.angle_to_pos(self.theta_max, self.dimensions[1], self.FOV[0], self.projection_type) - self.x)
+        self.h = int(ScreenObject.angle_to_pos(self.alpha_max, self.dimensions[0], self.FOV[1], self.projection_type) - self.y)
 
     def set_FOV(self, FOV):
         self.FOV = FOV
@@ -78,6 +81,8 @@ class ScreenObject:
         corners = self.get_corner_points()
         cv2.rectangle(window, corners[0], corners[1], Color.YELLOW.default, CV2_DEFAULT_THICKNESS)
 
+        cv2.putText(window, str(self), corners[0], CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE, Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
+
     def draw_center(self, window):
         cv2.circle(window, self.get_center_point(), 2, Color.ORANGE.default, -CV2_DEFAULT_THICKNESS)
 
@@ -108,10 +113,10 @@ class ScreenObject:
     
     @classmethod
     def from_rectangle_tuple(cls, rect, dimensions=(480, 640), FOV=KINECT_FOV, projection_type=ProjectionType.PLANAR):
-        theta_min = cls.pos_to_angle(rect[0], dimensions[0], FOV[0], projection_type)
-        theta_max = cls.pos_to_angle(rect[0] + rect[2], dimensions[0], FOV[0], projection_type)
-        alpha_min = cls.pos_to_angle(rect[1], dimensions[1], FOV[1], projection_type)
-        alpha_max = cls.pos_to_angle(rect[1] + rect[3], dimensions[1], FOV[1], projection_type)
+        theta_min = cls.pos_to_angle(rect[0], dimensions[1], FOV[0], projection_type)
+        theta_max = cls.pos_to_angle(rect[0] + rect[2], dimensions[1], FOV[0], projection_type)
+        alpha_min = cls.pos_to_angle(rect[1], dimensions[0], FOV[1], projection_type)
+        alpha_max = cls.pos_to_angle(rect[1] + rect[3], dimensions[0], FOV[1], projection_type)
         return cls(theta_min, theta_max, alpha_min, alpha_max, dimensions, FOV, projection_type)
     
     def merge(self, *screen_objects):
@@ -177,3 +182,31 @@ class TestImage(TestParameter):
     
     def show(self):
         ImageViewer(self.name).show(self.get_value(is_testing=True))
+
+# test screen object creation and correct visualization
+if __name__ == "__main__":
+    test_image = TestImage("test", np.zeros((480, 640, 3), np.uint8))
+    sos = [] 
+    
+    # sos.append(ScreenObject(KINECT_FOV[0], -KINECT_FOV[0], KINECT_FOV[1], -KINECT_FOV[1]))
+    # sos.append(ScreenObject(KINECT_FOV[0] / 2, -KINECT_FOV[0] / 2, KINECT_FOV[1] / 2, -KINECT_FOV[1] / 2))
+    # sos.append(ScreenObject(0, 0, 0, 0))
+
+    # sos.append(ScreenObject.from_rectangle_tuple((100, 100, 440, 280)))
+    # print(sos[0].x, sos[0].y, sos[0].w, sos[0].h, sos[0].theta_min, sos[0].theta_max, sos[0].alpha_min, sos[0].alpha_max)
+
+    # sos.append(ScreenObject(22.5, -22.5, 14.8, -14.8))
+
+    # for so in sos:
+    #     so.draw(test_image.get_value(is_testing=True))
+
+
+    so = ScreenObject.from_rectangle_tuple((100, 100, 440, 280))
+    fo = FieldObject("RED", "test", PolarVector2(2, 0), so.properties)
+
+    so.draw(test_image.get_value(is_testing=True))
+    fo.draw(test_image.get_value(is_testing=True))
+
+    test_image.show()
+    while True:
+        cv2.waitKey(10)

@@ -16,12 +16,11 @@ def range_denoise(ranges, kernel):
         sum_value = 0
 
         for k in range(i - int(kernel/2), i + int(kernel/2)):
-            if not 0 <= k < size or abs(ranges[k] - ranges[i]) > LASER_EDGE_THRESHOLD:
-                sum_value += ranges[i]
+            if not 0 <= k < size or abs(ranges[k] - r) > LASER_EDGE_THRESHOLD:
+                sum_value += r
 
             else:
                 sum_value += ranges[k]
-
 
         mean = sum_value / kernel
         new_ranges.append(mean)

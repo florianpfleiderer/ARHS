@@ -175,19 +175,22 @@ class LaserScanDetector(Detector):
                     start_index = open_indices.pop()
                     object_ranges[str(start_index)] = (object_ranges[str(start_index)][0], laser_theta(index, laser_scan))  
                 else:
-                    start_index = laser_index(max_scan_angle, laser_scan)
+                    if len(object_ranges) > 0:
+                        start_index = laser_index(list(object_ranges.values())[-1][1], laser_scan)
+                    else:
+                        start_index = laser_index(max_scan_angle, laser_scan)
                     object_ranges[str(start_index)] = (laser_theta(start_index, laser_scan), laser_theta(index, laser_scan))
 
         for index in open_indices:
             object_ranges[str(index)] = (object_ranges[str(index)][0], -max_scan_angle)
 
         def filter_cb(element):
-            dist_min = laser_ranges[laser_index(element[0], laser_scan)]
-            dist_max = laser_ranges[laser_index(element[1], laser_scan) - 1]
-            depth = abs(dist_max - dist_min)
-            width = 2 * dist_min * tand(abs(element[1] - element[0]) / 2)
+            distances = (laser_ranges[laser_index(element[0], laser_scan)], laser_ranges[laser_index(element[1], laser_scan) - 1])
+            dist_min = min(distances)
+            dist_max = max(distances)
+            depth = dist_max - dist_min
+            width = 2 * dist_min * sind(abs(element[1] - element[0]) / 2)
 
-            print(depth, width, depth ** 2 + width ** 2)
             return depth ** 2 + width ** 2 < 0.5 ** 2
         
         object_widths = filter_list(object_ranges.values(), filter_cb)
@@ -199,7 +202,7 @@ class LaserScanDetector(Detector):
             d = laser_ranges[center_index]
 
             min_alpha = KINECT_ANGLE - atand(KINECT_HEIGHT / d)
-            max_alpha = min_alpha + atand(0.5 / d)
+            max_alpha = min_alpha + atand(0.3 / d)
 
             new_distance = PolarVector2(d, center_theta)
             screen_obj = ScreenObject(min_theta, max_theta, min_alpha, max_alpha)
@@ -253,7 +256,7 @@ if __name__ == '__main__':
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            # run_kinect_detection,
+                            run_kinect_detection,
                             run_laser_detection
                             )
     

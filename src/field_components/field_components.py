@@ -5,8 +5,11 @@ from field_components.colors import *
 from globals.globals import *
 
 class FieldObject:
-    def __init__(self, *properties):
-        self.color_name, self.type, self.distance, self.screen_pos = properties
+    def __init__(self, color_name, type, distance, screen_pos):
+        self.color_name = color_name
+        self.type = type
+        self.distance = distance
+        self.screen_pos = screen_pos
 
         self.screen_obj = ScreenObject.from_screen_position(self.screen_pos)
 
@@ -16,8 +19,12 @@ class FieldObject:
         self.color = Color.from_string(self.color_name)
 
     @classmethod
-    def from_field_component(cls, properties):
-        return cls(properties.color_name, properties.type, properties.player_distance, properties.screen_position)
+    def from_screen_object(cls, screen_object, depth_img):
+        return cls("RED", "unknown", screen_object.get_field_vector(depth_img), screen_object.properties)
+
+    @classmethod
+    def from_field_component(cls, field_component):
+        return cls(field_component.color_name, field_component.type, field_component.player_distance, field_component.screen_position)
 
     def check_parameters(self, color, ratio, area):
         if not self.color.in_range(color):
@@ -38,7 +45,7 @@ class FieldObject:
 
     def draw(self, window, FOV=KINECT_FOV, projection_type=ProjectionType.PLANAR):
         self.screen_obj.set_FOV(FOV)
-        self.screen_obj.set_dimensions((window.shape[1], window.shape[0]))
+        self.screen_obj.set_dimensions((window.shape))
         self.screen_obj.set_projection_type(projection_type)
         self.screen_obj.draw(window)
         self.draw_text(window)
