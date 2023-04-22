@@ -5,23 +5,58 @@ from globals.globals import *
 from math_utils.math_function_utils import *
 from field_components.colors import *
 from data_utils.data_validation import *
+from enum import Enum
+import numpy as np
+
+class ProjectionType(Enum):
+    PLANAR = 0
+    SPHERICAL = 1
 
 class ScreenObject:
-    def __init__(self, x, y, w, h):
-        self.x = int(x)
-        self.y = int(y)
-        self.w = int(w)
-        self.h = int(h)
+    def __init__(self, theta_min, theta_max, alpha_min, alpha_max, dimensions=(480, 640), FOV=KINECT_FOV, projection_type=ProjectionType.PLANAR):
+        self.theta_min = theta_min
+        self.theta_max = theta_max
+        self.alpha_min = alpha_min
+        self.alpha_max = alpha_max
 
-        self.properties = ScreenPosition(x=self.x, y=self.y, w=self.w, h=self.h)
+        self.dimensions = dimensions
+        self.FOV = FOV
+        self.projection_type = projection_type
 
-    def get_center(self):
-        cx = int(self.x + self.w/2)
-        cy = int(self.y + self.h/2)
-        return cx, cy
+        self.x = 0
+        self.y = 0
+        self.w = 0
+        self.h = 0
+
+        self.calculate_xywh()
+
+        self.properties = ScreenPosition(theta_min=theta_min, theta_max=theta_max, alpha_min=alpha_min, alpha_max=alpha_max)
+
+    def calculate_xywh(self):
+        self.x = int(ScreenObject.angle_to_pos(self.theta_min, self.dimensions[0], self.FOV[0], self.projection_type))
+        self.y = int(ScreenObject.angle_to_pos(self.alpha_min, self.dimensions[1], self.FOV[1], self.projection_type))
+        self.w = int(ScreenObject.angle_to_pos(self.theta_max, self.dimensions[0], self.FOV[0], self.projection_type) - self.x)
+        self.h = int(ScreenObject.angle_to_pos(self.alpha_max, self.dimensions[1], self.FOV[1], self.projection_type) - self.y)
+
+    def set_FOV(self, FOV):
+        self.FOV = FOV
+        self.calculate_xywh()
+
+    def set_dimensions(self, dimensions):
+        self.dimensions = dimensions
+        self.calculate_xywh()
+
+    def set_projection_type(self, projection_type):
+        self.projection_type = projection_type
+        self.calculate_xywh()
+
+    def get_center_point(self):
+        cx = self.x + self.w / 2
+        cy = self.y + self.h / 2
+        return int(cx), int(cy)
 
     def get_corner_points(self):
-        return ((self.x, self.y), (self.x + self.w, self.y + self.h))
+        return (self.x, self.y), (self.x + self.w, self.y + self.h)
     
     def get_area(self):
         return self.w * self.h
@@ -30,23 +65,21 @@ class ScreenObject:
         return self.w / self.h
     
     def get_field_distance(self, depth_img):
-        cx, cy = self.get_center()
+        cx, cy = self.get_center_point()
         return depth_img[cy, cx]
     
-    def get_field_angle(self, depth_img):
-        cx = self.get_center()[0]
-        w = depth_img.shape[1]
-        return atand((1 - 2 * cx / w) * KINECT_TAN_X)
+    def get_field_angle(self):
+        return (self.theta_max + self.theta_min) / 2
     
     def get_field_vector(self, depth_img):
-        return PolarVector2(self.get_field_distance(depth_img), self.get_field_angle(depth_img))
+        return PolarVector2(self.get_field_distance(depth_img), self.get_field_angle())
 
     def draw_bounds(self, window):
         corners = self.get_corner_points()
         cv2.rectangle(window, corners[0], corners[1], Color.YELLOW.default, CV2_DEFAULT_THICKNESS)
 
     def draw_center(self, window):
-        cv2.circle(window, self.get_center(), 2, Color.ORANGE.default, -CV2_DEFAULT_THICKNESS)
+        cv2.circle(window, self.get_center_point(), 2, Color.ORANGE.default, -CV2_DEFAULT_THICKNESS)
 
     def draw(self, window):
         self.draw_bounds(window)
@@ -55,44 +88,36 @@ class ScreenObject:
     def __str__(self) -> str:
         return f"({self.x}, {self.y}) {self.w}x{self.h}"
     
-    def get_angles(self):
-        ax_min = self.pos_to_angle(self.x)
-        ax_max = self.pos_to_angle(self.x + self.w)
-        ay_min = self.pos_to_angle(self.y)
-        ay_max = self.pos_to_angle(self.y + self.h)
-        return ax_min, ax_max, ay_min, ay_max
-
     @classmethod
-    def angle_to_pos(cls, angle, image_dimension, FOV):
-        return (1 - tand(angle) / tand(FOV / 2)) * image_dimension / 2
-    
+    def angle_to_pos(cls, angle, image_dimension, FOV, projection_type):
+        if projection_type == ProjectionType.PLANAR:
+            return (1 - tand(angle) / tand(FOV / 2)) * image_dimension / 2
+        elif projection_type == ProjectionType.SPHERICAL:
+            return (1 / 2 - angle / FOV) * image_dimension
+        
     @classmethod
-    def pos_to_angle(cls, pos, image_dimension, FOV):
-        return atand((1 - 2 * pos / image_dimension) * tand(FOV / 2))
-    
-    @classmethod
-    def from_angles(cls, ax_min, ay_min, ax_max, ay_max, image_w, image_h, FOV_x, FOV_y):
-        x_min = cls.angle_to_pos(ax_min, image_w, FOV_x)
-        x_max = cls.angle_to_pos(ax_max, image_w, FOV_x)
-        y_min = cls.angle_to_pos(ay_min, image_h, FOV_y)
-        y_max = cls.angle_to_pos(ay_max, image_h, FOV_y)
-
-        w = x_max - x_min
-        h = y_max - y_min
-        return cls(x_min, y_min, w, h)
+    def pos_to_angle(cls, pos, image_dimension, FOV, projection_type):
+        if projection_type == ProjectionType.PLANAR:
+            return atand((1 - 2 * pos / image_dimension) * tand(FOV / 2))
+        elif projection_type == ProjectionType.SPHERICAL:
+            return (1 / 2 - pos / image_dimension) * FOV
     
     @classmethod
     def from_screen_position(cls, scp):
-        return cls(scp.x, scp.y, scp.w, scp.h)
+        return cls(scp.theta_min, scp.theta_max, scp.alpha_min, scp.alpha_max)
     
     @classmethod
-    def from_tuple(cls, properties):
-        return cls(properties[0], properties[1], properties[2], properties[3])
+    def from_rectangle_tuple(cls, rect, dimensions=(480, 640), FOV=KINECT_FOV, projection_type=ProjectionType.PLANAR):
+        theta_min = cls.pos_to_angle(rect[0], dimensions[0], FOV[0], projection_type)
+        theta_max = cls.pos_to_angle(rect[0] + rect[2], dimensions[0], FOV[0], projection_type)
+        alpha_min = cls.pos_to_angle(rect[1], dimensions[1], FOV[1], projection_type)
+        alpha_max = cls.pos_to_angle(rect[1] + rect[3], dimensions[1], FOV[1], projection_type)
+        return cls(theta_min, theta_max, alpha_min, alpha_max, dimensions, FOV, projection_type)
     
     def merge(self, *screen_objects):
-        x_min, y_min = min([(so.x, so.y) for so in [self, *screen_objects]])
-        x_max, y_max = max([(so.x + so.w, so.y + so.h) for so in [self, *screen_objects]])
-        return ScreenObject(x_min, y_min, x_max - x_min, y_max - y_min)
+        theta_min, alpha_min = min([(so.theta_min, so.alpha_min) for so in [self, *screen_objects]])
+        theta_max, alpha_max = max([(so.theta_max, so.alpha_max) for so in [self, *screen_objects]])
+        return ScreenObject(theta_min, theta_max, alpha_min, alpha_max)
 
 class ImageViewer:
     def __init__(self, name):

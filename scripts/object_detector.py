@@ -2,7 +2,7 @@
 import rospy
 
 import cv2
-import numpy as np
+from math import *
 import sys
 import time
 
@@ -16,6 +16,7 @@ from math_utils.math_function_utils import *
 from data_utils.topic_handlers import ImageSubscriber, LaserSubscriber
 from list_utils.filtering import *
 from globals.tick import *
+from data_utils.laser_scan_utils import *
 
 CLASSES = {'pole': Pole,
            'yellowpuck': YellowPuck,
@@ -93,7 +94,6 @@ class KinectDetector(Detector):
 
         edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
         edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
-        edges = cv2.blur(edges, (3, 3)) # needed?
 
         self.add_test_parameters(TestImage("rgb image", rgb_image),
                                  TestImage("depth_masked_image", depth_masked_image),
@@ -115,7 +115,7 @@ class KinectDetector(Detector):
 
         contours = filter_list(contours, filter_cb)
 
-        screen_objects = [ScreenObject(*cv2.boundingRect(contour)) for contour in contours]
+        screen_objects = [ScreenObject.from_rectangle_tuple(cv2.boundingRect(contour)) for contour in contours]
 
         if base_class in [YellowGoal, BlueGoal, Robot] and len(screen_objects) > 1:
             screen_objects = [screen_objects[0].merge(*screen_objects[1:])]
@@ -127,73 +127,86 @@ class KinectDetector(Detector):
         self.detected_objects = len(field_objects)
         return field_objects
     
-
-class LaserScanDetector:
-    def __init__(self):
+class LaserScanDetector(Detector):
+    def __init__(self, testmode):
+        super().__init__(self.detect_objects)
         self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + "front_laser/scan")
-        self.laser_scan = None
-
         self.rgb_sub = ImageSubscriber("rgb image", LOCAL_PLAYER + "kinect/rgb/image_raw", "bgr8")
-        self.rgb_image = None
+
+        self.testmode = testmode
 
     def is_valid_data(self):
-        return self.laser_sub.is_valid() and self.rgb_sub.is_valid()
+        return self.laser_sub.is_valid()
        
     def detect_objects(self):
-        new_object = True
-        min_theta = 0
-        max_theta = 0
-
-        previous_range = 0
-        previous_theta = -180
-
-        self.rgb_image = self.rgb_sub.get_image()
-        self.laser_scan = self.laser_sub.get_scan()
+        laser_scan = self.laser_sub.get_scan()
+        rgb_image = self.rgb_sub.get_image()
 
         detected_objects = []
 
-        for index, range in enumerate(self.laser_scan.ranges):
-            current_theta = index * self.laser_scan.angle_increment
+        laser_ranges = laser_scan.ranges
+        laser_ranges = range_denoise(laser_ranges, 7)
 
-            if not LASER_MIN_ANGLE <= current_theta <= LASER_MAX_ANGLE:
-                continue
+        laser_image = imgops.laser_scan_to_image(laser_scan)
+        laser_image = imgops.scale(laser_image, 3)
+        laser_max_angle = TrackbarParameter(SCAN_MAX_ANGLE, "max angle", "laser image")
 
-            # if not self.laser_scan.range_min <= range <= self.laser_scan.range_max:
-            #     continue
+        self.add_test_parameters(TestImage("laser image", laser_image))
 
-            if abs(previous_range - range) > LASER_EDGE_THRESHOLD:
-                if new_object:
-                    new_object = False
-                    min_index = index
-                    min_theta = current_theta
+        edges = []
+        max_scan_angle = laser_max_angle.get_value(self.testmode)
+        for index in range(laser_index(max_scan_angle, laser_scan), laser_index(-max_scan_angle, laser_scan)):
+            range_diff = laser_ranges[index] - laser_ranges[index - 1]
+            if range_diff < -LASER_EDGE_THRESHOLD:
+                edges.append((index, True))
+            
+            elif range_diff > LASER_EDGE_THRESHOLD:
+                edges.append((index, False))
 
+        object_ranges = {}
+        open_indices = []
+        for index, rising_edge in edges:
+            if rising_edge:
+                object_ranges[str(index)] = (laser_theta(index, laser_scan), -1)
+                open_indices.append(index)
+
+            else:
+                if len(open_indices) > 0:   
+                    start_index = open_indices.pop()
+                    object_ranges[str(start_index)] = (object_ranges[str(start_index)][0], laser_theta(index, laser_scan))  
                 else:
-                    max_index = previous_index
-                    max_theta = previous_theta
+                    start_index = laser_index(max_scan_angle, laser_scan)
+                    object_ranges[str(start_index)] = (laser_theta(start_index, laser_scan), laser_theta(index, laser_scan))
 
-                    center_theta = (max_theta - min_theta) / 2
-                    center_index = int((max_index - min_index) / 2)
+        for index in open_indices:
+            object_ranges[str(index)] = (object_ranges[str(index)][0], -max_scan_angle)
 
-                    imh = self.rgb_image.shape[0]
-                    imw = self.rgb_image.shape[1]
+        def filter_cb(element):
+            dist_min = laser_ranges[laser_index(element[0], laser_scan)]
+            dist_max = laser_ranges[laser_index(element[1], laser_scan) - 1]
+            depth = abs(dist_max - dist_min)
+            width = 2 * dist_min * tand(abs(element[1] - element[0]) / 2)
 
-                    d = self.laser_scan.ranges[min_index]
-                    min_alpha = atand((KINECT_HEIGHT - LASER_HEIGHT - 0.2) / d)
+            print(depth, width, depth ** 2 + width ** 2)
+            return depth ** 2 + width ** 2 < 0.5 ** 2
+        
+        object_widths = filter_list(object_ranges.values(), filter_cb)
 
-                    d = self.laser_scan.ranges[max_index]
-                    max_alpha = atand((KINECT_HEIGHT - LASER_HEIGHT - 0.2) / d)
+        for max_theta, min_theta in object_widths:
+            center_theta = (max_theta + min_theta) / 2
+            center_index = laser_index(center_theta, laser_scan)
 
-                    d = self.laser_scan.ranges[center_index]
+            d = laser_ranges[center_index]
 
-                    new_distance = PolarVector2(d, center_theta)
-                    screen_obj = ScreenObject.from_angles(min_theta, min_alpha + KINECT_ANGLE, max_theta, max_alpha + KINECT_ANGLE, imw, imh, KINECT_FOV_X, KINECT_FOV_Y)
-                    detected_objects.append(FieldObject(FieldComponent("?", "?", new_distance, screen_obj.properties)))
+            min_alpha = KINECT_ANGLE - atand(KINECT_HEIGHT / d)
+            max_alpha = min_alpha + atand(0.5 / d)
 
-                    new_object = True
+            new_distance = PolarVector2(d, center_theta)
+            screen_obj = ScreenObject(min_theta, max_theta, min_alpha, max_alpha)
+            detected_objects.append(FieldObject.from_field_component(FieldComponent("ORANGE", "unknown", new_distance, screen_obj.properties)))
 
-            previous_index = index
-            previous_theta = current_theta
-            previous_range = range
+        self.add_test_parameters(TestImage("rgb image", rgb_image))
+        self.detected_objects = len(detected_objects)
 
         return detected_objects
 
@@ -204,10 +217,10 @@ if __name__ == '__main__':
 
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else True
-    detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else [BlueGoal] # list(CLASSES.values())
+    detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
 
     kinect_det = KinectDetector(testmode)
-    laser_det = LaserScanDetector()
+    laser_det = LaserScanDetector(testmode)
 
     def run_kinect_detection():
         if kinect_det.is_valid_data():      
@@ -226,19 +239,22 @@ if __name__ == '__main__':
 
     def run_laser_detection():       
         if laser_det.is_valid_data():
-            found_objects = laser_det.detect_objects()
-            print(laser_det.rgb_image.shape)
+            found_objects = laser_det.detect()
 
-            laser_det.rgb_sub.show_image()
-            kinect_det.rgb_sub.draw_objects(found_objects)   
+            for obj in found_objects:
+                obj.draw(laser_det.test_parameters["rgb image"].get_value(testmode))
+                obj.draw(laser_det.test_parameters["laser image"].get_value(testmode), (360, 50), ProjectionType.SPHERICAL)
+
+            if testmode:
+                laser_det.show_test_parameters()
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            run_kinect_detection,
-                            # run_laser_detection
+                            # run_kinect_detection,
+                            run_laser_detection
                             )
     
     imgticker = CVTicker(TICK_RATE)

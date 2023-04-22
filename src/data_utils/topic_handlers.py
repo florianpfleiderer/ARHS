@@ -19,7 +19,7 @@ class ImageSubscriber:
 
         self.v = Validator()
 
-        self.viewer = ImageViewer(self._imgname)
+        # self.viewer = ImageViewer(self._imgname)
 
     def img_cb(self, msg):
         try:
@@ -34,11 +34,11 @@ class ImageSubscriber:
     def is_valid(self) -> bool:
         return self.v.guard_none(self._image)
 
-    def show_image(self):
-        self.viewer.show(self._image)
+    # def show_image(self):
+    #     self.viewer.show(self._image)
 
-    def draw_objects(self, objects):
-        self.viewer.draw_objects(objects)
+    # def draw_objects(self, objects):
+    #     self.viewer.draw_objects(objects)
 
 class LaserSubscriber:
     def __init__(self, name, topic):

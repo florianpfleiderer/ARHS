@@ -1,4 +1,4 @@
-int32 x
-int32 y
-int32 w
-int32 h
+int32 theta_min
+int32 theta_max
+int32 alpha_min
+int32 alpha_max

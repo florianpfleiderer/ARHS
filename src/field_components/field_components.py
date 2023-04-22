@@ -32,11 +32,14 @@ class FieldObject:
         return True
 
     def draw_text(self, window):
-        cv2.putText(window, str(self), (self.screen_pos.x, self.screen_pos.y-10),
+        cv2.putText(window, str(self), (self.screen_obj.x, self.screen_obj.y-10),
                     CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
                     Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
 
-    def draw(self, window):
+    def draw(self, window, FOV=KINECT_FOV, projection_type=ProjectionType.PLANAR):
+        self.screen_obj.set_FOV(FOV)
+        self.screen_obj.set_dimensions((window.shape[1], window.shape[0]))
+        self.screen_obj.set_projection_type(projection_type)
         self.screen_obj.draw(window)
         self.draw_text(window)
 
@@ -54,7 +57,7 @@ class Robot(FieldObject):
 class YellowPuck(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (0.2, 0.7)
+    ratio_detect_range = (0.2, 0.7) # (0.2, 0.4)?
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("YELLOW", "puck", player_distance, screen_pos)
@@ -62,7 +65,7 @@ class YellowPuck(FieldObject):
 class BluePuck(FieldObject):
     color = Color.BLUE
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (0.2, 0.7)
+    ratio_detect_range = (0.2, 0.7) # (0.2, 0.4)?
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("BLUE", "puck", player_distance, screen_pos)
@@ -70,7 +73,7 @@ class BluePuck(FieldObject):
 class YellowGoal(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (1.5, None)
+    ratio_detect_range = (3, 7) # (1.5, None)?
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("YELLOW", "goal", player_distance, screen_pos)
@@ -78,7 +81,7 @@ class YellowGoal(FieldObject):
 class BlueGoal(FieldObject):
     color = Color.BLUE
     area_detect_range = (AREA_MIN, None)
-    ratio_detect_range = (1.5, None)
+    ratio_detect_range = (3, 7) # (1.5, None)?
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("BLUE", "goal", player_distance, screen_pos)
@@ -87,8 +90,6 @@ class Pole(FieldObject):
     color = Color.GREEN
     area_detect_range = (AREA_MIN, None)
     ratio_detect_range = (None, 0.4)
-
-    ratio_detect_range = (None, None)
 
     def __init__(self, player_distance, screen_pos):
         super().__init__("GREEN", "pole", player_distance, screen_pos)
