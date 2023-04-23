@@ -131,7 +131,7 @@ class LaserScanDetector(Detector):
     def __init__(self, testmode):
         super().__init__(self.detect_objects)
         self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + "front_laser/scan")
-        self.rgb_sub = ImageSubscriber("rgb image", LOCAL_PLAYER + "kinect/rgb/image_raw", "bgr8")
+        self.rgb_sub = ImageSubscriber("laser rgb image", LOCAL_PLAYER + "kinect/rgb/image_raw", "bgr8")
 
         self.testmode = testmode
 
@@ -201,14 +201,14 @@ class LaserScanDetector(Detector):
 
             d = laser_ranges[center_index]
 
-            min_alpha = KINECT_ANGLE - atand(KINECT_HEIGHT / d)
+            min_alpha = laser_alpha(laser_scan, center_theta, KINECT_ANGLE, KINECT_HEIGHT)
             max_alpha = min_alpha + atand(0.3 / d)
 
             new_distance = PolarVector2(d, center_theta)
             screen_obj = ScreenObject(min_theta, max_theta, min_alpha, max_alpha)
             detected_objects.append(FieldObject.from_field_component(FieldComponent("ORANGE", "unknown", new_distance, screen_obj.properties)))
 
-        self.add_test_parameters(TestImage("rgb image", rgb_image))
+        self.add_test_parameters(TestImage("laser rgb image", rgb_image))
         self.detected_objects = len(detected_objects)
 
         return detected_objects
@@ -245,8 +245,10 @@ if __name__ == '__main__':
             found_objects = laser_det.detect()
 
             for obj in found_objects:
-                obj.draw(laser_det.test_parameters["rgb image"].get_value(testmode))
+                obj.draw(laser_det.test_parameters["laser rgb image"].get_value(testmode))
                 obj.draw(laser_det.test_parameters["laser image"].get_value(testmode), (360, 50), ProjectionType.SPHERICAL)
+
+            show_laser(laser_det.laser_sub.get_scan(), laser_det.test_parameters["laser rgb image"].get_value(testmode))
 
             if testmode:
                 laser_det.show_test_parameters()
