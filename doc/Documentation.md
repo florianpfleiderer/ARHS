@@ -2,7 +2,7 @@
 **Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
-Florian</br>
+Florian Pfleiderer 11771070</br>
 
 **Version:** 
 2023-04-14
