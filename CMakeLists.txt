@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   message_filters
   message_generation
+  actionlib
+  actionlib_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -69,17 +71,21 @@ add_message_files(
 #   Service2.srv
 # )
 
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+# Generate actions in the 'action' folder
+add_action_files(
+  FILES
+  DetectComponents.action
+  VisualizeComponents.action
+  FindDestination.action
+  MoveToDestination.action
+)
 
 # Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
   std_msgs
+  sensor_msgs
+  actionlib_msgs
 )
 
 ################################################
@@ -114,7 +120,11 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robohockey
- CATKIN_DEPENDS roscpp std_msgs message_runtime
+ CATKIN_DEPENDS
+ roscpp
+ std_msgs
+ message_runtime
+ actionlib_msgs
 #  DEPENDS system_lib
 )
 
@@ -165,11 +175,13 @@ catkin_package(
 # with the correct system specific version
 catkin_install_python(
   PROGRAMS
-  scripts/player_smach.py
+  scripts/player_sm.py
   scripts/object_detector.py
   scripts/color_calibrator.py
   scripts/states/avoid_obstacle_server.py
   scripts/states/drive_randomly_server.py
+  scripts/behaviours/find_destination_server.py
+  scripts/behaviours/move_to_destination_server.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # all install targets should use catkin DESTINATION variables

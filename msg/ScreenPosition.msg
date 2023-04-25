@@ -1,4 +1,4 @@
-int32 theta_min
-int32 theta_max
-int32 alpha_min
-int32 alpha_max
+float32 theta_min
+float32 theta_max
+float32 alpha_min
+float32 alpha_max

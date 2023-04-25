@@ -24,6 +24,8 @@ class Color(Enum):
     YELLOW = SIM_YELLOW if SIMULATION_MODE else REAL_YELLOW
     ORANGE = SIM_ORANGE if SIMULATION_MODE else REAL_ORANGE
 
+    MAGENTA = ((255, 0, 255), (140, 50, 50), (160, 255, 255))
+
     def __init__(self, default, min, max):
         self.default = default
         self.min = min
