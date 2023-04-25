@@ -6,12 +6,13 @@ from cv_bridge import CvBridge, CvBridgeError
 from data_utils.data_validation import *
 from visualization.screen_components import *
 from sensor_msgs.msg import Image, LaserScan
+import time
 
 class ImageSubscriber:
     def __init__(self, name, imgtopic, imgtype):
         self._imgtopic = imgtopic
         self._imgtype = imgtype
-        self._imgname = name
+        self.name = name
 
         self._bridge = CvBridge()
         self._imgsub = rospy.Subscriber(self._imgtopic, Image, self.img_cb)
@@ -19,7 +20,6 @@ class ImageSubscriber:
 
         self.v = Validator()
 
-        # self.viewer = ImageViewer(self._imgname)
 
     def img_cb(self, msg):
         try:
@@ -29,7 +29,8 @@ class ImageSubscriber:
             return
         
     def get_image(self) -> Image:
-        return copy.deepcopy(self._image)
+        if self.is_valid():
+            return copy.deepcopy(self._image)
 
     def is_valid(self) -> bool:
         return self.v.guard_none(self._image)
@@ -45,7 +46,7 @@ class LaserSubscriber:
         self._topic = topic
         self.name = name
 
-        self._laser_sub = rospy.Subscriber("robot1/front_laser/scan", LaserScan, self.laser_cb)
+        self._laser_sub = rospy.Subscriber(topic, LaserScan, self.laser_cb)
         self._laser_scan = None
 
         self.v = Validator()
@@ -58,3 +59,18 @@ class LaserSubscriber:
     
     def get_scan(self):
         return copy.deepcopy(self._laser_scan)
+
+
+if __name__ == "__main__":
+    rospy.init_node("test")
+    ks = ImageSubscriber("kinect image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
+    rate = rospy.Rate(12)
+    print(LOCAL_PLAYER + IMAGE_PATH)
+
+    while not rospy.is_shutdown():
+        img = ks.get_image()
+        if img is not None:
+            cv2.imshow(ks.name, img)
+            cv2.waitKey(10)
+        
+        rate.sleep()

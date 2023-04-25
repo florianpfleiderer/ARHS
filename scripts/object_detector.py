@@ -78,8 +78,8 @@ class KinectDetector(FieldDetector):
 
         self.testmode = testmode
         
-        self.rgb_sub = ImageSubscriber("rgb image", LOCAL_PLAYER + "kinect/rgb/image_raw", "bgr8")
-        self.depth_sub = ImageSubscriber("depth image", LOCAL_PLAYER + "kinect/depth/image_raw", "32FC1")
+        self.rgb_sub = ImageSubscriber("rgb image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
+        self.depth_sub = ImageSubscriber("depth image", LOCAL_PLAYER + DEPTH_PATH, "32FC1")
 
         self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
         self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
@@ -157,8 +157,8 @@ class KinectDetector(FieldDetector):
 class LaserScanDetector(FieldDetector):
     def __init__(self, testmode):
         super().__init__(self.detect_objects, Screen.LaserScreen("laser image"))
-        self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + "front_laser/scan")
-        self.rgb_sub = ImageSubscriber("laser rgb image", LOCAL_PLAYER + "kinect/rgb/image_raw", "bgr8")
+        self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + LASER_PATH)
+        self.rgb_sub = ImageSubscriber("laser rgb image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
 
         self.testmode = testmode
         self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
@@ -168,7 +168,7 @@ class LaserScanDetector(FieldDetector):
         self.laser_screen_rgb = Screen.KinectScreen("laser rgb image")
 
     def is_valid_data(self):
-        return self.laser_sub.is_valid()
+        return self.laser_sub.is_valid()    
     
     def detect_contours(self, laser_scan, laser_ranges):
         object_ranges = detect_contours(laser_scan, laser_ranges)
@@ -182,11 +182,12 @@ class LaserScanDetector(FieldDetector):
     def detect_objects(self):
         laser_scan = self.laser_sub.get_scan()
         rgb_image = self.rgb_sub.get_image()
+        self.laser_screen_rgb.image = rgb_image
 
         laser_ranges = limit_ranges(laser_scan.ranges, *LASER_RANGE)
-        laser_ranges = range_denoise(laser_ranges, 5)
+        # laser_ranges = range_denoise(laser_ranges, 5)
 
-        laser_image = imgops.laser_scan_to_image(laser_scan)
+        laser_image = imgops.laser_scan_to_image(laser_scan, (self.screen.dimensions[1], self.screen.dimensions[0]))
         self.screen.image = laser_image
 
         self.detected_objects.clear()
@@ -209,8 +210,6 @@ class LaserScanDetector(FieldDetector):
                 rect = self.screen.get_rect(min_phi, max_phi, min_theta, max_theta) 
                 fo = self.screen.create_field_object(rect, d, GenericObject)
                 self.add_result(fo)
-
-        self.laser_screen_rgb.image = rgb_image
 
         return True
 
@@ -263,7 +262,7 @@ if __name__ == '__main__':
                 laser_det.screen.draw_object(obj)
                 laser_det.laser_screen_rgb.draw_object(obj)
 
-            # laser_det.screen.image = imgops.scale(laser_det.screen.image, 2)
+            # laser_det.screen.image = imgops.scale(laser_det.screen.image, 3)
 
             laser_det.screen.show_image()
             laser_det.laser_screen_rgb.show_image()

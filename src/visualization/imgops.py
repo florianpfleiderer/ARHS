@@ -56,7 +56,7 @@ def convert_gray2bgr(image):
     return cv2.cvtColor(image_norm, cv2.COLOR_GRAY2BGR)
 
 # convert a list of scan ranges into a grayscale image
-def laser_scan_to_image(laser_scan: LaserScan):
+def laser_scan_to_image(laser_scan: LaserScan, dimensions):
     max_range = laser_scan.range_max
     min_range = laser_scan.range_min
     image = np.zeros((100, len(laser_scan.ranges), 3), np.uint8)
@@ -77,7 +77,8 @@ def laser_scan_to_image(laser_scan: LaserScan):
             or abs(angle - SCAN_MAX_ANGLE) <= limit:
 
             image[40:60, i] = (255, 0, 255)
-    return image
+
+    return resize(image, dimensions)
 
 def resize(image, new_size):
     return cv2.resize(image, new_size)

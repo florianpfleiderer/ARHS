@@ -98,7 +98,8 @@ class Screen:
         return obj_type(global_distance, global_size)
 
     def show_image(self):
-        cv2.imshow(self.name, self.image)
+        if self.image is not None:
+            cv2.imshow(self.name, self.image)
 
     @classmethod
     def KinectScreen(cls, name):
