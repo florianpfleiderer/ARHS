@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 from globals.globals import *
 from sensor_msgs.msg import LaserScan
+from visualization.screen_utils import *
+import rospy
+import time
 
 def denoise(image, kernel_size, do_open=True):
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
@@ -85,3 +88,13 @@ def resize(image, new_size):
 
 def scale(image, factor):
     return cv2.resize(image, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR if factor > 1 else cv2.INTER_AREA)
+
+
+if __name__ == "__main__":
+    img = empty_image((640, 480))
+    
+    while True:
+        cv2.rectangle(img, (150, 150, 100, 100), (255, 255, 255))
+        cv2.imshow("image", img)
+        cv2.waitKey(10)
+        time.sleep(1)

@@ -185,30 +185,18 @@ class LaserScanDetector(FieldDetector):
         self.laser_screen_rgb.image = rgb_image
 
         laser_ranges = limit_ranges(laser_scan.ranges, *LASER_RANGE)
-        # laser_ranges = range_denoise(laser_ranges, 5)
+        laser_ranges = range_denoise(laser_ranges, 5)
 
-        laser_image = imgops.laser_scan_to_image(laser_scan, (self.screen.dimensions[1], self.screen.dimensions[0]))
+        laser_image = imgops.laser_scan_to_image(laser_scan, self.screen.dimensions)
         self.screen.image = laser_image
 
         self.detected_objects.clear()
 
         object_ranges = self.detect_contours(laser_scan, laser_ranges)
 
-        for min_phi, max_phi in object_ranges:
-            center_phi = (max_phi + min_phi) / 2
-            center_index = laser_index(center_phi, laser_scan)
-
-            d = laser_ranges[center_index]
-
-            laser_height = self.height_offset.get_value(self.testmode)
-            laser_height = LASER_OFFSET[2]
-            
-            max_theta = laser_theta(laser_scan, center_phi, laser_height)
-            min_theta = max_theta - atand(0.3 / d)
-
-            if check_range(d, *LASER_RANGE):
-                rect = self.screen.get_rect(min_phi, max_phi, min_theta, max_theta) 
-                fo = self.screen.create_field_object(rect, d, GenericObject)
+        for contour in object_ranges:
+            fo = object_from_contour(contour, laser_scan, self.screen)
+            if fo is not None:
                 self.add_result(fo)
 
         return True
