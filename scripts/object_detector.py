@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else True
-    detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else [BlueGoal] # list(CLASSES.values())
+    detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
 
     kinect_det = KinectDetector(testmode)
     laser_det = LaserScanDetector()
