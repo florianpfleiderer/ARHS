@@ -6,7 +6,9 @@
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.pyc 
+*.pyo 
+*.pyd
 *$py.clas
 
 # Compiled Object files
@@ -65,3 +67,11 @@ build
 devel
 .catkin_workspace
 ./src/CMakeLists.txt
+src/list_utils/__pycache__/__init__.cpython-38.pyc
+src/list_utils/__pycache__/filtering.cpython-38.pyc
+src/math_utils/__pycache__/__init__.cpython-38.pyc
+src/math_utils/__pycache__/math_function_utils.cpython-38.pyc
+src/math_utils/__pycache__/vector_utils.cpython-38.pyc
+src/visualization/__pycache__/__init__.cpython-38.pyc
+src/visualization/__pycache__/imgops.cpython-38.pyc
+src/visualization/__pycache__/screen_components.cpython-38.pyc
