@@ -1,0 +1,6 @@
+FieldComponent[] field_components
+uint16 destination_index
+---
+bool destination_reached
+---
+string message

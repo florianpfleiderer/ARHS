@@ -1,0 +1,4 @@
+string color_name
+string type
+PolarVector2 player_distance
+ScreenPosition screen_position

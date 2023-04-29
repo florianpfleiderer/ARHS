@@ -4,6 +4,13 @@
 *.swp
 *.swo
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc 
+*.pyo 
+*.pyd
+*$py.clas
+
 # Compiled Object files
 *.slo
 *.lo
