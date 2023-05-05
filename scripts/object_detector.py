@@ -18,6 +18,8 @@ from list_utils.filtering import *
 from globals.tick import *
 from data_utils.laser_scan_utils import *
 
+from field_components.field import Field
+
 CLASSES = {'pole': Pole,
            'yellowpuck': YellowPuck,
            'bluepuck': BluePuck,
@@ -42,9 +44,9 @@ class FieldDetector:
     def detect(self, *args):
         self.detection_counter += 1
 
-        detect_start_time = time.time()
+        detect_start_time = time.perf_counter()
         detection_result = self.detection_function(*args)
-        detect_duration = time.time() - detect_start_time
+        detect_duration = time.perf_counter() - detect_start_time
 
         counter = min(self.counter_cap, self.detection_counter)
         self.avg_detection_time = (self.avg_detection_time * (counter - 1) + detect_duration) / counter
@@ -217,6 +219,9 @@ if __name__ == '__main__':
 
     found_objects = []
 
+    # initialise singleton field class
+    field = Field()
+
     def run_kinect_detection():
         if kinect_det.is_valid_data():    
             found_objects.clear()
@@ -224,7 +229,7 @@ if __name__ == '__main__':
             for cls in detect_classes:
                 kinect_det.detect(cls)
                 found_objects.extend(kinect_det.detected_objects)
-    
+
             for obj in found_objects:
                 kinect_det.screen.draw_object(obj)
 
@@ -243,7 +248,7 @@ if __name__ == '__main__':
 
             laser_det.detect()
             found_objects.extend(laser_det.detected_objects)
-              
+
             draw_laser_points(laser_det.laser_sub.get_scan(), laser_det.screen, laser_det.laser_screen_rgb)
             
             for obj in found_objects:
@@ -264,10 +269,16 @@ if __name__ == '__main__':
             rospy.loginfo("Waiting for laser scan to process...")
 
     def combine_detection():
-        # objects = run_kinect_detection()
-        objects = run_laser_detection()
+        objects = run_kinect_detection()
+        # objects = run_laser_detection()
         if objects is not None and len(objects) > 0:
-            field_components_pub.publish(FieldComponents(list([o.get_field_component() for o in objects])))
+            field_components_pub.publish(FieldComponents(list([FieldComponent(o.color, o.type, o.spherical_distance, o.half_size) for o in objects])))
+
+    def include_field_object():
+        objects = run_kinect_detection()
+        field.set_objects(objects)
+        pos = field.calculate_robot_position()
+        rospy.loginfo(f'Position: {pos}')
 
     
     rospy.loginfo("Starting loop")
@@ -275,6 +286,7 @@ if __name__ == '__main__':
                             run_kinect_detection,
                             run_laser_detection,
                             # combine_detection
+                            include_field_object
                             )
     
     imgticker = CVTicker(TICK_RATE)
