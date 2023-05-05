@@ -11,7 +11,8 @@ class FieldObject:
         color: color of the object
         type: type of the object
         spherical_distance: distance of the object in spherical coordinates
-        half_size: half size of the object in spherical coordinates
+            in relation to the robot
+        half_size: half size of the object 
         area_detect_range: range of the area of the object in pixels
         ratio_detect_range: range of the ratio of the object in pixels
         position: absolute position of the object in the field in x, y coordinates
