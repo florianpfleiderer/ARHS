@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from typing import List
+
 from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal
 from field_components.colors import Color
 from math_utils.field_calculation_functions import cosine_theorem, get_position
@@ -33,9 +35,9 @@ class Field(object):
     def __init__(self):
         self.length = None
         self.width = None
-        self.poles: list[Pole] = []
-        self.yellowPucks: list[YellowPuck] = []
-        self.bluePucks: list[BluePuck] = []
+        self.poles: List[Pole] = []
+        self.yellowPucks: List[YellowPuck] = []
+        self.bluePucks: List[BluePuck] = []
         self.yellowGoal: YellowGoal = None
         self.blueGoal: BlueGoal = None
     
