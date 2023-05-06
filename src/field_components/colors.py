@@ -56,7 +56,7 @@ class Color(Enum):
         return h_in_range and self.min_hsv[1:] <= hsv_compare[1:] <= self.max_hsv[1:]
 
     def __str__(self) -> str:
-        return self.name.lower()
+        return self.name.upper()
     
     @classmethod
     def from_string(cls, color_name):
