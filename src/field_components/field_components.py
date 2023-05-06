@@ -3,6 +3,7 @@
 from field_components.colors import Color
 from globals.globals import *
 from player.msg import *
+from typing import Tuple
 
 class FieldObject:
     '''Class representing a field object.
@@ -22,7 +23,7 @@ class FieldObject:
     def __init__(self, color, type, spherical_distance, half_size):
         self.color: Color = color
         self.type: str = type
-        self.spherical_distance = spherical_distance
+        self.spherical_distance: Tuple = spherical_distance
         self.half_size = half_size
 
         self.area_detect_range = (None, None)
@@ -30,7 +31,7 @@ class FieldObject:
 
         # absolute position in the field in x, y coordinates
         # this is later set by field class
-        self.position = None
+        self.position: Tuple = None
 
     def get_angles(self):
         theta_min = self.spherical_distance[1] - self.half_size[1]

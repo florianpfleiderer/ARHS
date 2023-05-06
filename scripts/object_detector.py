@@ -39,7 +39,7 @@ class FieldDetector:
         self.interval_start = 0
         self.printer_interval = 2
 
-        self.detected_objects = []
+        self.detected_objects: List[FieldObject] = []
         self.screen = screen
 
     def detect(self, *args):
@@ -269,19 +269,13 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
-    def combine_detection():
+    def combine_detection() -> None:
         objects: List[FieldObject] = run_kinect_detection()
         # objects = run_laser_detection()
         if objects is not None and len(objects) > 0:
             field_components_pub.publish(FieldComponents(
-                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:2]), 
+                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:2]),
                                 ScreenPosition(*o.get_angles()) ) for o in objects]))
-
-    def include_field_object():
-        objects = run_kinect_detection()
-        field.set_objects(objects)
-        pos = field.calculate_robot_position()
-        rospy.loginfo(f'Position: {pos}')
 
     
     rospy.loginfo("Starting loop")
