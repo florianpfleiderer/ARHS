@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from typing import List
+from typing import List, Tuple
 
-from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal
+from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, FieldObject
 from field_components.colors import Color
 from math_utils.field_calculation_functions import cosine_theorem, get_position
 
@@ -41,17 +41,21 @@ class Field(object):
         self.yellowGoal: YellowGoal = None
         self.blueGoal: BlueGoal = None
     
-    def set_objects(self, field_objects=None):
+    def set_objects(self, field_objects: List[FieldObject]=None):
         self.length = None
         self.width = None
         if field_objects:
             self.poles.extend([o for o in field_objects if o.type == "pole"])
-            self.yellowPucks.append([o for o in field_objects if o.type == "puck" and o.color is Color.YELLOW])
-            self.bluePucks.append([o for o in field_objects if o.type == "puck" and o.color is Color.BLUE])
-            self.yellowGoal = [o for o in field_objects if o.type == "goal" and o.color is Color.YELLOW]
-            self.blueGoal = [o for o in field_objects if o.type == "goal" and o.color is Color.BLUE]
+            self.yellowPucks.extend([o for o in field_objects if o.type == "puck" \
+                and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW])
+            self.bluePucks.extend([o for o in field_objects if o.type == "puck" \
+                and o.color is Color.SIM_BLUE or Color.REAL_BLUE])
+            self.yellowGoal = [o for o in field_objects if o.type == "goal" \
+                and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW]
+            self.blueGoal = [o for o in field_objects if o.type == "goal" \
+                and o.color is Color.SIM_BLUE or Color.REAL_BLUE]
 
-    def calculate_robot_position(self):
+    def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.
         
         This function calculates and sets the robot position
@@ -72,8 +76,8 @@ class Field(object):
 
         self.set_field_objects_positions(distance_1_2, distance_2_3)
 
-        pos = get_position(self.poles[0], self.poles[2])
-        return pos
+        return get_position(self.poles[0], self.poles[2])
+
         
 
     def set_field_objects_positions(self, distance_1_2, distance_2_3):
