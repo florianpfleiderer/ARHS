@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from globals import globals
 from math_utils.math_function_utils import *
 from enum import Enum
 import numpy as np
@@ -24,8 +25,8 @@ def screen_pos_to_angle(pos, image_dimension, FOV, projection_type):
         return (pos / image_dimension - 1 / 2) * FOV
 
 if __name__ == "__main__":
-    dim = 640
-    FOV = 62
+    dim = globals.KINECT_DIMENSIONS[0] #640
+    FOV = globals.KINECT_FOV[0] #62
     pt = ProjectionType.PLANAR
 
     # for x in range(50):
