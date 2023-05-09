@@ -6,8 +6,11 @@ from player.msg import PolarVector2
 import rospy
 from math_utils.math_function_utils import *
 
-def tup2_from_polarvector2(vector):
+def tup2_from_polarvector2(vector: PolarVector2):
     return (vector.r, vector.theta)
+
+def tup3_from_polarvector2(vector: PolarVector2):
+    return vector.r, vector.theta, vector.phi
 
 def polarvector2_from_tup2(tup):
     return PolarVector2(tup[0], tup[1])
