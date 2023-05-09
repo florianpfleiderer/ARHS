@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import rospy
 
 from typing import List, Tuple
 
@@ -24,7 +25,6 @@ class Field(object):
     '''
 
     _instance = None
-
     epsilon = 0.1
 
     def __new__(cls):
@@ -44,6 +44,8 @@ class Field(object):
     def set_objects(self, field_objects: List[FieldObject]=None) -> bool:
         self.length = None
         self.width = None
+        self.clear_objects()
+
         if field_objects:
             self.poles.extend([o for o in field_objects if o.type == "pole"])
             self.yellowPucks.extend([o for o in field_objects if o.type == "puck" \
@@ -54,7 +56,9 @@ class Field(object):
                 and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW]
             self.blueGoal = [o for o in field_objects if o.type == "goal" \
                 and o.color is Color.SIM_BLUE or Color.REAL_BLUE]
-        return len(self.poles) >= 3
+            return True
+        return False
+
 
     def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.
@@ -63,23 +67,27 @@ class Field(object):
         from the spherical coordinates of the poles.
         
         poles.spherical_distance[0] = r
-        poles.spherical_distance[1] = theta (0 is the direction of robot)
+        poles.spherical_distance[2] = phi 
+            (0 is the direction of robot, - is right, + is left)
         '''
 
         # sort poles by spherical distance
-        poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[0])
+        poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
 
-        if len(poles) < 3:
+        rospy.loginfo(f'poles: {[pole.type for pole in poles]} {[pole.spherical_distance[2] for pole in poles]}')
+
+        if len(poles) < 4:
+            rospy.logwarn('Not enough poles detected')
             return None # TODO: go to turning the robot action server 
 
         distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
         distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])
+        # distance_3_4 = cosine_theorem(self.poles[2], self.poles[3])
 
         self.set_field_objects_positions(distance_1_2, distance_2_3)
 
         return get_position(self.poles[0], self.poles[2])
-
-        
+    
 
     def set_field_objects_positions(self, distance_1_2, distance_2_3):
         ''' Sets the absolute position of the field objects.
@@ -92,26 +100,44 @@ class Field(object):
 
         # set pole positions with y = 3
         if abs(proportion - 2/3) < self.epsilon:
-            self.poles[0].position = (0, 3)
-            self.poles[1].position = (0.5, 3)
-            self.poles[2].position = (1.25, 3)
+            self.poles[0].position = (5, 3)
+            self.poles[1].position = (4.5, 3)
+            self.poles[2].position = (3.75, 3)
         elif abs(proportion - 3/5) < self.epsilon:
-            self.poles[0].position = (0.5, 3)
-            self.poles[1].position = (1.25, 3)
+            self.poles[0].position = (4.5, 3)
+            self.poles[1].position = (3.75, 3)
             self.poles[2].position = (2.5, 3)
         elif abs(proportion - 1) < self.epsilon:
-            self.poles[0].position = (1.25, 3)
+            self.poles[0].position = (3.75, 3)
             self.poles[1].position = (2.5, 3)
-            self.poles[2].position = (3.75, 3)
+            self.poles[2].position = (1.25, 3)
         elif abs(proportion - 5/3) < self.epsilon:
             self.poles[0].position = (2.5, 3)
-            self.poles[1].position = (3.75, 3)
-            self.poles[2].position = (4.5, 3)
+            self.poles[1].position = (1.25, 3)
+            self.poles[2].position = (0.5, 3)
         elif abs(proportion - 3/2) < self.epsilon:
-            self.poles[0].position = (3.75, 3)
-            self.poles[1].position = (4.5, 3)
-            self.poles[2].position = (5, 3)
+            self.poles[0].position = (1.25, 3)
+            self.poles[1].position = (0.5, 3)
+            self.poles[2].position = (0, 3)
+
+
+    def clear_objects(self):
+        self.poles.clear()
+        self.yellowPucks.clear()
+        self.bluePucks.clear()
+        self.yellowGoal = None
+        self.blueGoal = None
+
+    def goal_found(self):
+        if self.yellowGoal or self.blueGoal:
+            return self.yellowGoal if self.yellowGoal else self.blueGoal
+        else:
+            return None
         
+    def poles_found(self):
+        return len(self.poles) > 2
+        
+
 
 
 
