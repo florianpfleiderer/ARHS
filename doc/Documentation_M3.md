@@ -18,9 +18,10 @@ which poles they are and therefore you can calculate your own position on the fi
 ### Contributions
 - Heinrich Fuhrmann
     - Vector Calculations
+    - state machine implementation
 - Thomas Schwabe
     - documentation
-    implementation
+    - implementation 
 - Florian Pfleiderer
     - code refactoring
     - localisation algorithm
