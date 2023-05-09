@@ -19,7 +19,6 @@ from list_utils.filtering import *
 from globals.tick import *
 from data_utils.laser_scan_utils import *
 
-from field_components.field import Field
 
 CLASSES = {'pole': Pole,
            'yellowpuck': YellowPuck,
@@ -29,7 +28,7 @@ CLASSES = {'pole': Pole,
            'robot': Robot}
 
 class FieldDetector:
-    def __init__(self, detection_function, screen):
+    def __init__(self, detection_function, screen: Screen):
         self.test_parameters = {}
         self.detection_function = detection_function
         self.avg_detection_time = 0
@@ -40,7 +39,7 @@ class FieldDetector:
         self.printer_interval = 2
 
         self.detected_objects: List[FieldObject] = []
-        self.screen = screen
+        self.screen: Screen = screen
 
     def detect(self, *args):
         self.detection_counter += 1
@@ -118,7 +117,7 @@ class KinectDetector(FieldDetector):
 
         return contours
 
-    def detect_field_objects(self, base_class):
+    def detect_field_objects(self, base_class) -> bool:
         rgb_image = self.rgb_sub.get_image()
         depth_image = self.depth_sub.get_image()
 
@@ -143,8 +142,8 @@ class KinectDetector(FieldDetector):
 
         for rect in rects:
             x, y, w, h = rect
-            cx = min(int(x + w/2), depth_image.shape[1])
-            cy = min(int(y + h/2), depth_image.shape[0])
+            cx = min(int(x + w/2), depth_image.shape[1]) #shape[1] is width
+            cy = min(int(y + h/2), depth_image.shape[0]) #shape[0] is height
             r = depth_image[cy, cx]
             if check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
@@ -220,9 +219,6 @@ if __name__ == '__main__':
 
     found_objects: List[FieldObject] = []
 
-    # initialise singleton field class
-    field = Field()
-
     def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():    
             found_objects.clear()
@@ -272,9 +268,9 @@ if __name__ == '__main__':
     def combine_detection() -> None:
         objects: List[FieldObject] = run_kinect_detection()
         # objects = run_laser_detection()
-        if objects is not None and len(objects) > 0:
+        if objects and len(objects) > 0:
             field_components_pub.publish(FieldComponents(
-                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:2]),
+                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:3]),
                                 ScreenPosition(*o.get_angles()) ) for o in objects]))
 
     

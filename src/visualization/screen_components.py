@@ -94,9 +94,9 @@ class Screen:
         local_distance = (r, (theta_min + theta_max) / 2, (phi_min + phi_max) / 2)
         local_corner = (r, theta_max, phi_max)
 
-        global_distance = self.get_global_distance(local_distance)
+        global_distance = self.get_global_distance(local_distance) # spherical distance
         global_corner = self.get_global_distance(local_corner)
-        global_size = subtract_vectors(global_corner, global_distance)
+        global_size = subtract_vectors(global_corner, global_distance) # half size 
 
         return obj_type(global_distance, global_size)
 
