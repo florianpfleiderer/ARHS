@@ -23,7 +23,7 @@ class FieldObject:
     def __init__(self, color, type, spherical_distance, half_size):
         self.color: Color = color
         self.type: str = type
-        self.spherical_distance: Tuple = spherical_distance
+        self.spherical_distance: Tuple[float, float, float] = spherical_distance
         self.half_size = half_size
 
         self.area_detect_range = (None, None)

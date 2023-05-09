@@ -9,7 +9,7 @@ from typing import List
 
 from globals.tick import CallbackTicker
 from globals.globals import TICK_RATE
-from math_utils.vector_utils import tup2_from_polarvector2
+from math_utils.vector_utils import tup3_from_polarvector2
 from player.msg import FieldComponents, FieldComponent, PolarVector2, ScreenPosition
 from geometry_msgs.msg import Pose, Point, Quaternion
 from field_components.field import Field
@@ -31,7 +31,7 @@ class LocaliserNode:
     def callback(self, data: FieldComponents):
         assert isinstance(data, FieldComponents)    
         self.objects = [FieldObject(Color.from_string(c.color_name), \
-                                    c.type, tup2_from_polarvector2(c.player_distance), None) \
+                                    c.type, tup3_from_polarvector2(c.player_distance) , None) \
                         for c in data.field_components]
 
     def run(self):

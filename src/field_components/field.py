@@ -41,7 +41,7 @@ class Field(object):
         self.yellowGoal: YellowGoal = None
         self.blueGoal: BlueGoal = None
     
-    def set_objects(self, field_objects: List[FieldObject]=None):
+    def set_objects(self, field_objects: List[FieldObject]=None) -> bool:
         self.length = None
         self.width = None
         if field_objects:
@@ -54,6 +54,7 @@ class Field(object):
                 and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW]
             self.blueGoal = [o for o in field_objects if o.type == "goal" \
                 and o.color is Color.SIM_BLUE or Color.REAL_BLUE]
+        return len(self.poles) >= 3
 
     def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.
@@ -69,7 +70,7 @@ class Field(object):
         poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[0])
 
         if len(poles) < 3:
-            return None
+            return None # TODO: go to turning the robot action server 
 
         distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
         distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])

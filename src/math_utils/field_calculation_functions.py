@@ -19,7 +19,7 @@ def cosine_theorem(pole_a : Pole, pole_b : Pole):
     '''
     a = pole_a.spherical_distance[0]
     b = pole_b.spherical_distance[0]
-    gamma = abs(pole_a.spherical_distance[1] - pole_b.spherical_distance[1])
+    gamma = abs(pole_a.spherical_distance[2] - pole_b.spherical_distance[2])
 
     return sqrt(a**2 + b**2 - 2 * a * b * cosd(gamma))
 
@@ -33,8 +33,9 @@ def get_position(pole_a: Pole, pole_b: Pole) -> Tuple:
         return None
     
     dist = cosine_theorem(pole_a, pole_b)
+    gamma = abs(pole_a.spherical_distance[2] - pole_b.spherical_distance[2]) 
 
-    rho = asind(pole_a.spherical_distance[0]/dist *sind(abs(pole_a.spherical_distance[1] - pole_b.spherical_distance[1])))
+    rho = asind(pole_a.spherical_distance[0]/dist *sind(gamma))
     pos_x = pole_b.position[0] - pole_b.spherical_distance[0]*cosd(rho)
     pos_y = pole_b.position[1] - pole_b.spherical_distance[0]*sind(rho)
 
