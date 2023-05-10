@@ -4,6 +4,12 @@ from enum import Enum
 import cv2
 from globals.globals import *
 
+#color_min, color_max
+# COLORS = {'green': ([65, 80, 50], [83, 255, 255]),
+#           'blue': ([90, 70, 90], [110, 255, 255]),
+#           'yellow': ([22, 70, 50], [30, 255, 255]),
+#           'red':([171, 40, 50], [179, 255, 180])}
+
 # enum for colors with default value (RGB), min and max values (HSV)
 class Color(Enum):
     SIM_RED = ((0, 0, 255), (175, 50, 50), (5, 255, 255))
