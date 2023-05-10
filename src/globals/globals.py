@@ -2,7 +2,7 @@
 from math_utils.math_function_utils import *
 import cv2
 
-SIMULATION_MODE = True
+SIMULATION_MODE = False
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0)
@@ -37,7 +37,7 @@ REPELLING_FORCE_SIZE = 0.1
 REPELLING_FORCE_THRESHOLD = 0.5
 REPELLING_FORCE_MULTIPLIER = -0.1
 
-TICK_RATE = 10
+TICK_RATE = 10 / 10
 
 LOCAL_PLAYER = "robot1/"
 LASER_PATH = "front_laser/scan"
