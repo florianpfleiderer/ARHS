@@ -210,6 +210,8 @@ if __name__ == '__main__':
 
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else True
+    rospy.loginfo("Testmode: " + str(testmode))
+
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
 
     kinect_det = KinectDetector(testmode)
@@ -237,7 +239,7 @@ if __name__ == '__main__':
 
             return found_objects
         else:
-            rospy.loginfo("Waiting for images to process...")
+            rospy.loginfo("Waiting for kinect images to process...")
 
     def run_laser_detection() -> List[FieldObject]:       
         if laser_det.is_valid_data():
@@ -276,9 +278,9 @@ if __name__ == '__main__':
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            # run_kinect_detection,
+                            run_kinect_detection,
                             # run_laser_detection,
-                            combine_detection
+                            # combine_detection
                             # include_field_object
                             )
     
