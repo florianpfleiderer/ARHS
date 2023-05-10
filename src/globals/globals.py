@@ -2,7 +2,7 @@
 from math_utils.math_function_utils import *
 import cv2
 
-SIMULATION_MODE = False
+SIMULATION_MODE = True
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0)
