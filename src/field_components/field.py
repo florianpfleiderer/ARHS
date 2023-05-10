@@ -73,14 +73,7 @@ class Field(object):
             (0 is the direction of robot, - is right, + is left)
         '''
 
-        # sort poles by spherical distance, so from right to left
-        poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
-
-        rospy.loginfo(f'poles: {[pole.type for pole in poles]} {[pole.spherical_distance[2] for pole in poles]}')
-
-        if len(poles) < 3:
-            rospy.logwarn('Not enough poles detected')
-            return None # TODO: go to turning the robot action server 
+        self.check_poles()
 
         distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
         distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])
@@ -106,6 +99,12 @@ class Field(object):
         # set pole positions with y = 3
         if(proportion_a_b > 1.5 + 1.5*self.epsilon or proportion_a_c > 2.5 + 2.5*self.epsilon):
             rospy.logwarn('Pole ratios to large')
+        else:
+            self.poles[0].position = (5, 3)
+            self.poles[1].position = (4.5, 3)
+            self.poles[2].position = (3.75, 3)
+
+        # TODO: think about the case, when robot sees the right or left side of the field first
 
         # if abs(proportion_a_b - 2/3) < self.epsilon:
         #     self.poles[0].position = (5, 3)
@@ -143,7 +142,40 @@ class Field(object):
             return None
         
     def poles_found(self):
-        return len(self.poles) > 2
+        return len(self.poles) > 3
+    
+    def sort_poles_by_angle_phi(self):
+        # sort poles by spherical distance, so from right to left
+        self.poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
+
+        rospy.loginfo(f'poles: {[pole.type for pole in self.poles]}' \
+                       '{[pole.spherical_distance[2] for pole in self.poles]}')
+    
+    def check_poles(self) -> bool:
+        if len(self.poles) < 3:
+            rospy.logwarn('Not enough poles detected')
+            # TODO function always returns this
+            return False
+        
+        self.sort_poles_by_angle_phi()
+
+        distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
+        distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])
+        distance_1_3 = cosine_theorem(self.poles[0], self.poles[2])
+
+        proportion_a_b = distance_2_3 / distance_1_2
+        proportion_a_c = distance_1_3 / distance_1_2
+
+        print(f'proportions: a_b: {proportion_a_b}, a_c: {proportion_a_c}')
+
+        # check right proportions
+        if(proportion_a_b > 1.5 + 1.5*self.epsilon or proportion_a_c > 2.5 + 2.5*self.epsilon):
+            rospy.logwarn('Pole ratios to large')
+            return False
+        else:
+            return True
+
+        
         
 
 

@@ -278,9 +278,9 @@ if __name__ == '__main__':
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            run_kinect_detection,
+                            # run_kinect_detection,
                             # run_laser_detection,
-                            # combine_detection
+                            combine_detection
                             # include_field_object
                             )
     

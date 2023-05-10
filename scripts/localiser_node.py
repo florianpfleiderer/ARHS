@@ -28,8 +28,7 @@ class LocaliserNode:
         self.objects: List[FieldComponent] = None
         self.goal_found: FieldObject = None
 
-    def callback(self, data: FieldComponents):
-        assert isinstance(data, FieldComponents)    
+    def callback(self, data: FieldComponents):  
         self.objects = [FieldObject(Color.from_string(c.color_name), \
                                     c.type, tup3_from_polarvector2(c.player_distance) , None) \
                         for c in data.field_components]
@@ -42,35 +41,26 @@ class LocaliserNode:
         msg.angular.z = angular
         self.velocity_pub.publish(msg)
 
+
     def execute(self):
-        if not self.objects:
-            rospy.loginfo("No objects")
-            return
+        '''Main loop of the localiser node.
         
-        if not self.field.set_objects(self.objects):
-            rospy.logwarn("No Objects added!")
-            return
+        '''
+
+        while not self.objects:
+            self.set_velocities(0, 0.5)
+            rospy.loginfo("No objects found, turning")
         
-
-        if self.goal_found is None and self.field.goal_found():
-            self.goal_found = self.field.goal_found()
-            self.set_velocities(0, 0)
-            rospy.loginfo("Goal found: {self.goal_found.type}")
-            rospy.sleep(1)
-            # goal was found, no look for three poles
-        else: 
-            self.set_velocities(0, 0.1)
-            return
-
-        if self.goal_found and self.field.poles_found():
-            self.set_velocities(0, 0)
-            rospy.loginfo("Poles found")
-            rospy.sleep(1)
-            # poles were found, now calculate
-        else: 
-            self.set_velocities(0, 0.1)
-            return
-
+        rospy.loginfo("Objects found, stop turning")
+        self.set_velocities(0, 0)
+        self.field.set_objects(self.objects)
+        
+        while not self.field.check_poles():
+            self.set_velocities(0, 0.5)
+            rospy.sleep(0.5)
+        
+        rospy.loginfo("outer poles found, stop turning")
+        self.set_velocities(0, 0)
 
         pos = self.field.calculate_robot_position()
         if(pos is None):
