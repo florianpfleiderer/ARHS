@@ -25,7 +25,7 @@ class Field(object):
     '''
 
     _instance = None
-    epsilon = 0.1
+    epsilon = 0.1 # allowed error for the proportions of the poles (0.1=10%)
 
     def __new__(cls):
         if cls._instance is None:
@@ -63,62 +63,70 @@ class Field(object):
     def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.
         
-        This function calculates and sets the robot position
-        from the spherical coordinates of the poles.
+        The robot always starts in the red area of the field.
+        The origin will be the right corner when looking towards the other goal.
+        You can get the Robot Position depending on the Color of your goal and three Poles.
+        After this, you can increment the position with the velocity data.
         
         poles.spherical_distance[0] = r
         poles.spherical_distance[2] = phi 
             (0 is the direction of robot, - is right, + is left)
         '''
 
-        # sort poles by spherical distance
+        # sort poles by spherical distance, so from right to left
         poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
 
         rospy.loginfo(f'poles: {[pole.type for pole in poles]} {[pole.spherical_distance[2] for pole in poles]}')
 
-        if len(poles) < 4:
+        if len(poles) < 3:
             rospy.logwarn('Not enough poles detected')
             return None # TODO: go to turning the robot action server 
 
         distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
         distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])
-        # distance_3_4 = cosine_theorem(self.poles[2], self.poles[3])
+        distance_1_3 = cosine_theorem(self.poles[0], self.poles[2])
 
-        self.set_field_objects_positions(distance_1_2, distance_2_3)
+        self.set_field_objects_positions(distance_1_2, distance_2_3, distance_1_3)
 
         return get_position(self.poles[0], self.poles[2])
     
 
-    def set_field_objects_positions(self, distance_1_2, distance_2_3):
+    def set_field_objects_positions(self, distance_1_2, distance_2_3, distance_1_3):
         ''' Sets the absolute position of the field objects.
         
-        This function sets the absolute position of the field objects
+        The Poles given to this function are the outer most three poles at the 
+        initial robot position. The robot always starts in the red area of the field.
         '''
 
-        proportion = distance_1_2 / distance_2_3
-        print(f'proportion: {proportion}')
+        proportion_a_b = distance_2_3 / distance_1_2
+        proportion_a_c = distance_1_3 / distance_1_2
+
+        print(f'proportions: a_b: {proportion_a_b}, a_c: {proportion_a_c}')
 
         # set pole positions with y = 3
-        if abs(proportion - 2/3) < self.epsilon:
-            self.poles[0].position = (5, 3)
-            self.poles[1].position = (4.5, 3)
-            self.poles[2].position = (3.75, 3)
-        elif abs(proportion - 3/5) < self.epsilon:
-            self.poles[0].position = (4.5, 3)
-            self.poles[1].position = (3.75, 3)
-            self.poles[2].position = (2.5, 3)
-        elif abs(proportion - 1) < self.epsilon:
-            self.poles[0].position = (3.75, 3)
-            self.poles[1].position = (2.5, 3)
-            self.poles[2].position = (1.25, 3)
-        elif abs(proportion - 5/3) < self.epsilon:
-            self.poles[0].position = (2.5, 3)
-            self.poles[1].position = (1.25, 3)
-            self.poles[2].position = (0.5, 3)
-        elif abs(proportion - 3/2) < self.epsilon:
-            self.poles[0].position = (1.25, 3)
-            self.poles[1].position = (0.5, 3)
-            self.poles[2].position = (0, 3)
+        if(proportion_a_b > 1.5 + 1.5*self.epsilon or proportion_a_c > 2.5 + 2.5*self.epsilon):
+            rospy.logwarn('Pole ratios to large')
+
+        # if abs(proportion_a_b - 2/3) < self.epsilon:
+        #     self.poles[0].position = (5, 3)
+        #     self.poles[1].position = (4.5, 3)
+        #     self.poles[2].position = (3.75, 3)
+        # elif abs(proportion_a_b - 3/5) < self.epsilon:
+        #     self.poles[0].position = (4.5, 3)
+        #     self.poles[1].position = (3.75, 3)
+        #     self.poles[2].position = (2.5, 3)
+        # elif abs(proportion_a_b - 1) < self.epsilon:
+        #     self.poles[0].position = (3.75, 3)
+        #     self.poles[1].position = (2.5, 3)
+        #     self.poles[2].position = (1.25, 3)
+        # elif abs(proportion_a_b - 5/3) < self.epsilon:
+        #     self.poles[0].position = (2.5, 3)
+        #     self.poles[1].position = (1.25, 3)
+        #     self.poles[2].position = (0.5, 3)
+        # elif abs(proportion_a_b - 3/2) < self.epsilon:
+        #     self.poles[0].position = (1.25, 3)
+        #     self.poles[1].position = (0.5, 3)
+        #     self.poles[2].position = (0, 3)
 
 
     def clear_objects(self):
