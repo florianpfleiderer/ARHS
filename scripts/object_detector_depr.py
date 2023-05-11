@@ -126,6 +126,8 @@ class ObjectDetector:
         mask_depth = cv2.add(gs, mask_depth)
         return mask_depth
     
+
+    
     def edge_detection(self, img):
         #TODO: maybe need to blur bevor canny in real life
         thresh_lower = CANNY_THRESHOLD_LOWER

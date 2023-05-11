@@ -1,4 +1,4 @@
-int32 x
-int32 y
-int32 w
-int32 h
+float32 theta_min
+float32 theta_max
+float32 phi_min
+float32 phi_max
