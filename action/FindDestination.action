@@ -1,5 +1,5 @@
 FieldComponent[] field_components
 ---
-uint16 destination_index
+int16 destination_index
 ---
 string message

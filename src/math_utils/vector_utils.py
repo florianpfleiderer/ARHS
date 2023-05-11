@@ -2,32 +2,156 @@
 
 import math
 from geometry_msgs.msg import Vector3
-from player.msg import PolarVector2
+from player.msg import *
 import rospy
 from math_utils.math_function_utils import *
+from enum import Enum
 
-def tup2_from_polarvector2(vector):
-    return (vector.r, vector.theta)
+class Coordinate(Enum):
+    CARTESIAN = 0
+    CYLINDRICAL = 1
+    SPHERICAL = 2
 
-def polarvector2_from_tup2(tup):
-    return PolarVector2(tup[0], tup[1])
+class TupleVector3:
+    def __init__(self, value=(0, 0, 0), coordinates=Coordinate.CARTESIAN):
+        self.tuple = convert_vector(value, coordinates, Coordinate.CARTESIAN)
+        self.coordinates = coordinates
 
-def add_polars(vector1, vector2):
-    return cartesian_to_polar(polar_to_cartesian(vector1) + polar_to_cartesian(vector2))
+    def value(self):
+        return self.tuple
+    
+    def convert(self, coordinates=None):
+        return convert_vector(self.tuple, Coordinate.CARTESIAN, self.coordinates if coordinates is None else coordinates)
 
-def add_cartesian_to_polar(cartesian, polar):
-    return cartesian_to_polar(cartesian + polar_to_cartesian(polar))
+    def __mul__(self, factor):
+        if type(factor) is TupleVector3:
+            return TupleVector3((self.tuple[0] * factor.tuple[0],
+                                 self.tuple[1] * factor.tuple[1],
+                                 self.tuple[2] * factor.tuple[2]),
+                                 self.coordinates)
+        
+        else:
+            return TupleVector3((self.tuple[0] * factor,
+                                 self.tuple[1] * factor,
+                                 self.tuple[2] * factor),
+                                 self.coordinates)
+        
+    def __rmul__(self, factor):
+        return self.__mul__(factor)
+    
+    def __truediv__(self, factor):
+        if type(factor) is TupleVector3:
+            return TupleVector3((self.tuple[0] / factor.tuple[0],
+                                 self.tuple[1] / factor.tuple[1],
+                                 self.tuple[2] / factor.tuple[2]),
+                                 self.coordinates)
+        
+        else:
+            return TupleVector3((self.tuple[0] / factor,
+                                 self.tuple[1] / factor,
+                                 self.tuple[2] / factor),
+                                 self.coordinates)
+        
+    def __rtruediv__(self, factor):
+        return self.__truediv__(factor)
+    
+    def __floordiv__(self, factor):
+        if type(factor) is TupleVector3:
+            return TupleVector3((self.tuple[0] // factor.tuple[0],
+                                 self.tuple[1] // factor.tuple[1],
+                                 self.tuple[2] // factor.tuple[2]),
+                                 self.coordinates)
+        
+        else:
+            return TupleVector3((self.tuple[0] // factor,
+                                 self.tuple[1] // factor,
+                                 self.tuple[2] // factor),
+                                 self.coordinates)
+        
+    def __rfloordiv__(self, factor):
+        return self.__floordiv__(factor)
 
-def polar_to_cartesian(polar_vector):
-    r, theta = polar_vector
-    return (r * cosd(theta), r * sind(theta))
+    def __add__(self, tuple_vector):
+        return TupleVector3((self.tuple[0] + tuple_vector.tuple[0],
+                             self.tuple[1] + tuple_vector.tuple[1],
+                             self.tuple[2] + tuple_vector.tuple[2]),
+                             self.coordinates)
 
-def cartesian_to_polar(cartesian_vector):
-    x, y = cartesian_vector
-    return (math.sqrt(x ** 2 + y ** 2), math.atan2(y, x))
+    def __sub__(self, tuple_vector):
+        return TupleVector3((self.tuple[0] - tuple_vector.tuple[0],
+                             self.tuple[1] - tuple_vector.tuple[1],
+                             self.tuple[2] - tuple_vector.tuple[2]),
+                             self.coordinates)
 
-def polar_to_string(polar_vector):
-    return f"r={polar_vector.r} theta={polar_vector.theta}"
+    def __lt__(self, tuple_vector):
+        return (self.tuple[0] < tuple_vector.tuple[0] and
+                self.tuple[1] < tuple_vector.tuple[1] and
+                self.tuple[2] < tuple_vector.tuple[2] )
+    
+    def __gt__(self, tuple_vector):
+        return (self.tuple[0] > tuple_vector.tuple[0] and
+                self.tuple[1] > tuple_vector.tuple[1] and
+                self.tuple[2] > tuple_vector.tuple[2] )
+    
+    def __eq__(self, tuple_vector):
+        return (self.tuple[0] == tuple_vector.tuple[0] and
+                self.tuple[1] == tuple_vector.tuple[1] and
+                self.tuple[2] == tuple_vector.tuple[2] )
+    
+    def __ne__(self, tuple_vector):
+        return (self.tuple[0] != tuple_vector.tuple[0] or
+                self.tuple[1] != tuple_vector.tuple[1] or
+                self.tuple[2] != tuple_vector.tuple[2] )
+    
+    def __le__(self, tuple_vector):
+        return (self.tuple[0] <= tuple_vector.tuple[0] and
+                self.tuple[1] <= tuple_vector.tuple[1] and
+                self.tuple[2] <= tuple_vector.tuple[2] )
+    
+    def __ge__(self, tuple_vector):
+        return (self.tuple[0] >= tuple_vector.tuple[0] and
+                self.tuple[1] >= tuple_vector.tuple[1] and
+                self.tuple[2] >= tuple_vector.tuple[2] )
+    
+    def __str__(self):
+        pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
+        pref_y = "y" if self.coordinates == Coordinate.CARTESIAN else "phi" if self.coordinates == Coordinate.CYLINDRICAL else "theta"
+        pref_z = "z" if self.coordinates != Coordinate.SPHERICAL else "alpha"
+        return f"{pref_x}: {round(self.tuple[0], 2)}, {pref_y}: {round(self.tuple[1], 2)}, {pref_z}: {round(self.tuple[2], 2)}"
+
+    def make_vector3(self):
+        return Vector3(*self.tuple)
+    
+    @classmethod
+    def from_vector3(cls, vector3, coordinates=Coordinate.CARTESIAN):
+        return cls((vector3.x, vector3.y, vector3.z), coordinates)
+
+
+def convert_vector(vector, from_coordinates, to_coordinates):
+    from_vector = ()
+
+    if from_coordinates == Coordinate.CARTESIAN:
+        from_vector = vector
+    elif from_coordinates == Coordinate.CYLINDRICAL:
+        from_vector = cylindrical_to_cartesian(vector)
+    elif from_coordinates == Coordinate.SPHERICAL:
+        from_vector = spherical_to_cartesian(vector)
+
+    if to_coordinates == Coordinate.CARTESIAN:
+        return from_vector
+    elif to_coordinates == Coordinate.CYLINDRICAL:
+        return cartesian_to_cylindrical(from_vector)
+    elif to_coordinates == Coordinate.SPHERICAL:
+        return cartesian_to_spherical(from_vector)
+
+
+def cylindrical_to_cartesian(polar_vector):
+    r, theta, z = polar_vector
+    return (r * cosd(theta), r * sind(theta), z)
+
+def cartesian_to_cylindrical(cartesian_vector):
+    x, y, z = cartesian_vector
+    return (math.sqrt(x ** 2 + y ** 2), math.atan2(y, x), z)
 
 def spherical_to_cartesian(spherical_vector):
     r, theta, phi = spherical_vector
@@ -47,5 +171,10 @@ def subtract_vectors(vector1, vector2):
     return (vector1[0] - vector2[0], vector1[1] - vector2[1], vector1[2] - vector2[2])
 
 if __name__ == "__main__":
-    print(spherical_to_cartesian((1, 90, 90)))
-    print(cartesian_to_spherical((0, 1, 0)))
+    v = TupleVector3((1, 2, 3))
+    v2 = TupleVector3((2, 3, -1))
+    print(v < v2)
+    print(v + v2)
+    print(v - v2)
+    print(v * v2)
+    print(v * 10.5)

@@ -43,7 +43,8 @@ def draw_laser_points(laser_scan, laser_screen, rgb_screen):
             theta = 90
             fo = laser_screen.create_field_object(laser_screen.get_rect((phi, phi, theta, theta)), r, LaserPoint)
             laser_screen.draw_object(fo, False)
-            rgb_screen.draw_object(fo, False)
+            if check_range(phi, rgb_screen.FOV[0] / 2, - rgb_screen.FOV[0] / 2):
+                rgb_screen.draw_object(fo, False)
 
 
 def detect_edges(laser_scan, laser_ranges):       

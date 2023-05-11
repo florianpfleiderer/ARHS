@@ -17,23 +17,25 @@ class MoveToDestinationServer:
     def execute(self, goal):
         rospy.loginfo("executing state MOVE_TO_DESTINATION")
 
-        attracting = (0, 0)
-        repelling = (0, 0)
+        attracting = TupleVector3()
+        repelling = TupleVector3()
 
         for i, component in enumerate(goal.field_components):
-            pos = tup2_from_polarvector2(component.position)
+            dist = component.player_distance
+            pos = TupleVector3((dist.x, dist.y, dist.z))
             if i == goal.destination_index:
-                attracting += pos
+                attracting.add(pos)
 
             else:
-                repelling += pos
+                repelling.add(pos)
 
-        if attracting < (TARGET_REACHED_R_THRESHOLD, TARGET_REACHED_THETA_THRESHOLD):
+        if attracting.lt(TupleVector3((TARGET_REACHED_R_THRESHOLD, TARGET_REACHED_THETA_THRESHOLD, 360))):
             self.vel_pub.publish(Twist())
             self.server.set_succeeded()
             return True
 
-        result_force = ATTRACTION_FACTOR * attracting - REPULSION_FACTOR * repelling
+        result_force = attracting.factor(ATTRACTION_FACTOR).subtract(repelling.factor(REPULSION_FACTOR)).convert(Coordinate.CYLINDRICAL).value()
+        
         out_velocity = Twist()
         out_velocity.linear.x = result_force[0]
         out_velocity.angular.z = result_force[1]

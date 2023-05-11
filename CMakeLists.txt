@@ -62,6 +62,7 @@ add_message_files(
   FieldComponent.msg
   FieldComponents.msg
   ScreenPosition.msg
+  PolarVector3.msg
 )
 
 ## Generate services in the 'srv' folder
