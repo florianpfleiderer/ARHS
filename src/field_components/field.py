@@ -100,7 +100,7 @@ class Field(object):
         if(proportion_a_b > 1.5 + 1.5*self.epsilon or proportion_a_c > 2.5 + 2.5*self.epsilon):
             rospy.logwarn('Pole ratios to large')
         elif proportion_a_b < 2/3 + 2/3*self.epsilon or proportion_a_c < 0.4 + 0.4*self.epsilon:
-            rospy.loginfo('loking left')
+            rospy.loginfo('looking left')
             self.poles[0].position = (1.25, 3)
             self.poles[1].position = (0.5, 3)
             self.poles[2].position = (0, 3)
@@ -156,7 +156,7 @@ class Field(object):
         self.poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
 
         rospy.loginfo(f'poles: {[pole.type for pole in self.poles]}' \
-                       '{[pole.spherical_distance[2] for pole in self.poles]}')
+                       f'{[pole.spherical_distance[2] for pole in self.poles]}')
     
     def check_poles(self) -> bool:
         if len(self.poles) < 3:

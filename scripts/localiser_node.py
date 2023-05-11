@@ -88,27 +88,37 @@ class LocaliserNode:
                 rospy.logwarn("No position")
                 return
             
-            outer_pole: Pole = self.field.outer_pole(True)
+            outer_pole: Pole = self.field.outer_pole(False)
 
             direction_rad = outer_pole.spherical_distance[2]*pi/180
             
-            index = 180 + direction_rad*cur_laser.angle_increment
+            index = int(180 + direction_rad/cur_laser.angle_increment)
 
-            outer_pole_distances = [cur_laser.ranges[index - 5: index + 5]]
+            outer_pole_distances = cur_laser.ranges[index - 5: index + 5]
+            rospy.loginfo(f'Outer pole distance: {outer_pole_distances}')
+
             dist_min = outer_pole.spherical_distance[0] - 0.5
             dist_max = outer_pole.spherical_distance[0] + 0.5
 
             pole_indices_array: float = []
-            for i, r in enumerate(outer_pole_distances):
-                if abs(outer_pole_distances[i] - outer_pole_distances[i+1]) > 0.2:
-                    pole_indices_array.append(i)
-            if len(pole_indices_array) > 2:
-                rospy.logwarn("Too many pole edges found")
-                return
-            
-            pole_found_index = (pole_indices_array[0] + pole_indices_array[1]) // 2
 
-            rospy.loginfo('Outer pole distance: ' + str(cur_laser.ranges[index-5+pole_found_index]))
+            for i in range(len(outer_pole_distances)):
+                rospy.loginfo(f'Outer pole distance: {outer_pole_distances[i]}')
+                if dist_min < outer_pole_distances[i] < dist_max:
+                    pole_indices_array.append(i)
+
+            pole_found_index = pole_indices_array[len(pole_indices_array) // 2]
+            rospy.loginfo(f'Pole found index: {pole_found_index}')
+            total_idx = index - 5 + pole_found_index
+            
+            rospy.loginfo(f'Pole indices: {pole_indices_array}')
+
+            rospy.loginfo(f'Outer pole distance:' \
+                          f'{cur_laser.ranges[total_idx]}\n' \
+                          f'Angle to Pole rgb: ' \
+                          f'{outer_pole.spherical_distance[2]}\n' \
+                          f'Angle to Pole laser: ' \
+                          f'{(total_idx - 180)*cur_laser.angle_increment*180/pi}')
             
             point = Point(pos[0], pos[1], 0)
             quaternion = Quaternion(0, 0, 1, 0)
