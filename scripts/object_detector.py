@@ -98,12 +98,13 @@ class KinectDetector(FieldDetector):
 
     def detect_contours(self, base_class, rgb_image, depth_image):
         color_mask = imgops.mask_color(rgb_image, base_class.color)
+        color_mask = imgops.denoise(color_mask, COLOR_MASK_SMOOTHING)
         depth_masked_image = imgops.convert_gray2bgr(imgops.apply_mask(color_mask, depth_image))
-        depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING)
-
+        depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING, False)
+        
         edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
         edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
-
+        
         self.test_parameters["depth_masked_image"].set_value(depth_masked_image)
         self.test_parameters["edges"].set_value(edges)
             
@@ -113,19 +114,23 @@ class KinectDetector(FieldDetector):
             return None
         
         contours = imgops.get_inner_contours(*contours)
-        cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
-
+        #cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
+           
+        
         return contours
 
     def detect_field_objects(self, base_class) -> bool:
-        rgb_image = self.rgb_sub.get_image()
+        rgb_image = self.rgb_sub.get_image()        
         depth_image = self.depth_sub.get_image()
-
+        
+        #cv2.fastNlMeansDenoisingColored(rgb_image, rgb_image, 8, 8, 7, 9)
+        #cv2.imshow("rgb_img_denoised", rgb_image)
+        
+        
         self.detected_objects.clear()
         self.screen.image = rgb_image
-
         contours = self.detect_contours(base_class, rgb_image, depth_image)
-
+            
         if contours is None:
             return False
 
@@ -136,15 +141,18 @@ class KinectDetector(FieldDetector):
             result = check_range(w*h, *base_class.area_detect_range)
             result &= check_range(w/h, *base_class.ratio_detect_range)
             return result
-        rects = filter_list(rects, filter_cb)
+        rects = filter_list(rects, filter_cb)     
+        
 
         field_objects = []
 
         for rect in rects:
             x, y, w, h = rect
-            cx = min(int(x + w/2), depth_image.shape[1]) #shape[1] is width
-            cy = min(int(y + h/2), depth_image.shape[0]) #shape[0] is height
-            r = depth_image[cy, cx]
+            image_w = depth_image.shape[1]    
+            image_h = depth_image.shape[0] 
+            cx = min(int(x + w/2), image_w)
+            cy = min(int(y + h/2), image_h)
+            r = depth_image[cy, cx] if SIMULATION_MODE else depth_image[cy, cx] / 1000
             if check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
                 field_objects.append(fo)
@@ -153,6 +161,7 @@ class KinectDetector(FieldDetector):
             field_objects = [field_objects[0].merge(*field_objects[1:], return_type=base_class)]
 
         self.detected_objects.extend(field_objects)
+        
 
         return True
     
@@ -209,7 +218,7 @@ if __name__ == '__main__':
     rospy.loginfo("Initialised ObjectDetector")
 
     args = rospy.myargv(argv=sys.argv)
-    testmode = args[1] if len(args) > 1 else True
+    testmode = False #args[1] if len(args) > 1 else True
     rospy.loginfo("Testmode: " + str(testmode))
 
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
@@ -272,8 +281,8 @@ if __name__ == '__main__':
         # objects = run_laser_detection()
         if objects and len(objects) > 0:
             field_components_pub.publish(FieldComponents(
-                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:3]),
-                                ScreenPosition(*o.get_angles()) ) for o in objects]))
+                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:2]),    #####
+                                None ) for o in objects]))
 
     
     rospy.loginfo("Starting loop")
