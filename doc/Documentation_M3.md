@@ -22,10 +22,10 @@ Calculated ratios between Pole distances where off by more than 10 Percent, so t
 ### Contributions
 - Heinrich Fuhrmann
     - Vector Calculations
-    - working with spherical / cartesian coordinates
+    - state machine implementation
 - Thomas Schwabe
-    - documentation
+    - color calibration
     - implementation 
 - Florian Pfleiderer
-    - code refactoring
-    - localisation algorithm
+    - documentation
+    - localisation algorithm and implementation
