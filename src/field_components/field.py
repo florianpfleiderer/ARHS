@@ -81,7 +81,7 @@ class Field(object):
 
         self.set_field_objects_positions(distance_1_2, distance_2_3, distance_1_3)
 
-        return get_position(self.poles[0], self.poles[2])
+        return get_position(self.poles[2], self.poles[1], self.poles[0])
     
 
     def set_field_objects_positions(self, distance_1_2, distance_2_3, distance_1_3):
@@ -99,10 +99,17 @@ class Field(object):
         # set pole positions with y = 3
         if(proportion_a_b > 1.5 + 1.5*self.epsilon or proportion_a_c > 2.5 + 2.5*self.epsilon):
             rospy.logwarn('Pole ratios to large')
-        else:
-            self.poles[0].position = (5, 3)
-            self.poles[1].position = (4.5, 3)
-            self.poles[2].position = (3.75, 3)
+        elif proportion_a_b < 2/3 + 2/3*self.epsilon or proportion_a_c < 0.4 + 0.4*self.epsilon:
+            rospy.loginfo('loking left')
+            self.poles[0].position = (1.25, 3)
+            self.poles[1].position = (0.5, 3)
+            self.poles[2].position = (0, 3)
+        elif proportion_a_b > 1.5 - 1.5*self.epsilon or proportion_a_c > 2.5 - 2.5*self.epsilon:
+            # this means i am looking right
+            rospy.loginfo('looking right')
+            self.poles[0].position = (0, 0)
+            self.poles[1].position = (0.5, 0)
+            self.poles[2].position = (1.25, 0)
 
         # TODO: think about the case, when robot sees the right or left side of the field first
 
@@ -174,6 +181,16 @@ class Field(object):
             return False
         else:
             return True
+        
+    def outer_pole(self, direction: bool) -> Pole:
+        self.sort_poles_by_angle_phi()
+        if self.poles[0].position[0] == 0:
+            # looking right
+            return self.poles[0]
+        else:
+            # looking left
+            return self.poles[2]
+
 
         
         
