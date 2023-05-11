@@ -3,16 +3,35 @@
 from field_components.colors import Color
 from globals.globals import *
 from player.msg import *
+from typing import Tuple
 
 class FieldObject:
+    '''Class representing a field object.
+    
+    Attributes:
+        color: color of the object
+        type: type of the object
+        spherical_distance: distance of the object in spherical coordinates
+            in relation to the robot
+        half_size: half size of the object 
+        area_detect_range: range of the area of the object in pixels
+        ratio_detect_range: range of the ratio of the object in pixels
+        position: absolute position of the object in the field in x, y coordinates
+        
+    '''
+    
     def __init__(self, color, type, spherical_distance, half_size):
-        self.color = color
-        self.type = type
-        self.spherical_distance = spherical_distance
+        self.color: Color = color
+        self.type: str = type
+        self.spherical_distance: Tuple[float, float, float] = spherical_distance
         self.half_size = half_size
 
         self.area_detect_range = (None, None)
         self.ratio_detect_range = (None, None)
+
+        # absolute position in the field in x, y coordinates
+        # this is later set by field class
+        self.position: Tuple = None
 
     def get_angles(self):
         theta_min = self.spherical_distance[1] - self.half_size[1]

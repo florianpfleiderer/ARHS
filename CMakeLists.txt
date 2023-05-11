@@ -178,6 +178,7 @@ catkin_install_python(
   scripts/player_sm.py
   scripts/object_detector.py
   scripts/color_calibrator.py
+  scripts/localiser_node.py
   scripts/states/avoid_obstacle_server.py
   scripts/states/drive_randomly_server.py
   scripts/behaviours/find_destination_server.py

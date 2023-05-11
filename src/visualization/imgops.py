@@ -14,7 +14,7 @@ def denoise(image, kernel_size, do_open=True):
     mask = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
 
     if do_open:
-        mask = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     return mask
 
 def mask_color(image, color):
@@ -36,7 +36,7 @@ def mask_color(image, color):
 def invert_mask(mask):
     return cv2.bitwise_not(mask)
 
-def apply_mask(mask, image):
+def apply_mask(mask, image, bg_green=False):
     return cv2.bitwise_and(image, image, mask=mask)
 
 def edges(image, lower_threshold, upper_threshold):

@@ -5,8 +5,9 @@ import cv2
 from math import *
 import sys
 import time
+from typing import List
 
-from player.msg import *
+from player.msg import FieldComponent, FieldComponents, PolarVector2, ScreenPosition
 
 from field_components.field_components import *
 from visualization.screen_components import *
@@ -18,6 +19,7 @@ from list_utils.filtering import *
 from globals.tick import *
 from data_utils.laser_scan_utils import *
 
+
 CLASSES = {'pole': Pole,
            'yellowpuck': YellowPuck,
            'bluepuck': BluePuck,
@@ -26,7 +28,7 @@ CLASSES = {'pole': Pole,
            'robot': Robot}
 
 class FieldDetector:
-    def __init__(self, detection_function, screen):
+    def __init__(self, detection_function, screen: Screen):
         self.test_parameters = {}
         self.detection_function = detection_function
         self.avg_detection_time = 0
@@ -36,21 +38,21 @@ class FieldDetector:
         self.interval_start = 0
         self.printer_interval = 2
 
-        self.detected_objects = []
-        self.screen = screen
+        self.detected_objects: List[FieldObject] = []
+        self.screen: Screen = screen
 
     def detect(self, *args):
         self.detection_counter += 1
 
-        detect_start_time = time.time()
+        detect_start_time = time.perf_counter()
         detection_result = self.detection_function(*args)
-        detect_duration = time.time() - detect_start_time
+        detect_duration = time.perf_counter() - detect_start_time
 
         counter = min(self.counter_cap, self.detection_counter)
         self.avg_detection_time = (self.avg_detection_time * (counter - 1) + detect_duration) / counter
 
         if time.time() - self.interval_start >= self.printer_interval:
-            print(f"detection call {self.detection_counter}, detected {len(self.detected_objects)} average time (last {self.counter_cap}) {self.avg_detection_time}")
+            # print(f"detection call {self.detection_counter}, detected {len(self.detected_objects)} average time (last {self.counter_cap}) {self.avg_detection_time}")
             self.interval_start = time.time()
 
         return detection_result
@@ -96,12 +98,13 @@ class KinectDetector(FieldDetector):
 
     def detect_contours(self, base_class, rgb_image, depth_image):
         color_mask = imgops.mask_color(rgb_image, base_class.color)
+        color_mask = imgops.denoise(color_mask, COLOR_MASK_SMOOTHING)
         depth_masked_image = imgops.convert_gray2bgr(imgops.apply_mask(color_mask, depth_image))
-        depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING)
-
+        depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING, False)
+        
         edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
         edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
-
+        
         self.test_parameters["depth_masked_image"].set_value(depth_masked_image)
         self.test_parameters["edges"].set_value(edges)
             
@@ -111,19 +114,23 @@ class KinectDetector(FieldDetector):
             return None
         
         contours = imgops.get_inner_contours(*contours)
-        cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
-
+        #cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
+           
+        
         return contours
 
-    def detect_field_objects(self, base_class):
-        rgb_image = self.rgb_sub.get_image()
+    def detect_field_objects(self, base_class) -> bool:
+        rgb_image = self.rgb_sub.get_image()        
         depth_image = self.depth_sub.get_image()
-
+        
+        #cv2.fastNlMeansDenoisingColored(rgb_image, rgb_image, 8, 8, 7, 9)
+        #cv2.imshow("rgb_img_denoised", rgb_image)
+        
+        
         self.detected_objects.clear()
         self.screen.image = rgb_image
-
         contours = self.detect_contours(base_class, rgb_image, depth_image)
-
+            
         if contours is None:
             return False
 
@@ -134,15 +141,18 @@ class KinectDetector(FieldDetector):
             result = check_range(w*h, *base_class.area_detect_range)
             result &= check_range(w/h, *base_class.ratio_detect_range)
             return result
-        rects = filter_list(rects, filter_cb)
+        rects = filter_list(rects, filter_cb)     
+        
 
         field_objects = []
 
         for rect in rects:
             x, y, w, h = rect
-            cx = min(int(x + w/2), depth_image.shape[1])
-            cy = min(int(y + h/2), depth_image.shape[0])
-            r = depth_image[cy, cx]
+            image_w = depth_image.shape[1]    
+            image_h = depth_image.shape[0] 
+            cx = min(int(x + w/2), image_w)
+            cy = min(int(y + h/2), image_h)
+            r = depth_image[cy, cx] if SIMULATION_MODE else depth_image[cy, cx] / 1000
             if check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
                 field_objects.append(fo)
@@ -151,6 +161,7 @@ class KinectDetector(FieldDetector):
             field_objects = [field_objects[0].merge(*field_objects[1:], return_type=base_class)]
 
         self.detected_objects.extend(field_objects)
+        
 
         return True
     
@@ -207,7 +218,9 @@ if __name__ == '__main__':
     rospy.loginfo("Initialised ObjectDetector")
 
     args = rospy.myargv(argv=sys.argv)
-    testmode = args[1] if len(args) > 1 else True
+    testmode = False #args[1] if len(args) > 1 else True
+    rospy.loginfo("Testmode: " + str(testmode))
+
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
 
     kinect_det = KinectDetector(testmode)
@@ -215,16 +228,16 @@ if __name__ == '__main__':
 
     field_components_pub = rospy.Publisher("player/field_components", FieldComponents, queue_size=500)
 
-    found_objects = []
+    found_objects: List[FieldObject] = []
 
-    def run_kinect_detection():
+    def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():    
             found_objects.clear()
 
             for cls in detect_classes:
                 kinect_det.detect(cls)
                 found_objects.extend(kinect_det.detected_objects)
-    
+
             for obj in found_objects:
                 kinect_det.screen.draw_object(obj)
 
@@ -235,15 +248,15 @@ if __name__ == '__main__':
 
             return found_objects
         else:
-            rospy.loginfo("Waiting for images to process...")
+            rospy.loginfo("Waiting for kinect images to process...")
 
-    def run_laser_detection():       
+    def run_laser_detection() -> List[FieldObject]:       
         if laser_det.is_valid_data():
             found_objects.clear()
 
             laser_det.detect()
             found_objects.extend(laser_det.detected_objects)
-              
+
             draw_laser_points(laser_det.laser_sub.get_scan(), laser_det.screen, laser_det.laser_screen_rgb)
             
             for obj in found_objects:
@@ -263,18 +276,21 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
-    def combine_detection():
-        # objects = run_kinect_detection()
-        objects = run_laser_detection()
-        if objects is not None and len(objects) > 0:
-            field_components_pub.publish(FieldComponents(list([o.get_field_component() for o in objects])))
+    def combine_detection() -> None:
+        objects: List[FieldObject] = run_kinect_detection()
+        # objects = run_laser_detection()
+        if objects and len(objects) > 0:
+            field_components_pub.publish(FieldComponents(
+                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:3]),    #####
+                                None ) for o in objects]))
 
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            run_kinect_detection,
-                            run_laser_detection,
-                            # combine_detection
+                            # run_kinect_detection,
+                            # run_laser_detection,
+                            combine_detection
+                            # include_field_object
                             )
     
     imgticker = CVTicker(TICK_RATE)

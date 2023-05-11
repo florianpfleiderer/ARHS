@@ -1,0 +1,9 @@
+<launch>
+  <arg name="team" default="1"/>
+  <group ns="robot$(arg team)">
+    <group>
+      <node name="object_detector" pkg="player" type="object_detector.py" output="screen"/>
+      <node name="localiser_node" pkg="player" type="localiser_node.py" output="screen"/>
+    </group>
+  </group>
+</launch>

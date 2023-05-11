@@ -11,6 +11,7 @@ import numpy as np
 import field_components.field_components as fc
 from field_components.colors import Color
 from visualization.screen_utils import *
+from typing import Tuple
 
 class Screen:
     def __init__(self, name, dimensions, FOV, projection, origin_offset, angle_offset):
@@ -30,14 +31,14 @@ class Screen:
     def get_global_distance(self, local_distance):
         return cartesian_to_spherical(sum_vectors(spherical_to_cartesian(local_distance), self.origin_offset))
 
-    def get_rect_field_object(self, field_obj):
+    def get_rect_field_object(self, field_obj) -> Tuple:
         local_dist = self.get_local_distance(field_obj.spherical_distance)
         global_corner = sum_vectors(field_obj.spherical_distance, field_obj.half_size)
         local_corner = self.get_local_distance(global_corner)
         local_half_size = subtract_vectors(local_corner, local_dist)
         return self.get_rect((local_dist[2] - local_half_size[2], local_dist[2] + local_half_size[2], local_dist[1] - local_half_size[1], local_dist[1] + local_half_size[1]))
 
-    def get_rect(self, angles):
+    def get_rect(self, angles) -> Tuple:
         phi_min, phi_max, theta_min, theta_max = angles
         x = int(screen_angle_to_pos(- phi_max, self.dimensions[0], self.FOV[0], self.projection))
         y = int(screen_angle_to_pos(theta_min - 90, self.dimensions[1], self.FOV[1], self.projection))
@@ -45,7 +46,7 @@ class Screen:
         h = int(screen_angle_to_pos(theta_max - 90, self.dimensions[1], self.FOV[1], self.projection) - y)
         return x, y, w, h
     
-    def get_angles(self, rect):
+    def get_angles(self, rect) -> Tuple:
         x, y, w, h = rect
         phi_min = - screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection)
         phi_max = - screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
@@ -53,14 +54,14 @@ class Screen:
         theta_max = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) + 90
         return phi_min, phi_max, theta_min, theta_max
     
-    def get_center(self, rect):
+    def get_center(self, rect) -> Tuple:
         x, y, w, h = rect
         return int(x + w / 2), int(y + h / 2)
     
-    def get_center_field_object(self, field_obj):
+    def get_center_field_object(self, field_obj) -> Tuple:
         return self.get_center(self.get_rect_field_object(field_obj))
 
-    def draw_object(self, obj, draw_text=True):
+    def draw_object(self, obj, draw_text=True) -> None:
         if issubclass(type(obj), fc.FieldObject):
             rect = self.get_rect_field_object(obj)
             x, y, w, h = rect
@@ -88,18 +89,18 @@ class Screen:
         x, y, w, h = rect
         return w / h
     
-    def create_field_object(self, rect, r, obj_type):
+    def create_field_object(self, rect, r, obj_type: fc.FieldObject) -> fc.FieldObject:
         phi_min, phi_max, theta_min, theta_max = self.get_angles(rect)
         local_distance = (r, (theta_min + theta_max) / 2, (phi_min + phi_max) / 2)
         local_corner = (r, theta_max, phi_max)
 
-        global_distance = self.get_global_distance(local_distance)
+        global_distance = self.get_global_distance(local_distance) # spherical distance
         global_corner = self.get_global_distance(local_corner)
-        global_size = subtract_vectors(global_corner, global_distance)
+        global_size = subtract_vectors(global_corner, global_distance) # half size 
 
         return obj_type(global_distance, global_size)
 
-    def show_image(self):
+    def show_image(self) -> None:
         if self.image is not None:
             cv2.imshow(self.name, self.image)
 
