@@ -281,7 +281,7 @@ if __name__ == '__main__':
         # objects = run_laser_detection()
         if objects and len(objects) > 0:
             field_components_pub.publish(FieldComponents(
-                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:2]),    #####
+                [FieldComponent(o.color.__str__() , o.type, PolarVector2(*o.spherical_distance[:3]),    #####
                                 None ) for o in objects]))
 
     

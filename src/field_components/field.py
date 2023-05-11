@@ -2,10 +2,13 @@
 import rospy
 
 from typing import List, Tuple
+from math import pi
 
 from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, FieldObject
 from field_components.colors import Color
 from math_utils.field_calculation_functions import cosine_theorem, get_position
+from sensor_msgs.msg import LaserScan
+from globals.globals import *
 
 class Field(object):
     '''Singleton class representing the field.
@@ -191,8 +194,45 @@ class Field(object):
             # looking left
             return self.poles[2]
 
-
+    def pole_to_laser(self,pole: Pole, cur_laser: LaserScan) -> Tuple[float, float, float]:
+        ''' Transforms the pole positions to the laser scan frame. '''
+        direction_rad = pole.spherical_distance[2]*pi/180
         
+        index = int(len(cur_laser.ranges)/2 + direction_rad/cur_laser.angle_increment)
+        
+        dist_ind = int(len(cur_laser.ranges)*LASER_INDEX_MARGIN)
+
+        outer_pole_distances = cur_laser.ranges[index - dist_ind: index + dist_ind]
+        rospy.loginfo(f'Outer pole distance: {outer_pole_distances}')
+
+        dist_min = pole.spherical_distance[0] - 0.5
+        dist_max = pole.spherical_distance[0] + 0.5
+
+        pole_indices_array: float = []
+
+        for i in range(len(outer_pole_distances)):
+            rospy.loginfo(f'Outer pole distance: {outer_pole_distances[i]}')
+            if dist_min < outer_pole_distances[i] < dist_max:
+                pole_indices_array.append(i)
+        if pole_indices_array == []:
+            rospy.logwarn("Pole indices Array empty")
+            return
+        
+        rospy.loginfo(f'Pole indices: {pole_indices_array}')
+
+        pole_found_index = pole_indices_array[len(pole_indices_array) // 2]
+        rospy.loginfo(f'Pole found index: {pole_found_index}')
+        total_idx = index - dist_ind + pole_found_index
+
+        rospy.loginfo(f'Pole distance:' \
+                        f'{cur_laser.ranges[total_idx]}\n' \
+                        f'Angle to Pole rgb: ' \
+                        f'{pole.spherical_distance[2]}\n' \
+                        f'Angle to Pole laser: ' \
+                        f'{(total_idx - len(cur_laser.ranges)/2)*cur_laser.angle_increment*180/pi}')
+        
+        return cur_laser.ranges[total_idx], None, (total_idx - len(cur_laser.ranges)/2)*cur_laser.angle_increment*180/pi
+    
         
 
 

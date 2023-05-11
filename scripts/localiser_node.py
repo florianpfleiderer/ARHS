@@ -9,6 +9,7 @@ from typing import List
 from globals.tick import CallbackTicker
 from globals.globals import *
 from math_utils.vector_utils import tup3_from_polarvector2
+from math_utils.field_calculation_functions import get_position
 from player.msg import FieldComponents, FieldComponent, PolarVector2, ScreenPosition
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from field_components.field import Field
@@ -88,38 +89,15 @@ class LocaliserNode:
                 rospy.logwarn("No position")
                 return
             
+            # TODO auto detect left or right
             outer_pole: Pole = self.field.outer_pole(False)
+            mid_pole: Pole = self.field.poles[1]
 
-            direction_rad = outer_pole.spherical_distance[2]*pi/180
-            
-            index = int(180 + direction_rad/cur_laser.angle_increment)
+            outer_pole.spherical_distance = self.field.pole_to_laser(outer_pole, cur_laser)
+            mid_pole.spherical_distance = self.field.pole_to_laser(mid_pole, cur_laser)
 
-            outer_pole_distances = cur_laser.ranges[index - 5: index + 5]
-            rospy.loginfo(f'Outer pole distance: {outer_pole_distances}')
+            pos = get_position(mid_pole, outer_pole, None)
 
-            dist_min = outer_pole.spherical_distance[0] - 0.5
-            dist_max = outer_pole.spherical_distance[0] + 0.5
-
-            pole_indices_array: float = []
-
-            for i in range(len(outer_pole_distances)):
-                rospy.loginfo(f'Outer pole distance: {outer_pole_distances[i]}')
-                if dist_min < outer_pole_distances[i] < dist_max:
-                    pole_indices_array.append(i)
-
-            pole_found_index = pole_indices_array[len(pole_indices_array) // 2]
-            rospy.loginfo(f'Pole found index: {pole_found_index}')
-            total_idx = index - 5 + pole_found_index
-            
-            rospy.loginfo(f'Pole indices: {pole_indices_array}')
-
-            rospy.loginfo(f'Outer pole distance:' \
-                          f'{cur_laser.ranges[total_idx]}\n' \
-                          f'Angle to Pole rgb: ' \
-                          f'{outer_pole.spherical_distance[2]}\n' \
-                          f'Angle to Pole laser: ' \
-                          f'{(total_idx - 180)*cur_laser.angle_increment*180/pi}')
-            
             point = Point(pos[0], pos[1], 0)
             quaternion = Quaternion(0, 0, 1, 0)
             self.position_pub.publish(Pose(point, quaternion))
