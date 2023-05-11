@@ -58,11 +58,12 @@ catkin_python_setup()
 # Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  PolarVector2.msg
+  # PolarVector2.msg
   FieldComponent.msg
   FieldComponents.msg
-  ScreenPosition.msg
-  PolarVector3.msg
+  Destination.msg
+  # ScreenPosition.msg
+  # PolarVector3.msg
 )
 
 ## Generate services in the 'srv' folder

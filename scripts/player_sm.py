@@ -13,34 +13,20 @@ class LocomotionSM(smach.StateMachine):
     def __init__(self):
         smach.StateMachine.__init__(self, outcomes=["succeeded", "preempted", "aborted"])
 
-        self.field_components_sub = rospy.Subscriber("player/field_components", FieldComponents, self.field_components_cb)
-        self.userdata.field_components = []
-        self.userdata.destination_index = -1
-
         with self:
             self.add("FIND_DESTINATION",
                         SimpleActionState("find_destination",
-                                          FindDestinationAction,
-                                          goal_slots=["field_components"]),
+                                          FindDestinationAction),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
                                      "preempted": "FIND_DESTINATION",
-                                     "aborted": "FIND_DESTINATION"},    
-                        remapping={"field_components": "field_components",
-                                   "destination_index": "destination_index"})
+                                     "aborted": "FIND_DESTINATION"})
               
             self.add("MOVE_TO_DESTINATION",
                         SimpleActionState("move_to_destination",
-                                          MoveToDestinationAction,
-                                          goal_slots=["field_components", "destination_index"]),
+                                          MoveToDestinationAction),
                         transitions={"succeeded": "FIND_DESTINATION",
                                      "preempted": "FIND_DESTINATION",
-                                     "aborted": "FIND_DESTINATION"},
-                        remapping={"field_components": "field_components",
-                                   "destination_index": "destination_index"})
-
-
-    def field_components_cb(self, msg):
-        self.userdata.field_components = msg.field_components
+                                     "aborted": "MOVE_TO_DESTINATION"})
     
 class TestPublisher:
     def __init__(self):
