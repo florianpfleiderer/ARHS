@@ -77,21 +77,35 @@ class TupleVector3:
     def __rfloordiv__(self, factor):
         return self.__floordiv__(factor)
 
-    def __add__(self, tuple_vector):
-        vec = TupleVector3((self.tuple[0] + tuple_vector.tuple[0],
-                            self.tuple[1] + tuple_vector.tuple[1],
-                            self.tuple[2] + tuple_vector.tuple[2]))
-        vec.coordinates = self.coordinates
+    def __add__(self, summand):
+        if type(summand) is TupleVector3:
+            vec = TupleVector3((self.tuple[0] + summand.tuple[0],
+                                self.tuple[1] + summand.tuple[1],
+                                self.tuple[2] + summand.tuple[2]))
+            vec.coordinates = self.coordinates
+        elif type(summand) is TupleRotator3:
+            value = self.convert(Coordinate.SPHERICAL)
+            vec = TupleVector3((value[0],
+                                value[1] + summand.tuple[1],
+                                value[2] + summand.tuple[2]), Coordinate.SPHERICAL)
+            vec.coordinates = self.coordinates
         return vec
     
     def __radd__(self, tuple_vector):
         return self.__add__(tuple_vector)
 
-    def __sub__(self, tuple_vector):
-        vec = TupleVector3((self.tuple[0] - tuple_vector.tuple[0],
-                            self.tuple[1] - tuple_vector.tuple[1],
-                            self.tuple[2] - tuple_vector.tuple[2]))
-        vec.coordinates = self.coordinates
+    def __sub__(self, summand):
+        if type(summand) is TupleVector3:
+            vec = TupleVector3((self.tuple[0] - summand.tuple[0],
+                                self.tuple[1] - summand.tuple[1],
+                                self.tuple[2] - summand.tuple[2]))
+            vec.coordinates = self.coordinates
+        elif type(summand) is TupleRotator3:
+            value = self.convert(Coordinate.SPHERICAL)
+            vec = TupleVector3((value[0],
+                                value[1] - summand.tuple[1],
+                                value[2] - summand.tuple[2]), Coordinate.SPHERICAL)
+            vec.coordinates = self.coordinates
         return vec
 
     def __rsub__(self, tuple_vector):
@@ -144,6 +158,22 @@ class TupleVector3:
     def from_vector3(cls, vector3, coordinates=Coordinate.CARTESIAN):
         return cls((vector3.x, vector3.y, vector3.z), coordinates)
 
+class TupleRotator3:
+    def __init__(self, value=(0, 0, 0)):
+        self.tuple = value
+
+    def get_value(self):
+        return self.tuple
+
+    def __str__(self):
+        return f"{chr(10)}" + \
+               f"roll {self.tuple[0]: >6.2f}{chr(10)}" + \
+               f"pitch  {self.tuple[1]: >6.2f}{chr(10)}" + \
+               f"yaw {self.tuple[2]: >6.2f}"
+
+    @classmethod
+    def from_rotator3(cls, rotator3, coordinates=Coordinate.CARTESIAN):
+        return cls((rotator3.alpha, rotator3.beta, rotator3.gamma), coordinates)
 
 def convert_vector(vector, from_coordinates, to_coordinates):
     from_vector = ()
@@ -178,7 +208,7 @@ def spherical_to_cartesian(spherical_vector):
 def cartesian_to_spherical(cartesian_vector):
     x, y, z = cartesian_vector
     r = math.sqrt(x ** 2 + y ** 2 + z ** 2)
-    theta = acosd(z / r)
+    theta = 0 if r == 0 else acosd(z / r)
     phi = atan2d(y, x)
     return (r, theta, phi)
 

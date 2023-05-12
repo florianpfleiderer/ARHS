@@ -159,6 +159,7 @@ class LaserScanDetector(FieldDetector):
         super().__init__(self.detect_objects, Screen.LaserScreen("laser image"))
         self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + LASER_PATH)
         self.rgb_sub = ImageSubscriber("laser rgb image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
+        self.laser_handler = LaserScanHandler(self.laser_sub.get_scan())
 
         self.testmode = testmode
         self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
@@ -170,21 +171,24 @@ class LaserScanDetector(FieldDetector):
     def is_valid_data(self):
         return self.laser_sub.is_valid()    
     
-    def detect_contours(self, laser_scan, laser_ranges):
-        object_ranges = detect_contours(laser_scan, laser_ranges)
+    def detect_contours(self, laser_scan_handler: LaserScanHandler):
+        edges = detect_edges(laser_scan_handler)
+        draw_edges(self.laser_handler, edges, self.screen)
+        object_ranges = detect_contours(laser_scan_handler, edges)
 
-        def filter_cb(element):
-            return abs(element[1] - element[0]) < 10
+        def filter_cb(element: LaserContour):
+            return abs(element.end_angle - element.start_angle) < 10
         object_contours = filter_list(object_ranges, filter_cb)
 
         return object_contours
        
     def detect_objects(self):
         laser_scan = self.laser_sub.get_scan()
+        self.laser_handler.update(laser_scan)
         rgb_image = self.rgb_sub.get_image()
         self.laser_screen_rgb.image = rgb_image
 
-        laser_ranges = limit_ranges(laser_scan.ranges, *LASER_RANGE)
+        laser_ranges = self.laser_handler.get_ranges()
         laser_ranges = range_denoise(laser_ranges, 5)
 
         laser_image = imgops.laser_scan_to_image(laser_scan, self.screen.dimensions)
@@ -192,13 +196,10 @@ class LaserScanDetector(FieldDetector):
 
         self.detected_objects.clear()
 
-        edges = detect_edges(laser_scan, laser_ranges)
-        draw_edges(laser_scan, edges, self.screen)
-
-        object_ranges = self.detect_contours(laser_scan, laser_ranges)
+        object_ranges = self.detect_contours(self.laser_handler)
 
         for contour in object_ranges:
-            fo = object_from_contour(contour, laser_scan, self.screen)
+            fo = object_from_contour(contour, self.laser_handler, self.screen)
             if fo is not None:
                 self.add_result(fo)
 
@@ -215,6 +216,7 @@ if __name__ == '__main__':
 
     kinect_det = KinectDetector(testmode)
     laser_det = LaserScanDetector(testmode)
+    top_screen = Screen.BirdEyeScreen("top_view")
 
     field_components_pub = rospy.Publisher("player/field_components", FieldComponents, queue_size=500)
 
@@ -228,10 +230,14 @@ if __name__ == '__main__':
                 kinect_det.detect(cls)
                 found_objects.extend(kinect_det.detected_objects)
     
+            top_screen.image = empty_image(top_screen.dimensions)
+
             for obj in found_objects:
                 kinect_det.screen.draw_object(obj)
+                top_screen.draw_object(obj, False)
 
             kinect_det.screen.show_image()
+            top_screen.show_image()
 
             if testmode:    
                 kinect_det.show_test_parameters()
@@ -247,16 +253,20 @@ if __name__ == '__main__':
             laser_det.detect()
             found_objects.extend(laser_det.detected_objects)
               
-            draw_laser_points(laser_det.laser_sub.get_scan(), laser_det.screen, laser_det.laser_screen_rgb)
+            laser_det.laser_handler.draw_laser_points(laser_det.screen, laser_det.laser_screen_rgb)
             
+            top_screen.image = empty_image(top_screen.dimensions)
+
             for obj in found_objects:
                 laser_det.screen.draw_object(obj)
                 laser_det.laser_screen_rgb.draw_object(obj)
+                top_screen.draw_object(obj)
 
             # laser_det.screen.image = imgops.scale(laser_det.screen.image, 3)
 
             laser_det.screen.show_image()
             laser_det.laser_screen_rgb.show_image()
+            top_screen.show_image()
 
 
             if testmode:

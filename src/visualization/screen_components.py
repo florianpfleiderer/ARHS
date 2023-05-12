@@ -11,22 +11,23 @@ import numpy as np
 import field_components.field_components as fc
 from field_components.colors import Color
 from visualization.screen_utils import *
+from typing import Tuple
 
 class Screen:
     def __init__(self, name, dimensions, FOV, projection, origin_offset, angle_offset):
-        self.name = name
-        self.origin_offset = origin_offset
-        self.dimensions = dimensions
-        self.FOV = FOV
-        self.projection = projection
-        self.angle_offset = angle_offset
+        self.name: str = name
+        self.origin_offset: TupleVector3 = origin_offset
+        self.dimensions: Tuple = dimensions
+        self.FOV: Tuple = FOV
+        self.projection: ProjectionType = projection
+        self.angle_offset: TupleRotator3 = angle_offset
         self.image = empty_image(dimensions)
 
     def get_local_distance(self, distance) -> TupleVector3:
-        return distance - self.origin_offset
+        return distance - self.origin_offset - self.angle_offset
     
     def get_global_distance(self, local_distance) -> TupleVector3:
-        return local_distance + self.origin_offset
+        return local_distance + self.origin_offset + self.angle_offset
 
     def get_rect(self, obj):
         if type(obj) is tuple:
@@ -47,11 +48,12 @@ class Screen:
             y_ang = screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection)
             w_ang = screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection) - x_ang
             h_ang = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
+            
         elif issubclass(type(obj), fc.FieldObject):
             corner_min = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
             corner_max = self.get_local_distance(obj.distance + obj.half_size).convert(Coordinate.SPHERICAL)
             
-            x_ang = - corner_max[2] # alpha max
+            x_ang = - corner_max[2]# alpha max
             y_ang = corner_min[1] - 90 # theta min
             w_ang = - corner_min[2] - x_ang # alpha min
             h_ang = corner_max[1] - 90 - y_ang # theta max
@@ -115,7 +117,7 @@ class Screen:
 
             if draw_center:
                 cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default, -1)
-                
+
             if draw_text:
                 cv2.putText(self.image, str(obj), (x, int(y - 50 * CV2_DEFAULT_FONT_SCALE)),
                             CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
@@ -126,15 +128,19 @@ class Screen:
                 
     @classmethod
     def KinectScreen(cls, name):
-        return cls(name, KINECT_DIMENSIONS, KINECT_FOV, ProjectionType.PLANAR, TupleVector3(KINECT_OFFSET), TupleVector3(KINECT_ANGLE, Coordinate.SPHERICAL))
+        return cls(name, KINECT_DIMENSIONS, KINECT_FOV, ProjectionType.PLANAR, TupleVector3(KINECT_OFFSET), TupleRotator3(KINECT_ANGLE))
     
     @classmethod
     def LaserScreen(cls, name):
-        return cls(name, LASER_DIMENSIONS, LASER_FOV, ProjectionType.SPHERICAL, TupleVector3(LASER_OFFSET), TupleVector3(coordinates=Coordinate.SPHERICAL))
+        return cls(name, LASER_DIMENSIONS, LASER_FOV, ProjectionType.SPHERICAL, TupleVector3(LASER_OFFSET), TupleRotator3())
     
     @classmethod
     def OriginScreen(cls, name):
-        return cls(name, (0, 0), (360, 360), ProjectionType.SPHERICAL, TupleVector3(), TupleVector3(coordinates=Coordinate.SPHERICAL))
+        return cls(name, (0, 0), (360, 360), ProjectionType.SPHERICAL, TupleVector3(), TupleRotator3())
+    
+    @classmethod
+    def BirdEyeScreen(cls, name):
+        return cls(name, (640, 480), (120, 80), ProjectionType.SPHERICAL, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
 
 class ImageViewer:
     def __init__(self, name):
