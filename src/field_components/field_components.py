@@ -4,23 +4,17 @@ from field_components.colors import Color
 from globals.globals import *
 from player.msg import *
 from math_utils.vector_utils import *
+from typing import *
 
 class FieldObject:
     def __init__(self, color, type, distance, half_size):
-        self.color = color
+        self.color: Color = color
         self.type = type
-        self.distance = distance
-        self.half_size = half_size
-
+        self.distance: TupleVector3 = distance
+        self.half_size: TupleVector3 = half_size
+        self.position: TupleVector3 = None
         self.area_detect_range = (None, None)
         self.ratio_detect_range = (None, None)
-
-    def get_angles(self):
-        theta_min = self.distance.tuple[1] - self.half_size.tuple[1]
-        theta_max = self.distance.tuple[1] + self.half_size.tuple[1]
-        alpha_min = self.distance.tuple[2] - self.half_size.tuple[2]
-        alpha_max = self.distance.tuple[2] + self.half_size.tuple[2]
-        return alpha_min, alpha_max, theta_min, theta_max
 
     def merge(self, *field_objects, return_type):
         min_corner = self.distance + self.half_size
@@ -99,3 +93,15 @@ class GenericObject(FieldObject):
 
     def __init__(self, distance, half_size):
         super().__init__(Color.MAGENTA, "generic", distance, half_size)
+
+class RisingEdge(FieldObject):
+    color = Color.GREEN
+
+    def __init__(self, distance, half_size):
+        super().__init__(Color.GREEN, "rising edge", distance, half_size)
+
+class FallingEdge(FieldObject):
+    color = Color.RED
+
+    def __init__(self, distance, half_size):
+        super().__init__(Color.RED, "falling edge", distance, half_size)

@@ -71,6 +71,7 @@ def laser_scan_to_image(laser_scan: LaserScan, dimensions):
         else:
             image[:, i] = (0, 0, 50)
 
+# draw the field of view of the kinect and the scan angle limits
         increment = 180 * laser_scan.angle_increment / pi
         angle = 180 + i * increment
         limit = -increment

@@ -4,6 +4,7 @@ from math import *
 from globals.globals import *
 from visualization.screen_components import *
 from field_components.field_components import *
+from sensor_msgs.msg import LaserScan
 
 def laser_phi(i, laser_scan):
     return 180 * (i * laser_scan.angle_increment / pi + 1)
@@ -36,24 +37,25 @@ def range_denoise(ranges, kernel):
 def limit_ranges(ranges, *bounds):
     return [min(max(r, bounds[0]), bounds[1]) for r in ranges]
 
-def draw_laser_points(laser_scan, laser_screen, rgb_screen):
+def draw_laser_points(laser_scan: LaserScan, laser_screen: Screen, rgb_screen: Screen):
     for i, r in enumerate(laser_scan.ranges):
         if check_range(r, *LASER_RANGE):
-            phi = laser_phi(i, laser_scan)
-            theta = 90
-            fo = laser_screen.create_field_object(laser_screen.get_rect((phi, phi, theta, theta)), r, LaserPoint)
+            x_ang = - laser_phi(i, laser_scan)
+            y_ang = 0
+            fo = laser_screen.create_field_object(laser_screen.get_rect((x_ang, y_ang, 0, 0)), r, LaserPoint)
             laser_screen.draw_object(fo, False)
-            if check_range(phi, rgb_screen.FOV[0] / 2, - rgb_screen.FOV[0] / 2):
+            if check_range(x_ang, - rgb_screen.FOV[0] / 2, rgb_screen.FOV[0] / 2):
                 rgb_screen.draw_object(fo, False)
 
 
-def detect_edges(laser_scan, laser_ranges):       
+def detect_edges(laser_scan, laser_ranges):
+    # edge = (index, is_rising, range_diff)       
     edges = []
     max_scan_angle = SCAN_MAX_ANGLE
     min_index = laser_index(max_scan_angle, laser_scan)
     max_index = laser_index(-max_scan_angle, laser_scan)
 
-    for index in range(min_index, max_index, -1):
+    for index in range(min_index, max_index):
         range_diff = laser_ranges[index] - laser_ranges[index + 1]
         if range_diff > LASER_EDGE_THRESHOLD:
             edges.append((index, True, range_diff))
@@ -63,39 +65,56 @@ def detect_edges(laser_scan, laser_ranges):
 
     return edges
 
-def detect_contours(laser_scan, laser_ranges):
+def draw_edges(laser_scan, edges, laser_screen: Screen):
+    for edge in edges:
+        x_ang = - laser_phi(edge[0], laser_scan)
+        y_ang = -laser_screen.FOV[1] / 2
+        w_ang = 0
+        h_ang = laser_screen.FOV[1] - 5
+        fo = laser_screen.create_field_object(laser_screen.get_rect((x_ang, y_ang, w_ang, h_ang)), laser_scan.range_max * 100, RisingEdge if edge[1] else FallingEdge)
+        laser_screen.draw_object(fo, False, False)
+
+def detect_contours(laser_scan, laser_ranges, edges):
+    # contour = (max_phi, min_phi)
+    #
+    # R = rising edge, F = falling edge
+    # detection algorithm:
+    # example:
+    # RRRFFFFRRRFFFFFRRRRFRFFRRF
+    # 1. find all RF pairs
+    # RR(RF)FFFRR(RF)FFFFRRR(RF)(RF)FRRF
+    # 2. expand pairs into bigger islands [nRmF]
+    # R[RRFF]FFR[RRFF]FFFRR[RRF][RFF]RRF
+    # 3. continue expanding until biggest islands are found
+    # [RRRFFFF][RRRFFFFF][RRRRF][RFF][RRF]
+    #
+    # result: 17 objects
+    # 
+    # By ensuring that the sequence starts with R and ends with F, all edges will be accounted for.
+
     contours = []
-    prev_range = LASER_RANGE[1]
-    for i, r in enumerate(laser_ranges):
-        if abs(r - prev_range) > LASER_EDGE_THRESHOLD:
-            angle = laser_phi(i, laser_scan) - laser_scan.angle_increment * 90 / pi
-            if len(contours) > 0 and contours[len(contours) - 1][1] is None:
-                contours[len(contours) - 1][1] = angle
 
-            if r <= LASER_RANGE[1] - 0.1 and r < prev_range:
-                contours.append([angle, None])
-        prev_range = r
 
-    if contours[len(contours) - 1][1] is None:
-        contours[len(contours) - 1][1] = SCAN_MAX_ANGLE
 
     return contours
 
-def object_from_contour(contour, laser_scan, screen, object_type=GenericObject):
+def object_from_contour(contour, laser_scan: LaserScan, screen: Screen, object_type=GenericObject):
     max_phi, min_phi = contour
     center_phi = (max_phi + min_phi) / 2
     center_index = laser_index(center_phi, laser_scan)
 
     d = laser_scan.ranges[center_index]
 
+    x_ang = - max_phi
+    w_ang = max_phi - min_phi
+
     laser_height = LASER_OFFSET[2]
-    
-    center_theta = 90
-    min_theta = center_theta - atand(0.3 / d)
-    max_theta = center_theta + atand(laser_height / d)
+    y_ang_center = 90
+    y_ang_min = y_ang_center - atand(0.3 / d)
+    y_ang_max = y_ang_center + atand(laser_height / d)
 
     if check_range(d, *LASER_RANGE):
-        rect = screen.get_rect((min_phi, max_phi, min_theta, max_theta)) 
+        rect = screen.get_rect((x_ang, y_ang_min, w_ang, y_ang_max - y_ang_min)) 
         return screen.create_field_object(rect, d, object_type)
 
 def test_detection():

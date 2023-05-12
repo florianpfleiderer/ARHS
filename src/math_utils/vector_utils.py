@@ -25,63 +25,77 @@ class TupleVector3:
 
     def __mul__(self, factor):
         if type(factor) is TupleVector3:
-            return TupleVector3((self.tuple[0] * factor.tuple[0],
-                                 self.tuple[1] * factor.tuple[1],
-                                 self.tuple[2] * factor.tuple[2]),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] * factor.tuple[0],
+                                self.tuple[1] * factor.tuple[1],
+                                self.tuple[2] * factor.tuple[2]))
+            vec.coordinates = self.coordinates
+            return vec
         
         else:
-            return TupleVector3((self.tuple[0] * factor,
-                                 self.tuple[1] * factor,
-                                 self.tuple[2] * factor),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] * factor,
+                                self.tuple[1] * factor,
+                                self.tuple[2] * factor))
+            vec.coordinates = self.coordinates
+            return vec
         
     def __rmul__(self, factor):
         return self.__mul__(factor)
     
     def __truediv__(self, factor):
         if type(factor) is TupleVector3:
-            return TupleVector3((self.tuple[0] / factor.tuple[0],
-                                 self.tuple[1] / factor.tuple[1],
-                                 self.tuple[2] / factor.tuple[2]),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] / factor.tuple[0],
+                                self.tuple[1] / factor.tuple[1],
+                                self.tuple[2] / factor.tuple[2]))
+            vec.coordinates = self.coordinates
+            return vec
         
         else:
-            return TupleVector3((self.tuple[0] / factor,
-                                 self.tuple[1] / factor,
-                                 self.tuple[2] / factor),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] / factor,
+                                self.tuple[1] / factor,
+                                self.tuple[2] / factor))
+            vec.coordinates = self.coordinates
+            return vec
         
     def __rtruediv__(self, factor):
         return self.__truediv__(factor)
     
     def __floordiv__(self, factor):
         if type(factor) is TupleVector3:
-            return TupleVector3((self.tuple[0] // factor.tuple[0],
-                                 self.tuple[1] // factor.tuple[1],
-                                 self.tuple[2] // factor.tuple[2]),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] // factor.tuple[0],
+                                self.tuple[1] // factor.tuple[1],
+                                self.tuple[2] // factor.tuple[2]))
+            vec.coordinates = self.coordinates
+            return vec
         
         else:
-            return TupleVector3((self.tuple[0] // factor,
-                                 self.tuple[1] // factor,
-                                 self.tuple[2] // factor),
-                                 self.coordinates)
+            vec = TupleVector3((self.tuple[0] // factor,
+                                self.tuple[1] // factor,
+                                self.tuple[2] // factor))
+            vec.coordinates = self.coordinates
+            return vec
         
     def __rfloordiv__(self, factor):
         return self.__floordiv__(factor)
 
     def __add__(self, tuple_vector):
-        return TupleVector3((self.tuple[0] + tuple_vector.tuple[0],
-                             self.tuple[1] + tuple_vector.tuple[1],
-                             self.tuple[2] + tuple_vector.tuple[2]),
-                             self.coordinates)
+        vec = TupleVector3((self.tuple[0] + tuple_vector.tuple[0],
+                            self.tuple[1] + tuple_vector.tuple[1],
+                            self.tuple[2] + tuple_vector.tuple[2]))
+        vec.coordinates = self.coordinates
+        return vec
+    
+    def __radd__(self, tuple_vector):
+        return self.__add__(tuple_vector)
 
     def __sub__(self, tuple_vector):
-        return TupleVector3((self.tuple[0] - tuple_vector.tuple[0],
-                             self.tuple[1] - tuple_vector.tuple[1],
-                             self.tuple[2] - tuple_vector.tuple[2]),
-                             self.coordinates)
+        vec = TupleVector3((self.tuple[0] - tuple_vector.tuple[0],
+                            self.tuple[1] - tuple_vector.tuple[1],
+                            self.tuple[2] - tuple_vector.tuple[2]))
+        vec.coordinates = self.coordinates
+        return vec
+
+    def __rsub__(self, tuple_vector):
+        return self.__sub__(tuple_vector)
 
     def __lt__(self, tuple_vector):
         return (self.tuple[0] < tuple_vector.tuple[0] and
@@ -117,7 +131,11 @@ class TupleVector3:
         pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
         pref_y = "y" if self.coordinates == Coordinate.CARTESIAN else "phi" if self.coordinates == Coordinate.CYLINDRICAL else "theta"
         pref_z = "z" if self.coordinates != Coordinate.SPHERICAL else "alpha"
-        return f"{pref_x}: {round(self.tuple[0], 2)}, {pref_y}: {round(self.tuple[1], 2)}, {pref_z}: {round(self.tuple[2], 2)}"
+        value = self.convert()
+        return f"{chr(10)}" + \
+               f"{pref_x: >10} {value[0]: >6.2f}{chr(10)}" + \
+               f"{pref_y: >10} {value[1]: >6.2f}{chr(10)}" + \
+               f"{pref_z: >10} {value[2]: >6.2f}"
 
     def make_vector3(self):
         return Vector3(*self.tuple)
@@ -178,3 +196,19 @@ if __name__ == "__main__":
     print(v - v2)
     print(v * v2)
     print(v * 10.5)
+
+    print("-- Test Conversion --")
+    v = (1, 0, 0)
+    print(convert_vector(v, Coordinate.CARTESIAN, Coordinate.SPHERICAL))
+    v = (1, 90, 0)
+    print(convert_vector(v, Coordinate.SPHERICAL, Coordinate.CARTESIAN))
+
+    print("--")
+    v = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
+    print(v.tuple)
+    print(v.value())
+    print(v.convert())
+    print(v)
+    v2 = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
+    print(v + v2)
+    print(v * 2)

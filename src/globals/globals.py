@@ -22,11 +22,11 @@ CV2_DEFAULT_FONT_SCALE = 0.25
 CV2_DEFAULT_THICKNESS = 1
 
 LASER_OFFSET = (0.1, 0.0, 0.28) if SIMULATION_MODE else (0.09, 0.0, 0.3)
-LASER_EDGE_THRESHOLD = 0.1
+LASER_EDGE_THRESHOLD = 0.2
 SCAN_MIN_ANGLE = -135
 SCAN_MAX_ANGLE = 135
 LASER_RANGE = (0, 6.0)
-LASER_FOV = (360, 180)
+LASER_FOV = (360, 90)
 LASER_DIMENSIONS = (1000, 300)
 LASER_MAX_OBJECT_SIZE = 0.8
 
@@ -49,3 +49,19 @@ ATTRACTION_FACTOR = 0.1
 REPULSION_FACTOR = 0.1
 TARGET_REACHED_R_THRESHOLD = 0.1
 TARGET_REACHED_THETA_THRESHOLD = 0.1
+
+
+# Laser scan:
+# header: 
+#   seq: 1436
+#   stamp: 
+#     secs: 1412
+#     nsecs:  14000000
+#   frame_id: "robot1/front_laser"
+# angle_min: 3.141590118408203              left
+# angle_max: -3.1241400241851807            right
+# angle_increment: -0.017453286796808243    clockwise (seen from above)
+# time_increment: 0.0
+# scan_time: 0.0
+# range_min: 0.03999999910593033
+# range_max: 6.0

@@ -192,6 +192,9 @@ class LaserScanDetector(FieldDetector):
 
         self.detected_objects.clear()
 
+        edges = detect_edges(laser_scan, laser_ranges)
+        draw_edges(laser_scan, edges, self.screen)
+
         object_ranges = self.detect_contours(laser_scan, laser_ranges)
 
         for contour in object_ranges:
@@ -273,8 +276,8 @@ if __name__ == '__main__':
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
                             # run_kinect_detection,
-                            # run_laser_detection,
-                            combine_detection
+                            run_laser_detection,
+                            # combine_detection
                             )
     
     imgticker = CVTicker(TICK_RATE)
