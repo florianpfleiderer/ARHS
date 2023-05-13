@@ -24,10 +24,10 @@ class Screen:
         self.image = empty_image(dimensions)
 
     def get_local_distance(self, distance) -> TupleVector3:
-        return distance - self.origin_offset - self.angle_offset
+        return distance - self.origin_offset - self.angle_offset 
     
     def get_global_distance(self, local_distance) -> TupleVector3:
-        return local_distance + self.origin_offset + self.angle_offset
+        return local_distance + self.angle_offset + self.origin_offset
 
     def get_rect(self, obj):
         if type(obj) is tuple:
@@ -39,7 +39,7 @@ class Screen:
         y = round(screen_angle_to_pos(y_ang, self.dimensions[1], self.FOV[1], self.projection))
         w = round(screen_angle_to_pos(x_ang + w_ang, self.dimensions[0], self.FOV[0], self.projection)) - x
         h = round(screen_angle_to_pos(y_ang + h_ang, self.dimensions[1], self.FOV[1], self.projection)) - y
-        return x, y, w, h
+        return x, y, abs(w), abs(h)
     
     def get_angles(self, obj):
         if type(obj) is tuple:
@@ -48,7 +48,7 @@ class Screen:
             y_ang = screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection)
             w_ang = screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection) - x_ang
             h_ang = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
-            
+
         elif issubclass(type(obj), fc.FieldObject):
             corner_min = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
             corner_max = self.get_local_distance(obj.distance + obj.half_size).convert(Coordinate.SPHERICAL)
@@ -70,7 +70,7 @@ class Screen:
         if type(obj) is tuple:
             x, y, w, h = obj
         elif issubclass(type(obj), fc.FieldObject):
-            x, y, w, h = self.get_rect_field_object(obj)
+            x, y, w, h = self.get_rect(obj)
         return w * h
     
     def calculate_screen_ratio(self, obj):
@@ -113,6 +113,14 @@ class Screen:
             #     return
             
             x, y, w, h = rect
+            if w < 0 or h < 0:
+                rospy.logerr(f"Negative width or height: {w} x {h}, field object: {obj}")
+                return
+            
+            if w > self.dimensions[0] or h > self.dimensions[1]:
+                rospy.logerr(f"Object is too big: {w} x {h}, field object: {obj}")
+                return
+            
             cv2.rectangle(self.image, (x, y), (x+w, y+h), obj.color.default, 1)
 
             if draw_center:
@@ -140,7 +148,7 @@ class Screen:
     
     @classmethod
     def BirdEyeScreen(cls, name):
-        return cls(name, (640, 480), (120, 80), ProjectionType.SPHERICAL, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+        return cls(name, (640, 480), KINECT_FOV, ProjectionType.SPHERICAL, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
 
 class ImageViewer:
     def __init__(self, name):
@@ -244,7 +252,36 @@ def laser_screen_test():
     while True:
         cv2.waitKey(10)
 
+def birdeye_screen_test():
+    sc = Screen.BirdEyeScreen("BirdEye")
+    center_x = 320
+    center_y = 240
+
+    dist = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
+    fo = fc.GenericObject(dist, TupleVector3((1, 1, -1), Coordinate.SPHERICAL))
+
+    for i in range(-180, 180, 10):
+        fo = fc.GenericObject(TupleVector3((1, 90, i), Coordinate.SPHERICAL), TupleVector3((1, 1, -1), Coordinate.SPHERICAL))
+        print(fo.distance.convert())
+        sc.draw_object(fo, False)
+        sc.show_image()
+        cv2.waitKey(10)
+
+    print(sc.get_local_distance(dist))
+    print(sc.get_global_distance(TupleVector3((1, 100, 0), Coordinate.SPHERICAL)))
+
+    test(sc.get_local_distance(sc.get_global_distance(dist)), dist)
+    test(sc.get_local_distance(TupleVector3((0, 0, 0), Coordinate.SPHERICAL)).value(), (10, 90, 0))
+
+    test((TupleVector3((0, 0, 0)) - TupleVector3((0, 0, 10))).convert(Coordinate.SPHERICAL), (10, 90, 0))
+
+    # sc.draw_object(fo)
+    sc.show_image()
+    while True:
+        cv2.waitKey(10)
+
 # test screen object creation and correct visualization
 if __name__ == "__main__":
     # kinect_screen_test()
-    laser_screen_test()
+    # laser_screen_test()
+    birdeye_screen_test()

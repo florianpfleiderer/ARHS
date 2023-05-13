@@ -135,7 +135,7 @@ def detect_contours(laser_scan: LaserScanHandler, edges: List[LaserEdge]):
         edges.insert(0, LaserEdge(0, SCAN_MAX_ANGLE, True, False, -edges[0].range_diff))
 
     if edges[-1].is_rising:
-        edges.append(LaserEdge(laser_scan.get_usable_scan_range[0], SCAN_MIN_ANGLE, False, True, -edges[-1].range_diff))
+        edges.append(LaserEdge(laser_scan.get_usable_scan_range()[0], SCAN_MIN_ANGLE, False, True, -edges[-1].range_diff))
 
     for i, edge in enumerate(edges[:-1]):
         if edge.is_rising and edges[i+1].is_falling:

@@ -220,24 +220,31 @@ if __name__ == '__main__':
 
     field_components_pub = rospy.Publisher("player/field_components", FieldComponents, queue_size=500)
 
-    found_objects = []
+    screens: List[Screen] = []
+    objects: List[FieldObject] = []
+
+    def init_detection_cycle():
+        screens.clear()
+        objects.clear()
+
+        screens.append(top_screen)
+        top_screen.image = empty_image(top_screen.dimensions)
+        draw_fov_bird_eye(KINECT_FOV, top_screen)
+        draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
     def run_kinect_detection():
-        if kinect_det.is_valid_data():    
-            found_objects.clear()
+        if kinect_det.is_valid_data():   
+            found_objects = []
 
             for cls in detect_classes:
                 kinect_det.detect(cls)
                 found_objects.extend(kinect_det.detected_objects)
-    
-            top_screen.image = empty_image(top_screen.dimensions)
+
+            screens.extend([kinect_det.screen])
 
             for obj in found_objects:
                 kinect_det.screen.draw_object(obj)
                 top_screen.draw_object(obj, False)
-
-            kinect_det.screen.show_image()
-            top_screen.show_image()
 
             if testmode:    
                 kinect_det.show_test_parameters()
@@ -248,26 +255,19 @@ if __name__ == '__main__':
 
     def run_laser_detection():       
         if laser_det.is_valid_data():
-            found_objects.clear()
+            found_objects = []
 
             laser_det.detect()
             found_objects.extend(laser_det.detected_objects)
               
             laser_det.laser_handler.draw_laser_points(laser_det.screen, laser_det.laser_screen_rgb)
-            
-            top_screen.image = empty_image(top_screen.dimensions)
+
+            screens.extend([laser_det.screen, laser_det.laser_screen_rgb])
 
             for obj in found_objects:
                 laser_det.screen.draw_object(obj)
                 laser_det.laser_screen_rgb.draw_object(obj)
-                top_screen.draw_object(obj)
-
-            # laser_det.screen.image = imgops.scale(laser_det.screen.image, 3)
-
-            laser_det.screen.show_image()
-            laser_det.laser_screen_rgb.show_image()
-            top_screen.show_image()
-
+                top_screen.draw_object(obj, False)
 
             if testmode:
                 laser_det.show_test_parameters()
@@ -276,18 +276,31 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
+    def draw_objects(objects, draw_text=True, draw_center=True, *screens: Screen):
+        for screen in screens:
+            for obj in objects:
+                screen.draw_object(obj, draw_text, draw_center)
+
+    def show_screens(*screens: Screen):
+        for screen in screens:
+            screen.show_image()
+
+
     def combine_detection():
-        # objects = run_kinect_detection()
-        objects = run_laser_detection()
+        objects = run_kinect_detection()
+        objects.extend(run_laser_detection())
+
         if objects is not None and len(objects) > 0:
             field_components_pub.publish(FieldComponents(list([o.get_field_component() for o in objects])))
 
     
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
-                            # run_kinect_detection,
+                            init_detection_cycle,
+                            run_kinect_detection,
                             run_laser_detection,
-                            # combine_detection
+                            # combine_detection,
+                            lambda: show_screens(*screens)
                             )
     
     imgticker = CVTicker(TICK_RATE)
