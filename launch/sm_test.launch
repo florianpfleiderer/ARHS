@@ -1,0 +1,10 @@
+<launch>
+  <arg name="team" default="1"/>
+  <group ns="robot$(arg team)">
+    <group>
+      <node name="find_destination" pkg="player" type="find_destination_server.py" />
+      <node name="move_to_destination" pkg="player" type="move_to_destination_server.py" />
+      <node name="player_sm" pkg="player" type="player_sm.py" />
+    </group>
+  </group>
+</launch>

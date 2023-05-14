@@ -15,58 +15,117 @@ from typing import Tuple
 
 class Screen:
     def __init__(self, name, dimensions, FOV, projection, origin_offset, angle_offset):
-        self.name = name
-        self.origin_offset = origin_offset
-        self.dimensions = dimensions
-        self.FOV = FOV
-        self.projection = projection
-        self.angle_offset = angle_offset
+        self.name: str = name
+        self.origin_offset: TupleVector3 = origin_offset
+        self.dimensions: Tuple = dimensions
+        self.FOV: Tuple = FOV
+        self.projection: ProjectionType = projection
+        self.angle_offset: TupleRotator3 = angle_offset
         self.image = empty_image(dimensions)
-        cv2.namedWindow(self.name, cv2.WINDOW_AUTOSIZE)
-        self.show_image()
 
-    def get_local_distance(self, distance):
-        return cartesian_to_spherical(subtract_vectors(spherical_to_cartesian(distance), self.origin_offset))
+    def get_local_distance(self, distance) -> TupleVector3:
+        return distance - self.origin_offset - self.angle_offset 
     
-    def get_global_distance(self, local_distance):
-        return cartesian_to_spherical(sum_vectors(spherical_to_cartesian(local_distance), self.origin_offset))
+    def get_global_distance(self, local_distance) -> TupleVector3:
+        return local_distance + self.angle_offset + self.origin_offset
 
-    def get_rect_field_object(self, field_obj) -> Tuple:
-        local_dist = self.get_local_distance(field_obj.spherical_distance)
-        global_corner = sum_vectors(field_obj.spherical_distance, field_obj.half_size)
-        local_corner = self.get_local_distance(global_corner)
-        local_half_size = subtract_vectors(local_corner, local_dist)
-        return self.get_rect((local_dist[2] - local_half_size[2], local_dist[2] + local_half_size[2], local_dist[1] - local_half_size[1], local_dist[1] + local_half_size[1]))
+    def get_rect(self, obj):
+        if type(obj) is tuple:
+            x_ang, y_ang, w_ang, h_ang = obj
+        elif issubclass(type(obj), fc.FieldObject):
+            x_ang, y_ang, w_ang, h_ang = self.get_angles(obj)
 
-    def get_rect(self, angles) -> Tuple:
-        phi_min, phi_max, theta_min, theta_max = angles
-        x = int(screen_angle_to_pos(- phi_max, self.dimensions[0], self.FOV[0], self.projection))
-        y = int(screen_angle_to_pos(theta_min - 90, self.dimensions[1], self.FOV[1], self.projection))
-        w = int(screen_angle_to_pos(- phi_min, self.dimensions[0], self.FOV[0], self.projection) - x)
-        h = int(screen_angle_to_pos(theta_max - 90, self.dimensions[1], self.FOV[1], self.projection) - y)
-        return x, y, w, h
+        x = round(screen_angle_to_pos(x_ang, self.dimensions[0], self.FOV[0], self.projection))
+        y = round(screen_angle_to_pos(y_ang, self.dimensions[1], self.FOV[1], self.projection))
+        w = round(screen_angle_to_pos(x_ang + w_ang, self.dimensions[0], self.FOV[0], self.projection)) - x
+        h = round(screen_angle_to_pos(y_ang + h_ang, self.dimensions[1], self.FOV[1], self.projection)) - y
+        return x, y, abs(w), abs(h)
     
-    def get_angles(self, rect) -> Tuple:
+    def get_angles(self, obj):
+        if type(obj) is tuple:
+            x, y, w, h = obj
+            x_ang = screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
+            y_ang = screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection)
+            w_ang = screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection) - x_ang
+            h_ang = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
+
+        elif issubclass(type(obj), fc.FieldObject):
+            corner_min = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
+            corner_max = self.get_local_distance(obj.distance + obj.half_size).convert(Coordinate.SPHERICAL)
+            
+            x_ang = - corner_max[2]# alpha max
+            y_ang = corner_min[1] - 90 # theta min
+            w_ang = - corner_min[2] - x_ang # alpha min
+            h_ang = corner_max[1] - 90 - y_ang # theta max
+        return x_ang, y_ang, w_ang, h_ang
+    
+    def get_center(self, obj):
+        if type(obj) is tuple:
+            x, y, w, h = obj
+        elif issubclass(type(obj), fc.FieldObject):
+            x, y, w, h = self.get_rect(obj)
+        return round(x + w / 2), round(y + h / 2)
+
+    def calculate_screen_area(self, obj):
+        if type(obj) is tuple:
+            x, y, w, h = obj
+        elif issubclass(type(obj), fc.FieldObject):
+            x, y, w, h = self.get_rect(obj)
+        return w * h
+    
+    def calculate_screen_ratio(self, obj):
+        if type(obj) is tuple:
+            x, y, w, h = obj
+        elif issubclass(type(obj), fc.FieldObject):
+            x, y, w, h = self.get_rect(obj)
+        return w / h
+    
+    def create_field_object(self, rect, r, obj_type):
+        x_ang, y_ang, w_ang, h_ang = self.get_angles(rect)
+        local_distance = TupleVector3((r, y_ang + h_ang / 2 + 90, - (x_ang + w_ang / 2)), Coordinate.SPHERICAL)
+        local_corner = TupleVector3((r, y_ang + h_ang + 90, - x_ang), Coordinate.SPHERICAL)
+
+        global_distance = self.get_global_distance(local_distance)
+        global_corner = self.get_global_distance(local_corner)
+        global_size = global_corner - global_distance
+        global_size.coordinates = Coordinate.CARTESIAN
+
+        return obj_type(global_distance, global_size)
+
+    def show_image(self):
+        if self.image is not None:
+            cv2.imshow(self.name, self.image)
+
+    def is_in_sight(self, rect):
         x, y, w, h = rect
-        phi_min = - screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection)
-        phi_max = - screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
-        theta_min = screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection) + 90
-        theta_max = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) + 90
-        return phi_min, phi_max, theta_min, theta_max
-    
-    def get_center(self, rect) -> Tuple:
-        x, y, w, h = rect
-        return int(x + w / 2), int(y + h / 2)
-    
-    def get_center_field_object(self, field_obj) -> Tuple:
-        return self.get_center(self.get_rect_field_object(field_obj))
+        if not check_range(x, 0, self.dimensions[0]):
+            return False
+        if not check_range(y , 0, self.dimensions[1]):
+            return False
 
-    def draw_object(self, obj, draw_text=True) -> None:
+        return True
+
+    def draw_object(self, obj, draw_text=True, draw_center=True):
         if issubclass(type(obj), fc.FieldObject):
-            rect = self.get_rect_field_object(obj)
+            rect = self.get_rect(obj)
+
+            # if not self.is_in_sight(rect):
+            #     return
+            
             x, y, w, h = rect
-            cv2.rectangle(self.image, rect, obj.color.default, 1)
-            cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default, -1)
+            if w < 0 or h < 0:
+                rospy.logerr(f"Negative width or height: {w} x {h}, field object: {obj}")
+                return
+            
+            if w > self.dimensions[0] or h > self.dimensions[1]:
+                rospy.logerr(f"Object is too big: {w} x {h}, field object: {obj}")
+                return
+            
+            cv2.rectangle(self.image, (x, y), (x+w, y+h), obj.color.default, 1)
+
+            if draw_center:
+                cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default, -1)
+
             if draw_text:
                 cv2.putText(self.image, str(obj), (x, int(y - 50 * CV2_DEFAULT_FONT_SCALE)),
                             CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
@@ -75,85 +134,21 @@ class Screen:
                             CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
                             Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
                 
-    def calculate_screen_area_field_object(self, field_obj):
-        return self.calculate_screen_area(self.get_rect_field_object(field_obj))
-    
-    def calculate_screen_ratio_field_object(self, field_obj):
-        return self.calculate_screen_ratio(self.get_rect_field_object(field_obj))
-
-    def calculate_screen_area(self, rect):
-        x, y, w, h = rect
-        return w * h
-    
-    def calculate_screen_ratio(self, rect):
-        x, y, w, h = rect
-        return w / h
-    
-    def create_field_object(self, rect, r, obj_type: fc.FieldObject) -> fc.FieldObject:
-        phi_min, phi_max, theta_min, theta_max = self.get_angles(rect)
-        local_distance = (r, (theta_min + theta_max) / 2, (phi_min + phi_max) / 2)
-        local_corner = (r, theta_max, phi_max)
-
-        global_distance = self.get_global_distance(local_distance) # spherical distance
-        global_corner = self.get_global_distance(local_corner)
-        global_size = subtract_vectors(global_corner, global_distance) # half size 
-
-        return obj_type(global_distance, global_size)
-
-    def show_image(self) -> None:
-        if self.image is not None:
-            cv2.imshow(self.name, self.image)
-
     @classmethod
     def KinectScreen(cls, name):
-        return cls(name, KINECT_DIMENSIONS, KINECT_FOV, ProjectionType.PLANAR, KINECT_OFFSET, KINECT_ANGLE)
+        return cls(name, KINECT_DIMENSIONS, KINECT_FOV, ProjectionType.PLANAR, TupleVector3(KINECT_OFFSET), TupleRotator3(KINECT_ANGLE))
     
     @classmethod
     def LaserScreen(cls, name):
-        return cls(name, LASER_DIMENSIONS, LASER_FOV, ProjectionType.SPHERICAL, LASER_OFFSET, (0, 0))
+        return cls(name, LASER_DIMENSIONS, LASER_FOV, ProjectionType.SPHERICAL, TupleVector3(LASER_OFFSET), TupleRotator3())
     
     @classmethod
     def OriginScreen(cls, name):
-        return cls(name, (0, 0), (360, 360), ProjectionType.SPHERICAL, (0, 0, 0), (0, 0))
-
-
-# class ScreenObject:
-#     def __init__(self, theta_min, theta_max, alpha_min, alpha_max):
-#         self.theta_min = theta_min
-#         self.theta_max = theta_max
-#         self.alpha_min = alpha_min
-#         self.alpha_max = alpha_max
-
-#         self.properties = ScreenPosition(theta_min=theta_min, theta_max=theta_max, alpha_min=alpha_min, alpha_max=alpha_max)
-
-#     def get_screen_area(self, screen):
-#         return screen.calculate_screen_area(self)
-
-#     def get_ratio(self, screen):
-#         return screen.calculate_screen_ratio(self)
+        return cls(name, (0, 0), (360, 360), ProjectionType.SPHERICAL, TupleVector3(), TupleRotator3())
     
-#     def get_center_angles(self):
-#         return (self.theta_max + self.theta_min) / 2, (self.alpha_max + self.alpha_min) / 2
-    
-#     @classmethod
-#     def from_screen_position(cls, scp):
-#         return cls(scp.theta_min, scp.theta_max, scp.alpha_min, scp.alpha_max)
-    
-#     def merge(self, *screen_objects):
-#         theta_min = self.theta_min
-#         alpha_min = self.alpha_min
-#         theta_max = self.theta_max
-#         alpha_max = self.alpha_max
-#         for so in screen_objects:
-#             theta_min = max(theta_min, so.theta_min)
-#             alpha_min = max(alpha_min, so.alpha_min)
-#             theta_max = min(theta_max, so.theta_max)
-#             alpha_max = min(alpha_max, so.alpha_max)
-
-#         return ScreenObject(theta_min, theta_max, alpha_min, alpha_max)
-
-#     def __str__(self):
-#         return f"ScreenObject: {round(self.theta_min, 2)}t, {round(self.theta_max, 2)}t, {round(self.alpha_min, 2)}a, {round(self.alpha_max, 2)}a"
+    @classmethod
+    def BirdEyeScreen(cls, name):
+        return cls(name, (640, 480), KINECT_FOV, ProjectionType.SPHERICAL, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
 
 class ImageViewer:
     def __init__(self, name):
@@ -213,21 +208,25 @@ class TestImage(TestParameter):
 def kinect_screen_test():
     sc = Screen.KinectScreen("Kinect")
 
-    fo = sc.create_field_object((100, 100, 100, 100), 1, fc.Robot)
+    rect = (100, 100, 100, 200)
+    print(sc.get_angles(rect))
+    print(sc.get_rect(sc.get_angles(rect)))
+    assert sc.get_rect(sc.get_angles(rect)) == rect
 
-    print(sc.get_angles((100, 100, 100, 200)))
-    print(sc.get_rect(sc.get_angles((100, 100, 100, 200))))
-
-    print(cartesian_to_spherical(spherical_to_cartesian((1, 90, 0))))
+    angle = (1, 90, 0)
+    print(cartesian_to_spherical(spherical_to_cartesian(angle)))
+    assert cartesian_to_spherical(spherical_to_cartesian(angle)) == angle
 
     print("--")
-    print(sum_vectors(spherical_to_cartesian((1, 90, 0)), sc.origin_offset))
-    print(cartesian_to_spherical(sum_vectors(spherical_to_cartesian((1, 90, 0)), sc.origin_offset)))
-    print(sc.get_global_distance((1, 90, 0)))
-    print(sc.get_local_distance(sc.get_global_distance((1, 90, 0))))
-    print(sc.get_rect_field_object(fo))
-    print(fo.spherical_distance, fo.half_size)
-    print(fo)
+    fo = sc.create_field_object((100, 100, 100, 100), 1, fc.Robot)
+
+    print("Field object:", fo)
+    print("fo distance:", fo.distance)
+    print("fo half size:", fo.half_size)
+
+    print("sc rect:", sc.get_rect(fo))
+    print("sc angles:", sc.get_angles(fo))
+    print("sc center:", sc.get_center(fo))
 
     sc.draw_object(fo)
 
@@ -242,7 +241,7 @@ def kinect_screen_test():
 
 def laser_screen_test():
     sc = Screen.LaserScreen("Laser")
-    fo = sc.create_field_object(sc.get_rect((0, 50, 20, 90)), 1, fc.LaserPoint)
+    fo = sc.create_field_object(sc.get_rect((-10, -10, 40, 90)), 1, fc.LaserPoint)
 
     sck = Screen.KinectScreen("Kinect")
     sck.draw_object(fo)
@@ -253,7 +252,36 @@ def laser_screen_test():
     while True:
         cv2.waitKey(10)
 
+def birdeye_screen_test():
+    sc = Screen.BirdEyeScreen("BirdEye")
+    center_x = 320
+    center_y = 240
+
+    dist = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
+    fo = fc.GenericObject(dist, TupleVector3((1, 1, -1), Coordinate.SPHERICAL))
+
+    for i in range(-180, 180, 10):
+        fo = fc.GenericObject(TupleVector3((1, 90, i), Coordinate.SPHERICAL), TupleVector3((1, 1, -1), Coordinate.SPHERICAL))
+        print(fo.distance.convert())
+        sc.draw_object(fo, False)
+        sc.show_image()
+        cv2.waitKey(10)
+
+    print(sc.get_local_distance(dist))
+    print(sc.get_global_distance(TupleVector3((1, 100, 0), Coordinate.SPHERICAL)))
+
+    test(sc.get_local_distance(sc.get_global_distance(dist)), dist)
+    test(sc.get_local_distance(TupleVector3((0, 0, 0), Coordinate.SPHERICAL)).value(), (10, 90, 0))
+
+    test((TupleVector3((0, 0, 0)) - TupleVector3((0, 0, 10))).convert(Coordinate.SPHERICAL), (10, 90, 0))
+
+    # sc.draw_object(fo)
+    sc.show_image()
+    while True:
+        cv2.waitKey(10)
+
 # test screen object creation and correct visualization
 if __name__ == "__main__":
-    kinect_screen_test()
-    laser_screen_test()
+    # kinect_screen_test()
+    # laser_screen_test()
+    birdeye_screen_test()

@@ -3,7 +3,8 @@
 from field_components.colors import Color
 from globals.globals import *
 from player.msg import *
-from typing import Tuple
+from math_utils.vector_utils import *
+from typing import *
 
 class FieldObject:
     '''Class representing a field object.
@@ -19,47 +20,32 @@ class FieldObject:
         position: absolute position of the object in the field in x, y coordinates
         
     '''
-    
-    def __init__(self, color, type, spherical_distance, half_size):
+    def __init__(self, color, type, distance, half_size):
         self.color: Color = color
-        self.type: str = type
-        self.spherical_distance: Tuple[float, float, float] = spherical_distance
-        self.half_size = half_size
-
+        self.type = type
+        self.distance: TupleVector3 = distance
+        self.half_size: TupleVector3 = half_size
+        self.position: TupleVector3 = None
         self.area_detect_range = (None, None)
         self.ratio_detect_range = (None, None)
 
-        # absolute position in the field in x, y coordinates
-        # this is later set by field class
-        self.position: Tuple = None
-
-    def get_angles(self):
-        theta_min = self.spherical_distance[1] - self.half_size[1]
-        theta_max = self.spherical_distance[1] + self.half_size[1]
-        phi_min = self.spherical_distance[2] - self.half_size[2]
-        phi_max = self.spherical_distance[2] + self.half_size[2]
-        return theta_min, theta_max, phi_min, phi_max
-
     def merge(self, *field_objects, return_type):
-        theta_min, theta_max, phi_min, phi_max = self.get_angles()
-        r = self.spherical_distance[0]
-
+        min_corner = self.distance + self.half_size
+        max_corner = self.distance - self.half_size
         for fo in field_objects:
-            angles = fo.get_angles()
-            theta_min = min([theta_min, angles[0]])
-            theta_max = max([theta_max, angles[1]])
-            phi_min = min([phi_min, angles[2]])
-            phi_max = max([phi_max, angles[3]])
-            r += fo.spherical_distance[0]
+            min_corner.tuple = tuple(map(min, list(min_corner.tuple), list((fo.distance + fo.half_size).tuple)))
+            max_corner.tuple = tuple(map(max, list(max_corner.tuple), list((fo.distance - fo.half_size).tuple)))
+        return return_type((max_corner + min_corner) / 2, (max_corner - min_corner) / 2)
 
-        r /= (len(field_objects) + 1)
-        new_distance = (r, (theta_min + theta_max) / 2, (phi_min + phi_max) / 2)
-        new_size = (0, (theta_max - theta_min) / 2, (phi_max - phi_min) / 2)
-        return return_type(new_distance, new_size)
+    def get_field_component(self):
+        player_dist = Vector3(*self.distance.tuple)
+        half_size = Vector3(*self.half_size.tuple)
+        return FieldComponent(self.color.name, self.type, player_dist, half_size)
 
 
     def __str__(self) -> str:
-        return f"{self.color.name} {self.type} {self.spherical_distance[0]:.2f}m {self.spherical_distance[2]:.1f}d"
+        value = self.distance.convert()
+        return f"{self.color.name} {self.type} {value[0]:.2f}m {value[2]:.1f}d"
 
 class Robot(FieldObject):
     color = Color.RED
@@ -120,3 +106,15 @@ class GenericObject(FieldObject):
 
     def __init__(self, distance, half_size):
         super().__init__(Color.MAGENTA, "generic", distance, half_size)
+
+class RisingEdge(FieldObject):
+    color = Color.GREEN
+
+    def __init__(self, distance, half_size):
+        super().__init__(Color.GREEN, "rising edge", distance, half_size)
+
+class FallingEdge(FieldObject):
+    color = Color.RED
+
+    def __init__(self, distance, half_size):
+        super().__init__(Color.RED, "falling edge", distance, half_size)

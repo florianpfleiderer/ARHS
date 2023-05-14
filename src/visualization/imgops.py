@@ -6,6 +6,7 @@ import numpy as np
 from globals.globals import *
 from sensor_msgs.msg import LaserScan
 from visualization.screen_utils import *
+from visualization.screen_components import *
 import rospy
 import time
 
@@ -71,6 +72,7 @@ def laser_scan_to_image(laser_scan: LaserScan, dimensions):
         else:
             image[:, i] = (0, 0, 50)
 
+# draw the field of view of the kinect and the scan angle limits
         increment = 180 * laser_scan.angle_increment / pi
         angle = 180 + i * increment
         limit = -increment
@@ -83,6 +85,14 @@ def laser_scan_to_image(laser_scan: LaserScan, dimensions):
 
     return resize(image, dimensions)
 
+def draw_fov_bird_eye(FOV, bird_eye_screen: Screen):
+    dim = bird_eye_screen.dimensions
+    center = (round(dim[0] / 2), round(dim[1] / 2))
+    w = round(min(dim[1] / 2 * tand(FOV[0]/2), center[0]))
+    h = round(min(dim[0] / 2 * tand(90 - FOV[0]/2), center[1]))
+    cv2.line(bird_eye_screen.image, center, (center[0] - w, center[1] - h), (255, 0, 255))
+    cv2.line(bird_eye_screen.image, center, (center[0] + w, center[1] - h), (255, 0, 255))
+
 def resize(image, new_size):
     return cv2.resize(image, new_size)
 
@@ -93,8 +103,14 @@ def scale(image, factor):
 if __name__ == "__main__":
     img = empty_image((640, 480))
     
+    sc = Screen.BirdEyeScreen("birdeye")
+
+
+    cv2.rectangle(img, (150, 150, 100, 100), (255, 255, 255))
+    cv2.imshow("image", img)
+
+    draw_fov_bird_eye((180, 90), sc)
+    sc.show_image()
+    
     while True:
-        cv2.rectangle(img, (150, 150, 100, 100), (255, 255, 255))
-        cv2.imshow("image", img)
         cv2.waitKey(10)
-        time.sleep(1)

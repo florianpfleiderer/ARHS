@@ -1,4 +1,4 @@
 string color_name
 string type
-PolarVector2 player_distance
-ScreenPosition screen_position
+geometry_msgs/Vector3 player_distance
+geometry_msgs/Vector3 half_size
