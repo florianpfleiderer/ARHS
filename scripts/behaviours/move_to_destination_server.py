@@ -1,62 +1,60 @@
 #!/usr/bin/env python
 
 import rospy
-from player.msg import *
+from player.msg import MoveToDestinationAction, MoveToDestinationGoal, MoveToDestinationResult
 from geometry_msgs.msg import Twist
 from math_utils.vector_utils import *
 from actionlib import SimpleActionServer
 from globals.globals import *
+from field_components.field_components import *
+from typing import List
+from data_utils.topic_handlers import *
+from field_components.velocity_calculator import *
 
 class MoveToDestinationServer:
     def __init__(self):
         self.server = SimpleActionServer("move_to_destination", MoveToDestinationAction, self.execute, False)
         self.server.start()
-        self.field_components_sub = rospy.Subscriber("player/field_components", FieldComponents, self.field_components_cb)
-        self.destination_index_sub = rospy.Subscriber("player/destination_index", Destination, self.destination_index_cb)
-        self.vel_pub = rospy.Publisher("robot1/cmd_vel", Twist, queue_size=500)
+        
+        self.vel_pub = VelocityPublisher()
+        self.field_component_sub = FieldComponentsSubscriber()
+        self.target_pub = TargetComponentPublisher()
 
-        self.field_components = []
-        self.destination_index = 0
+        self.vel_calc = VelocityCalculator()
 
-    def field_components_cb(self, msg: FieldComponents):
-        self.field_components = msg.field_components
-
-    def destination_index_cb(self, msg: Destination):
-        self.destination_index = msg.destination_index
-
-    def execute(self, goal):
+    def execute(self, goal: MoveToDestinationGoal):
         rospy.loginfo("executing state MOVE_TO_DESTINATION")
 
-        attracting = TupleVector3()
-        repelling = TupleVector3()
+        result = MoveToDestinationResult(False)
 
-        for i, component in enumerate(self.field_components):
-            dist = component.player_distance
-            pos = TupleVector3((dist.x, dist.y, dist.z))
-            if i == self.destination_index:
-                attracting.add(pos)
+        target_component = goal.target_component
 
-            else:
-                repelling.add(pos)
-
-        if attracting < TupleVector3((TARGET_REACHED_R_THRESHOLD, TARGET_REACHED_THETA_THRESHOLD, 360)):
-            self.vel_pub.publish(Twist())
-            self.server.set_succeeded()
-            return True
-
-        result_force = attracting.factor(ATTRACTION_FACTOR).subtract(repelling.factor(REPULSION_FACTOR)).convert(Coordinate.CYLINDRICAL).value()
+        if target_component is None or target_component.type == "":
+            rospy.logwarn("Empty target for move to destination server!")
+            self.server.set_aborted(result)
+            return
         
-        out_velocity = Twist()
-        out_velocity.linear.x = result_force[0]
-        out_velocity.angular.z = result_force[1]
+        target_object: FieldObject = FieldObject.from_field_component(target_component)
 
-        self.vel_pub.publish(out_velocity)
+        while target_object.distance.length() > TARGET_REACHED_R_THRESHOLD:
+            field_components = self.field_component_sub.data
+            self.target_pub.publish(target_component)
 
-        self.server.set_aborted()
+            if field_components is None or field_components == []:
+                rospy.logwarn("Empty field components for move to destination server!")
+                self.server.set_aborted(result)
+                return
 
-        return False
+            field_objects: List[FieldObject] = [FieldObject.from_field_component(fc) for fc in field_components]
+            out_velocity = self.vel_calc.get_input_velocity(field_objects, target_object)
+            self.vel_pub.publish(out_velocity)
+
+            rospy.loginfo(f"target: {target_object} distance: {target_object.distance.length()}")
+            time.sleep(0.5)
+
+        self.server.set_aborted(result)
     
 if __name__ == "__main__":
-    rospy.init_node("move_to_destination")
+    rospy.init_node("move_to_destination_server")
     server = MoveToDestinationServer()
     rospy.spin()

@@ -13,7 +13,7 @@ from visualization.screen_components import *
 import visualization.imgops as imgops
 from globals.globals import *
 from math_utils.math_function_utils import *
-from data_utils.topic_handlers import ImageSubscriber, LaserSubscriber
+from data_utils.topic_handlers import *
 from list_utils.filtering import *
 from globals.tick import *
 from data_utils.laser_scan_utils import *
@@ -78,8 +78,8 @@ class KinectDetector(FieldDetector):
 
         self.testmode = testmode
         
-        self.rgb_sub = ImageSubscriber("rgb image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
-        self.depth_sub = ImageSubscriber("depth image", LOCAL_PLAYER + DEPTH_PATH, "32FC1")
+        self.rgb_sub = RGBSubscriber()
+        self.depth_sub = DepthSubscriber()
 
         self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
         self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
@@ -116,8 +116,8 @@ class KinectDetector(FieldDetector):
         return contours
 
     def detect_field_objects(self, base_class):
-        rgb_image = self.rgb_sub.get_image()
-        depth_image = self.depth_sub.get_image()
+        rgb_image = self.rgb_sub.copy_data()
+        depth_image = self.depth_sub.copy_data()
 
         self.detected_objects.clear()
         self.screen.image = rgb_image
@@ -157,9 +157,10 @@ class KinectDetector(FieldDetector):
 class LaserScanDetector(FieldDetector):
     def __init__(self, testmode):
         super().__init__(self.detect_objects, Screen.LaserScreen("laser image"))
-        self.laser_sub = LaserSubscriber("laser scan", LOCAL_PLAYER + LASER_PATH)
-        self.rgb_sub = ImageSubscriber("laser rgb image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
-        self.laser_handler = LaserScanHandler(self.laser_sub.get_scan())
+
+        self.laser_sub = LaserSubscriber()
+        self.rgb_sub = RGBSubscriber()
+        self.laser_handler = LaserScanHandler(self.laser_sub.copy_data())
 
         self.testmode = testmode
         self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
@@ -183,9 +184,9 @@ class LaserScanDetector(FieldDetector):
         return object_contours
        
     def detect_objects(self):
-        laser_scan = self.laser_sub.get_scan()
+        laser_scan = self.laser_sub.copy_data()
         self.laser_handler.update(laser_scan)
-        rgb_image = self.rgb_sub.get_image()
+        rgb_image = self.rgb_sub.copy_data()
         self.laser_screen_rgb.image = rgb_image
 
         laser_ranges = self.laser_handler.get_ranges()
@@ -207,18 +208,19 @@ class LaserScanDetector(FieldDetector):
 
 
 if __name__ == '__main__':
-    rospy.init_node("object_detector_node")
+    rospy.init_node("object_detector")
     rospy.loginfo("Initialised ObjectDetector")
 
     args = rospy.myargv(argv=sys.argv)
-    testmode = args[1] if len(args) > 1 else True
+    testmode = args[1] if len(args) > 1 else False
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
-
+    
     kinect_det = KinectDetector(testmode)
     laser_det = LaserScanDetector(testmode)
     top_screen = Screen.BirdEyeScreen("top_view")
 
-    field_components_pub = rospy.Publisher("player/field_components", FieldComponents, queue_size=500)
+    field_components_pub = FieldComponentsPublisher()
+    target_sub = TargetComponentSubscriber()
 
     screens: List[Screen] = []
     objects: List[FieldObject] = []
@@ -232,7 +234,7 @@ if __name__ == '__main__':
         draw_fov_bird_eye(KINECT_FOV, top_screen)
         draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
-    def run_kinect_detection():
+    def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():   
             found_objects = []
 
@@ -244,7 +246,6 @@ if __name__ == '__main__':
 
             for obj in found_objects:
                 kinect_det.screen.draw_object(obj)
-                top_screen.draw_object(obj, False)
 
             if testmode:    
                 kinect_det.show_test_parameters()
@@ -253,7 +254,7 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for images to process...")
 
-    def run_laser_detection():       
+    def run_laser_detection() -> List[FieldObject]:       
         if laser_det.is_valid_data():
             found_objects = []
 
@@ -267,7 +268,6 @@ if __name__ == '__main__':
             for obj in found_objects:
                 laser_det.screen.draw_object(obj)
                 laser_det.laser_screen_rgb.draw_object(obj)
-                top_screen.draw_object(obj, False)
 
             if testmode:
                 laser_det.show_test_parameters()
@@ -285,21 +285,48 @@ if __name__ == '__main__':
         for screen in screens:
             screen.show_image()
 
-
     def combine_detection():
-        objects = run_kinect_detection()
-        objects.extend(run_laser_detection())
+        kinect_objects = run_kinect_detection()
+        laser_objects = run_laser_detection()
 
-        if objects is not None and len(objects) > 0:
-            field_components_pub.publish(FieldComponents(list([o.get_field_component() for o in objects])))
+        if kinect_objects is None or laser_objects is None:
+            return
 
+        combined_objects: List[FieldObject] = []
+
+        laser_merged_indices = []
+        for obj in kinect_objects:
+            result_obj = obj
+            for i, laser_obj in enumerate(laser_objects):
+                if laser_obj.distance.distance(obj.distance) < 0.15:
+                    laser_merged_indices.append(i)
+                    result_obj = result_obj.merge(laser_obj, return_type=type(obj))
+                    print("merged")
+
+            combined_objects.append(result_obj)
+
+        for i, laser_obj in enumerate(laser_objects):
+            if i not in laser_merged_indices:
+                combined_objects.append(laser_obj)
+
+        rospy.loginfo(f"Detected {len(combined_objects)} field components")
+
+        draw_objects(combined_objects, False, False, top_screen)
+
+        if len(combined_objects) > 0:
+            field_components_pub.publish(list([o.get_field_component() for o in combined_objects]))
     
+    def draw_target(screen: Screen):
+        if target_sub.data is not None:
+            screen.draw_object(FieldObject.from_field_component(target_sub.data), False, True)
+
     rospy.loginfo("Starting loop")
     ticker = CallbackTicker(TICK_RATE,
                             init_detection_cycle,
-                            run_kinect_detection,
-                            run_laser_detection,
-                            # combine_detection,
+                            # lambda: draw_objects(run_kinect_detection, False, True, top_screen),
+                            # lambda: draw_objects(run_laser_detection, False, True, top_screen),
+                            combine_detection,
+                            lambda: draw_target(top_screen),
                             lambda: show_screens(*screens)
                             )
     

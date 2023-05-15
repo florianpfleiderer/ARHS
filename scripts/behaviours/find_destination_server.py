@@ -1,35 +1,36 @@
 #!/usr/bin/env python
-
 import rospy
 import random
-from player.msg import *
-import actionlib
+from player.msg import FindDestinationAction, FindDestinationGoal, FindDestinationResult, FieldComponent
+from actionlib import SimpleActionServer
+from geometry_msgs.msg import Vector3
+from data_utils.topic_handlers import *
 
 class FindDestinationServer:
     def __init__(self):
-        self.server = actionlib.SimpleActionServer("find_destination", FindDestinationAction, self.execute, False)
+        self.server = SimpleActionServer("find_destination", FindDestinationAction, self.execute, False)
         self.server.start()
-        self.field_components_sub = rospy.Subscriber("player/field_components", FieldComponents, self.field_components_cb)
-        self.field_components = []
-        self.destination_index_pub = rospy.Publisher("player/destination_index", Destination, queue_size=500)
-        
-    def field_components_cb(self, msg: FieldComponents):
-        self.field_components = msg.field_components
+        self.field_component_sub = FieldComponentsSubscriber()
 
-    def execute(self, goal):
+    def execute(self, goal: FindDestinationGoal):
         rospy.loginfo("executing state FIND_DESTINATION")
+        result = FindDestinationResult()
 
-        if len(self.field_components) == 0:
-            self.server.set_aborted()
+        field_components = self.field_component_sub.data
+        if field_components is None or len(field_components) == 0:
+            rospy.logwarn("Empty field components for find destination!")
+            self.server.set_aborted(result)
+            time.sleep(1)
             return
         
-        print(len(self.field_components))
-        destination_index = random.randint(0, len(self.field_components) - 1)
-        self.destination_index_pub.publish(Destination(destination_index))
-        self.server.set_succeeded()
-        return goal
+        print(len(field_components))
+        target = field_components[random.randint(0, len(field_components) - 1)]
+        result.target_component = target
+        rospy.loginfo(f"target acquired: {target}")
+
+        self.server.set_succeeded(result)
 
 if __name__ == "__main__":
-    rospy.init_node("find_destination")
+    rospy.init_node("find_destination_server")
     server = FindDestinationServer()
     rospy.spin()

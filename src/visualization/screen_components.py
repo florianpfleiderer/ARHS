@@ -118,7 +118,7 @@ class Screen:
                 return
             
             if w > self.dimensions[0] or h > self.dimensions[1]:
-                rospy.logerr(f"Object is too big: {w} x {h}, field object: {obj}")
+                # rospy.logerr(f"Object is too big: {w} x {h}, field object: {obj}")
                 return
             
             cv2.rectangle(self.image, (x, y), (x+w, y+h), obj.color.default, 1)

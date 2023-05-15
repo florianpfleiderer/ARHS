@@ -1,6 +1,5 @@
-FieldComponent[] field_components
-int16 destination_index
+FieldComponent target_component
 ---
-bool destination_reached
+bool target_reached
 ---
 string message

@@ -7,70 +7,97 @@ from data_utils.data_validation import *
 from visualization.screen_components import *
 from sensor_msgs.msg import Image, LaserScan
 import time
+from visualization.imgops import *
+from geometry_msgs.msg import Twist
 
-class ImageSubscriber:
-    def __init__(self, name, imgtopic, imgtype):
-        self._imgtopic = imgtopic
-        self._imgtype = imgtype
-        self.name = name
+class SubscriberWrapper:
+    def __init__(self, topic, data_class):
+        self.subscriber = rospy.Subscriber(topic, data_class, self.callback_func, queue_size=500)
+        self.topic = topic
+        self.data_class = data_class
+        self.data = None
 
-        self._bridge = CvBridge()
-        self._imgsub = rospy.Subscriber(self._imgtopic, Image, self.img_cb)
-        self._image = None
+    def callback_func(self, msg):
+        self.data = msg
 
-        self.v = Validator()
+    def copy_data(self):
+        return copy.deepcopy(self.data)
+    
+    def is_valid(self):
+        if self.data is None:
+            rospy.logerr(f"{self.topic} has invalid data (class {self.data_class}!")
+            return False
+        return True
 
+class ImageSubscriber(SubscriberWrapper):
+    def __init__(self, imgtopic, imgtype):
+        super().__init__(imgtopic, Image)
+        self.imgtype = imgtype
+        self.bridge = CvBridge()
 
-    def img_cb(self, msg):
+    def callback_func(self, msg):
         try:
-            self._image = self._bridge.imgmsg_to_cv2(msg, self._imgtype)
+            self.data = self.bridge.imgmsg_to_cv2(msg, self.imgtype)
         except CvBridgeError as e:
             rospy.logerr(e)
             return
-        
-    def get_image(self) -> Image:
-        if self.is_valid():
-            return copy.deepcopy(self._image)
 
-    def is_valid(self) -> bool:
-        return self.v.guard_none(self._image)
+class RGBSubscriber(ImageSubscriber):
+    def __init__(self):
+        super().__init__(NAMESPACE + IMAGE_PATH, "bgr8")
 
-    # def show_image(self):
-    #     self.viewer.show(self._image)
+class DepthSubscriber(ImageSubscriber):
+    def __init__(self):
+        super().__init__(NAMESPACE + DEPTH_PATH, "32FC1")
 
-    # def draw_objects(self, objects):
-    #     self.viewer.draw_objects(objects)
+class LaserSubscriber(SubscriberWrapper):
+    def __init__(self):
+        super().__init__(NAMESPACE + LASER_PATH, LaserScan)
 
-class LaserSubscriber:
-    def __init__(self, name, topic):
-        self._topic = topic
-        self.name = name
+class FieldComponentsSubscriber(SubscriberWrapper):
+    def __init__(self):
+        super().__init__("player/field_components", FieldComponents)
 
-        self._laser_sub = rospy.Subscriber(topic, LaserScan, self.laser_cb)
-        self._laser_scan = None
+    def callback_func(self, msg: FieldComponents):
+        self.data = msg.field_components
 
-        self.v = Validator()
+class TargetComponentSubscriber(SubscriberWrapper):
+    def __init__(self):
+        super().__init__("player/target_component", FieldComponent)
 
-    def laser_cb(self, msg):
-        self._laser_scan = msg
+class FieldComponentsPublisher(rospy.Publisher):
+    def __init__(self):
+        super().__init__("player/field_components", FieldComponents)
 
-    def is_valid(self):
-        return self.v.guard_none(self._laser_scan)
-    
-    def get_scan(self):
-        return copy.deepcopy(self._laser_scan)
+class TargetComponentPublisher(rospy.Publisher):
+    def __init__(self):
+        super().__init__("player/target_component", FieldComponent)
+
+class VelocityPublisher(rospy.Publisher):
+    def __init__(self):
+        super().__init__(NAMESPACE + "cmd_vel", Twist)
+
 
 
 if __name__ == "__main__":
-    rospy.init_node("test")
-    ks = ImageSubscriber("kinect image", LOCAL_PLAYER + IMAGE_PATH, "bgr8")
-    rate = rospy.Rate(12)
-    print(LOCAL_PLAYER + IMAGE_PATH)
+    img_sub = ImageSubscriber("robot1/kinect/rgb/image_raw", "bgr8")
+    laser_sub = LaserSubscriber()
+    laser_sub.topic = "robot1/front_laser/scan"
+
+    def img_cb(msg):
+        if msg is None:
+            rospy.logerr("img is none!")
+            return
+        cv2.imshow("raw", CvBridge().imgmsg_to_cv2(msg, "bgr8"))
+
+    raw_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, img_cb, queue_size=500)
 
     while not rospy.is_shutdown():
-        img = ks.get_image()
-        if img is not None:
-            cv2.imshow(ks.name, img)
-            cv2.waitKey(10)
-        
-        rate.sleep()
+        if img_sub.is_valid():
+            cv2.imshow("image", img_sub.copy_data())
+
+        if laser_sub.is_valid():
+            cv2.imshow("laser", laser_scan_to_image(laser_sub.copy_data()))
+
+        cv2.waitKey(10)
+        time.sleep(0.5)

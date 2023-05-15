@@ -185,10 +185,10 @@ def test_detection():
     rospy.init_node("test")
     laser_screen = Screen.LaserScreen("laser")
 
-    ls_sub = LaserSubscriber("laser", "robot1/front_laser/scan")
+    ls_sub = LaserSubscriber()
     time.sleep(2)
 
-    laser_scan = ls_sub.get_scan()
+    laser_scan = ls_sub.copy_data()
     ls_handler = LaserScanHandler(laser_scan)
 
     print(ls_handler.laser_index(100))
