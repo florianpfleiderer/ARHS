@@ -210,6 +210,7 @@ class Field(object):
 
         pole_indices_array: float = []
 
+        # TODO: enumerate instead of indices
         for i in range(len(outer_pole_distances)):
             rospy.loginfo(f'Outer pole distance: {outer_pole_distances[i]}')
             if dist_min < outer_pole_distances[i] < dist_max:

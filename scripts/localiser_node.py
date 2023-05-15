@@ -8,9 +8,9 @@ from typing import List
 
 from globals.tick import CallbackTicker
 from globals.globals import *
-from math_utils.vector_utils import tup3_from_polarvector2
+from math_utils.vector_utils import TupleVector3
 from math_utils.field_calculation_functions import get_position
-from player.msg import FieldComponents, FieldComponent, PolarVector2, ScreenPosition
+from player.msg import FieldComponents, FieldComponent
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from field_components.field import Field
 from field_components.field_components import FieldObject, Pole
@@ -35,7 +35,7 @@ class LocaliserNode:
 
     def callback(self, data: FieldComponents):  
         self.objects = [FieldObject(Color.from_string(c.color_name), \
-                                    c.type, tup3_from_polarvector2(c.player_distance) , None) \
+                                    c.type, TupleVector3.from_vector3(c.player_distance) , None) \
                         for c in data.field_components]
         
     def laser_cb(self, msg: LaserScan):
