@@ -23,69 +23,16 @@ class TupleVector3:
     
     def convert(self, coordinates=None):
         return convert_vector(self.tuple, Coordinate.CARTESIAN, self.coordinates if coordinates is None else coordinates)
-
-    def __mul__(self, factor):
-        if type(factor) is TupleVector3:
-            vec = TupleVector3((self.tuple[0] * factor.tuple[0],
-                                self.tuple[1] * factor.tuple[1],
-                                self.tuple[2] * factor.tuple[2]))
-            vec.coordinates = self.coordinates
-            return vec
-        
-        else:
-            vec = TupleVector3((self.tuple[0] * factor,
-                                self.tuple[1] * factor,
-                                self.tuple[2] * factor))
-            vec.coordinates = self.coordinates
-            return vec
-        
-    def __rmul__(self, factor):
-        return self.__mul__(factor)
     
-    def __truediv__(self, factor):
-        if type(factor) is TupleVector3:
-            vec = TupleVector3((self.tuple[0] / factor.tuple[0],
-                                self.tuple[1] / factor.tuple[1],
-                                self.tuple[2] / factor.tuple[2]))
-            vec.coordinates = self.coordinates
-            return vec
-        
-        else:
-            vec = TupleVector3((self.tuple[0] / factor,
-                                self.tuple[1] / factor,
-                                self.tuple[2] / factor))
-            vec.coordinates = self.coordinates
-            return vec
-        
-    def __rtruediv__(self, factor):
-        return self.__truediv__(factor)
+    def length(self):
+        return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2 + self.tuple[2] ** 2)
     
-    def __floordiv__(self, factor):
-        if type(factor) is TupleVector3:
-            vec = TupleVector3((self.tuple[0] // factor.tuple[0],
-                                self.tuple[1] // factor.tuple[1],
-                                self.tuple[2] // factor.tuple[2]))
-            vec.coordinates = self.coordinates
-            return vec
-        
-        else:
-            vec = TupleVector3((self.tuple[0] // factor,
-                                self.tuple[1] // factor,
-                                self.tuple[2] // factor))
-            vec.coordinates = self.coordinates
-            return vec
-        
-    def __rfloordiv__(self, factor):
-        return self.__floordiv__(factor)
+    def distance(self, vector):
+        return (self - vector).length()
 
-    def __add__(self, summand):
-        if type(summand) is TupleVector3:
-            vec = TupleVector3((self.tuple[0] + summand.tuple[0],
-                                self.tuple[1] + summand.tuple[1],
-                                self.tuple[2] + summand.tuple[2]))
-            vec.coordinates = self.coordinates
-        elif type(summand) is TupleRotator3:
-            a, b, c = summand.value()
+    def __add__(self, value):
+        if type(value) is TupleRotator3:
+            a, b, c = value.value()
             ca = cosd(a)
             sa = sind(a)
             cb = cosd(b)
@@ -100,24 +47,100 @@ class TupleVector3:
             z = self.tuple[0] * rot_matrix[2][0] + self.tuple[1] * rot_matrix[2][1] + self.tuple[2] * rot_matrix[2][2]
             vec = TupleVector3((x, y, z))
             vec.coordinates = self.coordinates
+            return vec
+        
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((self.tuple[0] + tup[0],
+                            self.tuple[1] + tup[1],
+                            self.tuple[2] + tup[2]))
+        vec.coordinates = self.coordinates
         return vec
     
     
     def __radd__(self, tuple_vector):
         return self.__add__(tuple_vector)
 
-    def __sub__(self, summand):
-        if type(summand) is TupleVector3:
-            vec = TupleVector3((self.tuple[0] - summand.tuple[0],
-                                self.tuple[1] - summand.tuple[1],
-                                self.tuple[2] - summand.tuple[2]))
-            vec.coordinates = self.coordinates
-        elif type(summand) is TupleRotator3:
-            vec = self + summand * -1
+    def __sub__(self, value):
+        if type(value) is TupleRotator3:
+            vec = self + (-value)
+            return vec
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((self.tuple[0] - tup[0],
+                            self.tuple[1] - tup[1],
+                            self.tuple[2] - tup[2]))
+        vec.coordinates = self.coordinates
         return vec
 
-    def __rsub__(self, tuple_vector):
-        return self.__sub__(tuple_vector)
+    def __rsub__(self, value):
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((tup[0] - self.tuple[0],
+                            tup[1] - self.tuple[1],
+                            tup[2] - self.tuple[2]))
+        vec.coordinates = self.coordinates
+        return vec
+    
+    def __mul__(self, value):
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((self.tuple[0] * tup[0],
+                            self.tuple[1] * tup[1],
+                            self.tuple[2] * tup[2]))
+        vec.coordinates = self.coordinates
+        return vec
+        
+    def __rmul__(self, value):
+        return self.__mul__(value)
+    
+    def __truediv__(self, value):
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((self.tuple[0] / tup[0],
+                            self.tuple[1] / tup[1],
+                            self.tuple[2] / tup[2]))
+        vec.coordinates = self.coordinates
+        return vec
+    
+    def __rtruediv__(self, value):
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+        vec = TupleVector3((tup[0] / self.tuple[0] if self.tuple[0] != 0 else 0,
+                            tup[1] / self.tuple[1] if self.tuple[1] != 0 else 0,
+                            tup[2] / self.tuple[2] if self.tuple[2] != 0 else 0))
+        vec.coordinates = self.coordinates
+        return vec    
 
     def __lt__(self, tuple_vector):
         return (self.tuple[0] < tuple_vector.tuple[0] and
@@ -148,7 +171,12 @@ class TupleVector3:
         return (self.tuple[0] >= tuple_vector.tuple[0] and
                 self.tuple[1] >= tuple_vector.tuple[1] and
                 self.tuple[2] >= tuple_vector.tuple[2] )
-    
+
+    def __neg__(self):
+        vec = TupleVector3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
+        vec.coordinates = self.coordinates
+        return vec
+
     def __str__(self):
         pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
         pref_y = "y" if self.coordinates == Coordinate.CARTESIAN else "phi" if self.coordinates == Coordinate.CYLINDRICAL else "theta"
@@ -180,51 +208,88 @@ class TupleRotator3:
                f"{'pitch': >10} {self.tuple[1]: >6.2f}{chr(10)}" + \
                f"{'roll': >10} {self.tuple[2]: >6.2f}"
     
-    def __add__(self, summand):
-        if type(summand) is TupleRotator3:
-            rot = TupleRotator3((self.tuple[0] + summand.tuple[0],
-                                 self.tuple[1] + summand.tuple[1],
-                                 self.tuple[2] + summand.tuple[2]))
-            return rot
-        elif type(summand) is tuple:
-            rot = TupleRotator3((self.tuple[0] + summand[0],
-                                 self.tuple[1] + summand[1],
-                                 self.tuple[2] + summand[2]))
-            return rot
+    def __add__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((self.tuple[0] + tup[0],
+                              self.tuple[1] + tup[1],
+                              self.tuple[2] + tup[2]))
         
-    def __radd__(self, tuple_rotator):
-        return self.__add__(tuple_rotator)
+    def __radd__(self, value):
+        return self.__add__(value)
     
-    def __sub__(self, summand):
-        if type(summand) is TupleRotator3:
-            rot = TupleRotator3((self.tuple[0] - summand.tuple[0],
-                                 self.tuple[1] - summand.tuple[1],
-                                 self.tuple[2] - summand.tuple[2]))
-            return rot
-        elif type(summand) is tuple:
-            rot = TupleRotator3((self.tuple[0] - summand[0],
-                                 self.tuple[1] - summand[1],
-                                 self.tuple[2] - summand[2]))
-            return rot
+    def __sub__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((self.tuple[0] - tup[0],
+                              self.tuple[1] - tup[1],
+                              self.tuple[2] - tup[2]))
         
-    def __rsub__(self, tuple_rotator):
-        return self.__sub__(tuple_rotator)
+    def __rsub__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((tup[0] - self.tuple[0],
+                              tup[1] - self.tuple[1],
+                              tup[2] - self.tuple[2]))
     
-    def __mul__(self, factor):
-        if type(factor) is float or type(factor) is int:
-            rot = TupleRotator3((self.tuple[0] * factor,
-                                 self.tuple[1] * factor,
-                                 self.tuple[2] * factor))
-            return rot
-        elif type(factor) is TupleRotator3:
-            rot = TupleRotator3((self.tuple[0] * factor.tuple[0],
-                                 self.tuple[1] * factor.tuple[1],
-                                 self.tuple[2] * factor.tuple[2]))
-            return rot
+    def __mul__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((self.tuple[0] * tup[0],
+                              self.tuple[1] * tup[1],
+                              self.tuple[2] * tup[2]))
         
-    def __rmul__(self, tuple_rotator):
-        return self.__mul__(tuple_rotator)
+    def __rmul__(self, value):
+        return self.__mul__(value)
     
+    def __div__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((self.tuple[0] / tup[0],
+                              self.tuple[1] / tup[1],
+                              self.tuple[2] / tup[2]))
+
+    def __rdiv__(self, value):
+        if type(value) is TupleRotator3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+        elif type(value) is float or type(value) is int:
+            tup = (value, value, value)
+
+        return TupleRotator3((tup[0] / self.tuple[0] if self.tuple[0] != 0 else 0,
+                              tup[1] / self.tuple[1] if self.tuple[1] != 0 else 0,
+                              tup[2] / self.tuple[2] if self.tuple[1] != 0 else 0))
+
+
+    def __neg__(self):
+        rot = TupleRotator3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
+        return rot
 
 def convert_vector(vector, from_coordinates, to_coordinates):
     from_vector = ()

@@ -2,7 +2,12 @@
 from math_utils.math_function_utils import *
 import cv2
 
+<<<<<<< HEAD
 SIMULATION_MODE = False
+=======
+SIMULATION_MODE = True
+LAUNCH_MODE = True
+>>>>>>> state-machine
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)
@@ -31,23 +36,21 @@ LASER_DIMENSIONS = (1000, 300)
 LASER_MAX_OBJECT_SIZE = 0.8
 LASER_INDEX_MARGIN = 0.014 if SIMULATION_MODE else 0.01
 
-MAX_ANGULAR_SPEED = math.pi / 2
-MAX_LINEAR_SPEED = 0.5
-TARGET_SIZE = 0.04
+MAX_ANGULAR_SPEED = math.pi / 3
+MAX_LINEAR_SPEED = 0.3
+TARGET_SIZE = 0.2
 REPELLING_FORCE_SIZE = 0.1
 REPELLING_FORCE_THRESHOLD = 0.5
-REPELLING_FORCE_MULTIPLIER = -0.1
 
 TICK_RATE = 10 / 10
 
-LOCAL_PLAYER = "robot1/"
+NAMESPACE = "" if LAUNCH_MODE else "robot1/"
 LASER_PATH = "front_laser/scan"
 DEPTH_PATH = "kinect/depth/image_raw" if SIMULATION_MODE else "kinect/depth_registered/image_raw"
 IMAGE_PATH = "kinect/rgb/image_raw"
-# LOCAL_PLAYER = ""
 
 ATTRACTION_FACTOR = 0.1
-REPULSION_FACTOR = 0.1
+REPULSION_FACTOR = 0.005
 TARGET_REACHED_R_THRESHOLD = 0.1
 TARGET_REACHED_THETA_THRESHOLD = 0.1
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from field_components.colors import Color
 from globals.globals import *
 from player.msg import *
 from math_utils.vector_utils import *
 from typing import *
+from field_components.colors import Color
+import sys
 
 class FieldObject:
     '''Class representing a field object.
@@ -42,6 +43,11 @@ class FieldObject:
         half_size = Vector3(*self.half_size.tuple)
         return FieldComponent(self.color.name, self.type, player_dist, half_size)
 
+    @classmethod
+    def from_field_component(cls, field_component: FieldComponent):
+        typeclass = getattr(sys.modules[__name__], field_component.type)
+        return typeclass(TupleVector3.from_vector3(field_component.player_distance),
+                         TupleVector3.from_vector3(field_component.half_size))
 
     def __str__(self) -> str:
         value = self.distance.convert()
@@ -53,7 +59,7 @@ class Robot(FieldObject):
     ratio_detect_range = (None, None)
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.RED, "robot", distance, half_size)
+        super().__init__(Color.RED, "Robot", distance, half_size)
 
 class YellowPuck(FieldObject):
     color = Color.YELLOW
@@ -61,7 +67,7 @@ class YellowPuck(FieldObject):
     ratio_detect_range = (0.2, 0.7) # (0.2, 0.4)?
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.YELLOW, "puck", distance, half_size)
+        super().__init__(Color.YELLOW, "YellowPuck", distance, half_size)
 
 class BluePuck(FieldObject):
     color = Color.BLUE
@@ -69,7 +75,7 @@ class BluePuck(FieldObject):
     ratio_detect_range = (0.2, 0.7) # (0.2, 0.4)?
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.BLUE, "puck", distance, half_size)
+        super().__init__(Color.BLUE, "BluePuck", distance, half_size)
 
 class YellowGoal(FieldObject):
     color = Color.YELLOW
@@ -77,7 +83,7 @@ class YellowGoal(FieldObject):
     ratio_detect_range = (1.5, 10) # (1.5, None)?
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.YELLOW, "goal", distance, half_size)
+        super().__init__(Color.YELLOW, "YellowGoal", distance, half_size)
 
 class BlueGoal(FieldObject):
     color = Color.BLUE
@@ -85,7 +91,7 @@ class BlueGoal(FieldObject):
     ratio_detect_range = (1.5, 10) # (1.5, None)?
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.BLUE, "goal", distance, half_size)
+        super().__init__(Color.BLUE, "BlueGoal", distance, half_size)
 
 class Pole(FieldObject):
     color = Color.GREEN
@@ -93,28 +99,35 @@ class Pole(FieldObject):
     ratio_detect_range = (None, 0.4)
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.GREEN, "pole", distance, half_size)
+        super().__init__(Color.GREEN, "Pole", distance, half_size)
 
 class LaserPoint(FieldObject):
     color = Color.ORANGE
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.ORANGE, "laser point", distance, half_size)
+        super().__init__(Color.ORANGE, "LaserPoint", distance, half_size)
 
 class GenericObject(FieldObject):
     color = Color.MAGENTA
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.MAGENTA, "generic", distance, half_size)
+        super().__init__(Color.MAGENTA, "GenericObject", distance, half_size)
 
 class RisingEdge(FieldObject):
     color = Color.GREEN
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.GREEN, "rising edge", distance, half_size)
+        super().__init__(Color.GREEN, "RisingEdge", distance, half_size)
 
 class FallingEdge(FieldObject):
     color = Color.RED
 
     def __init__(self, distance, half_size):
-        super().__init__(Color.RED, "falling edge", distance, half_size)
+        super().__init__(Color.RED, "FallingEdge", distance, half_size)
+
+
+if __name__ == "__main__":
+    fc = FieldComponent("yellow", "YellowPuck", Vector3(0, 0, 0), Vector3(0, 0, 0))
+    fo = FieldObject.from_field_component(fc)
+
+    print(fo)
