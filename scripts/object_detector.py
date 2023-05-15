@@ -7,7 +7,7 @@ import sys
 import time
 from typing import List
 
-from player.msg import FieldComponent, FieldComponents, PolarVector2, ScreenPosition
+from player.msg import FieldComponent, FieldComponents
 
 from field_components.field_components import *
 from visualization.screen_components import *
@@ -18,6 +18,7 @@ from data_utils.topic_handlers import ImageSubscriber, LaserSubscriber
 from list_utils.filtering import *
 from globals.tick import *
 from data_utils.laser_scan_utils import *
+from geometry_msgs.msg import Vector3
 
 
 CLASSES = {'pole': Pole,
@@ -299,12 +300,13 @@ if __name__ == '__main__':
             screen.show_image()
 
 
-    def combine_detection():
-        objects = run_kinect_detection()
-        objects.extend(run_laser_detection())
-
-        if objects is not None and len(objects) > 0:
-            field_components_pub.publish(FieldComponents(list([o.get_field_component() for o in objects])))
+    def combine_detection() -> None:
+        objects_det: List[FieldObject] = run_kinect_detection()
+        # objects = run_laser_detection()
+        if objects and len(objects_det) > 0:
+            field_components_pub.publish(FieldComponents(
+                [FieldComponent(o.color.__str__() , o.type, Vector3(*o.spherical_distance[:3]),
+                                None ) for o in objects]))
 
     
     rospy.loginfo("Starting loop")
