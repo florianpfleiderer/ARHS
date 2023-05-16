@@ -2,12 +2,8 @@
 from math_utils.math_function_utils import *
 import cv2
 
-<<<<<<< HEAD
-SIMULATION_MODE = False
-=======
 SIMULATION_MODE = True
 LAUNCH_MODE = True
->>>>>>> state-machine
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)
