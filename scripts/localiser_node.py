@@ -1,10 +1,13 @@
 #!/usr/bin/env python
-import rospy
+'''this node turns the robot and searches for the three outer most poles.'''
 
 from math import *
 import copy
-
 from typing import List
+
+import rospy
+
+
 
 from globals.tick import CallbackTicker
 from globals.globals import *
@@ -18,6 +21,7 @@ from field_components.colors import Color
 from sensor_msgs.msg import LaserScan
 
 class LocaliserNode:
+    '''This node turns the robot and searches for the three outer most poles.'''
     def __init__(self):
         # self.pub = rospy.Publisher('field_components', FieldComponents, queue_size=10)
         rospy.init_node("localiser_node")
@@ -26,21 +30,25 @@ class LocaliserNode:
         self.comp_sub = rospy.Subscriber('player/field_components', FieldComponents, self.callback)
         self.laser_sub = rospy.Subscriber("/robot1/front_laser/scan", LaserScan, self.laser_cb)
         self.position_pub = rospy.Publisher('player/position', Pose, queue_size=10)
-        self.velocity_pub = rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) #stores 10 old data points
+        self.velocity_pub = rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) 
 
         self.field = Field()
         self.objects: List[FieldComponent] = None
         self.goal_found: FieldObject = None
         self.laser: LaserScan = None
 
-    def callback(self, data: FieldComponents):  
+    def callback(self, data: FieldComponents):
+        '''Callback for the field components subscriber.
+        '''
         self.objects = [FieldObject(Color.from_string(c.color_name), \
                                     c.type, TupleVector3.from_vector3(c.player_distance) , None) \
                         for c in data.field_components]
-        
+   
     def laser_cb(self, msg: LaserScan):
+        '''Callback for the laser subscriber.
+        '''
         self.laser = msg
-    
+
     def set_velocities(self, linear, angular):
         """Use this to set linear and angular velocities
         """
@@ -52,9 +60,7 @@ class LocaliserNode:
 
     def execute(self):
         '''Main loop of the localiser node.
-        
         '''
-
         # while len(self.field.poles) < 3:
         #     self.set_velocities(0, 0.2)
         #     self.field.set_objects(self.objects)
@@ -62,11 +68,11 @@ class LocaliserNode:
         
         # rospy.loginfo("Objects found, stop turning")
         # self.set_velocities(0, 0)
-        
+
         # while not self.field.check_poles():
         #     self.set_velocities(0, 0.2)
         #     rospy.sleep(0.5)
-        
+
         # rospy.loginfo("outer poles found, stop turning")
         # self.set_velocities(0, 0)
         while not rospy.is_shutdown():
@@ -76,7 +82,7 @@ class LocaliserNode:
             if cur_objects is None:
                 rospy.logwarn("No objects")
                 return
-            
+
             if not self.field.set_objects(cur_objects):
                 rospy.logwarn("Field Objects could not be set")
                 return
@@ -85,10 +91,10 @@ class LocaliserNode:
                 return
 
             pos = self.field.calculate_robot_position()
-            if(pos is None):
+            if pos is None:
                 rospy.logwarn("No position")
                 return
-            
+
             # TODO auto detect left or right
             outer_pole: Pole = self.field.outer_pole(False)
             mid_pole: Pole = self.field.poles[1]
@@ -103,7 +109,7 @@ class LocaliserNode:
             self.position_pub.publish(Pose(point, quaternion))
             rospy.loginfo(f'Position: {pos}')
             rospy.sleep(1)
-                                         
+
 if __name__ == '__main__':
     localiser = LocaliserNode()
     # localiser.run()
@@ -116,4 +122,3 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         ticker.tick()
-

@@ -120,21 +120,10 @@ class KinectDetector(FieldDetector):
         
         return contours
 
-<<<<<<< HEAD
-    def detect_field_objects(self, base_class) -> bool:
-        rgb_image = self.rgb_sub.get_image()        
-        depth_image = self.depth_sub.get_image()
-        
-        #cv2.fastNlMeansDenoisingColored(rgb_image, rgb_image, 8, 8, 7, 9)
-        #cv2.imshow("rgb_img_denoised", rgb_image)
-        
-        
-=======
     def detect_field_objects(self, base_class):
         rgb_image = self.rgb_sub.copy_data()
         depth_image = self.depth_sub.copy_data()
 
->>>>>>> state-machine
         self.detected_objects.clear()
         self.screen.image = rgb_image
         contours = self.detect_contours(base_class, rgb_image, depth_image)
@@ -231,13 +220,7 @@ if __name__ == '__main__':
     rospy.loginfo("Initialised ObjectDetector")
 
     args = rospy.myargv(argv=sys.argv)
-<<<<<<< HEAD
-    testmode = False #args[1] if len(args) > 1 else True
-    rospy.loginfo("Testmode: " + str(testmode))
-
-=======
     testmode = args[1] if len(args) > 1 else False
->>>>>>> state-machine
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
     
     kinect_det = KinectDetector(testmode)
@@ -310,16 +293,6 @@ if __name__ == '__main__':
         for screen in screens:
             screen.show_image()
 
-<<<<<<< HEAD
-
-    def combine_detection() -> None:
-        objects_det: List[FieldObject] = run_kinect_detection()
-        # objects = run_laser_detection()
-        if objects and len(objects_det) > 0:
-            field_components_pub.publish(FieldComponents(
-                [FieldComponent(o.color.__str__() , o.type, Vector3(*o.spherical_distance[:3]),
-                                None ) for o in objects]))
-=======
     def combine_detection():
         kinect_objects = run_kinect_detection()
         laser_objects = run_laser_detection()
@@ -337,7 +310,6 @@ if __name__ == '__main__':
                     laser_merged_indices.append(i)
                     result_obj = result_obj.merge(laser_obj, return_type=type(obj))
                     print("merged")
->>>>>>> state-machine
 
             combined_objects.append(result_obj)
 
