@@ -22,7 +22,7 @@ class SubscriberWrapper:
 
     def copy_data(self):
         return copy.deepcopy(self.data)
-    
+ 
     def is_valid(self):
         if self.data is None:
             rospy.logerr(f"{self.topic} has invalid data (class {self.data_class}!")

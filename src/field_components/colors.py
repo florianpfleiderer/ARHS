@@ -39,7 +39,7 @@ class Color(Enum):
 
     def default(self):
         return self.default
-    
+
     def min_hsv(self):
         return self.min
 
@@ -63,7 +63,7 @@ class Color(Enum):
 
     def __str__(self) -> str:
         return self.name.upper()
-    
+
     @classmethod
     def from_string(cls, color_name):
         return Color._member_map_[color_name]

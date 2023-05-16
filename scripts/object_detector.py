@@ -221,8 +221,11 @@ if __name__ == '__main__':
 
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else False
+<<<<<<< HEAD
     rospy.loginfo("Testmode: " + str(testmode))
 
+=======
+>>>>>>> 121abd75b563e3afb500936ddf0b1b5754fb099e
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
     
     kinect_det = KinectDetector(testmode)
@@ -322,10 +325,12 @@ if __name__ == '__main__':
         rospy.loginfo(f"Detected {len(combined_objects)} field components")
 
         draw_objects(combined_objects, False, False, top_screen)
+        
+        if combined_objects and len(combined_objects) > 0:
+            field_components_pub.publish(FieldComponents(
+                [FieldComponent(o.color.__str__() , o.type, Vector3(*o.distance.tuple),
+                                None ) for o in combined_objects]))
 
-        if len(combined_objects) > 0:
-            field_components_pub.publish(list([o.get_field_component() for o in combined_objects]))
-    
     def draw_target(screen: Screen):
         if target_sub.data is not None:
             screen.draw_object(FieldObject.from_field_component(target_sub.data), False, True)
@@ -339,7 +344,7 @@ if __name__ == '__main__':
                             lambda: draw_target(top_screen),
                             lambda: show_screens(*screens)
                             )
-    
+
     imgticker = CVTicker(TICK_RATE)
 
     while not rospy.is_shutdown():

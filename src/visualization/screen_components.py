@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from player.msg import ScreenPosition, PolarVector2
 from globals.globals import *
 from globals.tick import *
 from math_utils.math_function_utils import *

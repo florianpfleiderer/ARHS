@@ -17,9 +17,9 @@ def cosine_theorem(pole_a : Pole, pole_b : Pole):
     Returns:
         distance between the two poles
     '''
-    a = pole_a.spherical_distance[0]
-    b = pole_b.spherical_distance[0]
-    gamma = abs(pole_a.spherical_distance[2] - pole_b.spherical_distance[2])
+    a = pole_a.distance[0]
+    b = pole_b.distance[0]
+    gamma = abs(pole_a.distance[2] - pole_b.distance[2])
 
     return sqrt(a**2 + b**2 - 2 * a * b * cosd(gamma))
 
@@ -38,27 +38,27 @@ def get_position(pole_a: Pole, pole_b: Pole, pole_c: Pole) -> Tuple:
         
         # case 1: pole a and b
         dist = cosine_theorem(pole_a, pole_b)
-        gamma = abs(pole_a.spherical_distance[2] - pole_b.spherical_distance[2]) 
+        gamma = abs(pole_a.distance[2] - pole_b.distance[2]) 
 
-        rho = asind(pole_a.spherical_distance[0]/dist *sind(gamma))
+        rho = asind(pole_a.distance[0]/dist *sind(gamma))
         if pole_a.position[1] == 0:
-            pos_x = pole_b.position[0] + pole_b.spherical_distance[0]*cosd(rho)
-            pos_y = pole_b.position[1] + pole_b.spherical_distance[0]*sind(rho)
+            pos_x = pole_b.position[0] + pole_b.distance[0]*cosd(rho)
+            pos_y = pole_b.position[1] + pole_b.distance[0]*sind(rho)
         elif pole_a.position[1] == 3:
-            pos_x = pole_b.position[0] - pole_b.spherical_distance[0]*cosd(rho)
-            pos_y = pole_b.position[1] - pole_b.spherical_distance[0]*sind(rho)
+            pos_x = pole_b.position[0] - pole_b.distance[0]*cosd(rho)
+            pos_y = pole_b.position[1] - pole_b.distance[0]*sind(rho)
 
         # case 2: pole a and c
         dist = cosine_theorem(pole_a, pole_c)
-        gamma = abs(pole_a.spherical_distance[2] - pole_c.spherical_distance[2]) 
+        gamma = abs(pole_a.distance[2] - pole_c.distance[2]) 
 
-        rho = asind(pole_a.spherical_distance[0]/dist *sind(gamma))
+        rho = asind(pole_a.distance[0]/dist *sind(gamma))
         if pole_a.position[1] == 0:
-            pos_x1 = pole_c.position[0] + pole_c.spherical_distance[0]*cosd(rho)
-            pos_y1 = pole_c.position[1] + pole_c.spherical_distance[0]*sind(rho)
+            pos_x1 = pole_c.position[0] + pole_c.distance[0]*cosd(rho)
+            pos_y1 = pole_c.position[1] + pole_c.distance[0]*sind(rho)
         elif pole_a.position[1] == 3:
-            pos_x1 = pole_c.position[0] - pole_c.spherical_distance[0]*cosd(rho)
-            pos_y1 = pole_c.position[1] - pole_c.spherical_distance[0]*sind(rho)
+            pos_x1 = pole_c.position[0] - pole_c.distance[0]*cosd(rho)
+            pos_y1 = pole_c.position[1] - pole_c.distance[0]*sind(rho)
 
         return (pos_x + pos_x1 / 2, pos_y + pos_y1 / 2)
     else:
@@ -71,15 +71,15 @@ def get_position(pole_a: Pole, pole_b: Pole, pole_c: Pole) -> Tuple:
         
         # case 1: pole a and b
         dist = cosine_theorem(pole_a, pole_b)
-        gamma = abs(pole_a.spherical_distance[2] - pole_b.spherical_distance[2]) 
+        gamma = abs(pole_a.distance[2] - pole_b.distance[2]) 
 
-        rho = asind(pole_a.spherical_distance[0]/dist *sind(gamma))
+        rho = asind(pole_a.distance[0]/dist *sind(gamma))
         if pole_a.position[1] == 0:
-            pos_x = pole_b.position[0] + pole_b.spherical_distance[0]*cosd(rho)
-            pos_y = pole_b.position[1] + pole_b.spherical_distance[0]*sind(rho)
+            pos_x = pole_b.position[0] + pole_b.distance[0]*cosd(rho)
+            pos_y = pole_b.position[1] + pole_b.distance[0]*sind(rho)
         elif pole_a.position[1] == 3:
-            pos_x = pole_b.position[0] - pole_b.spherical_distance[0]*cosd(rho)
-            pos_y = pole_b.position[1] - pole_b.spherical_distance[0]*sind(rho)
+            pos_x = pole_b.position[0] - pole_b.distance[0]*cosd(rho)
+            pos_y = pole_b.position[1] - pole_b.distance[0]*sind(rho)
 
         return (pos_x, pos_y)
 
