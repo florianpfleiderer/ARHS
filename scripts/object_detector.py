@@ -324,7 +324,7 @@ if __name__ == '__main__':
         if len(combined_objects) > 0:
             # TODO: redo publish function (look at Milestone3 Tag)
             field_components_pub.publish(list([o.get_field_component() for o in combined_objects]))
-    
+
     def draw_target(screen: Screen):
         if target_sub.data is not None:
             screen.draw_object(FieldObject.from_field_component(target_sub.data), False, True)
@@ -338,7 +338,7 @@ if __name__ == '__main__':
                             lambda: draw_target(top_screen),
                             lambda: show_screens(*screens)
                             )
-    
+
     imgticker = CVTicker(TICK_RATE)
 
     while not rospy.is_shutdown():

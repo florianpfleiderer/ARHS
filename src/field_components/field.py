@@ -16,7 +16,7 @@ class Field(object):
     the field dimensions.
     It also sets the absolute coordinates of the field objects 
     after the field dimensions are calculated.
-    
+
     Attributes:
         _instance: singleton instance to make sure, only one instance of the
             class is created and if there is one, return it
@@ -34,7 +34,7 @@ class Field(object):
         if cls._instance is None:
             cls._instance = super(Field, cls).__new__(cls)
         return cls._instance
-    
+
     def __init__(self):
         self.length = None
         self.width = None
@@ -43,7 +43,7 @@ class Field(object):
         self.bluePucks: List[BluePuck] = []
         self.yellowGoal: YellowGoal = None
         self.blueGoal: BlueGoal = None
-    
+
     def set_objects(self, field_objects: List[FieldObject]=None) -> bool:
         self.length = None
         self.width = None
@@ -85,11 +85,11 @@ class Field(object):
         self.set_field_objects_positions(distance_1_2, distance_2_3, distance_1_3)
 
         return get_position(self.poles[2], self.poles[1], self.poles[0])
-    
+
 
     def set_field_objects_positions(self, distance_1_2, distance_2_3, distance_1_3):
         ''' Sets the absolute position of the field objects.
-        
+
         The Poles given to this function are the outer most three poles at the 
         initial robot position. The robot always starts in the red area of the field.
         '''
@@ -150,23 +150,23 @@ class Field(object):
             return self.yellowGoal if self.yellowGoal else self.blueGoal
         else:
             return None
-        
+
     def poles_found(self):
         return len(self.poles) > 3
-    
+
     def sort_poles_by_angle_phi(self):
         # sort poles by spherical distance, so from right to left
         self.poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
 
         rospy.loginfo(f'poles: {[pole.type for pole in self.poles]}' \
                        f'{[pole.spherical_distance[2] for pole in self.poles]}')
-    
+
     def check_poles(self) -> bool:
         if len(self.poles) < 3:
             rospy.logwarn('Not enough poles detected')
             # TODO function always returns this
             return False
-        
+
         self.sort_poles_by_angle_phi()
 
         distance_1_2 = cosine_theorem(self.poles[0], self.poles[1])
@@ -184,7 +184,7 @@ class Field(object):
             return False
         else:
             return True
-        
+
     def outer_pole(self, direction: bool) -> Pole:
         self.sort_poles_by_angle_phi()
         if self.poles[0].position[0] == 0:
@@ -197,9 +197,9 @@ class Field(object):
     def pole_to_laser(self,pole: Pole, cur_laser: LaserScan) -> Tuple[float, float, float]:
         ''' Transforms the pole positions to the laser scan frame. '''
         direction_rad = pole.spherical_distance[2]*pi/180
-        
+
         index = int(len(cur_laser.ranges)/2 + direction_rad/cur_laser.angle_increment)
-        
+
         dist_ind = int(len(cur_laser.ranges)*LASER_INDEX_MARGIN)
 
         outer_pole_distances = cur_laser.ranges[index - dist_ind: index + dist_ind]
@@ -218,7 +218,7 @@ class Field(object):
         if pole_indices_array == []:
             rospy.logwarn("Pole indices Array empty")
             return
-        
+
         rospy.loginfo(f'Pole indices: {pole_indices_array}')
 
         pole_found_index = pole_indices_array[len(pole_indices_array) // 2]
@@ -231,22 +231,5 @@ class Field(object):
                         f'{pole.spherical_distance[2]}\n' \
                         f'Angle to Pole laser: ' \
                         f'{(total_idx - len(cur_laser.ranges)/2)*cur_laser.angle_increment*180/pi}')
-        
+
         return cur_laser.ranges[total_idx], None, (total_idx - len(cur_laser.ranges)/2)*cur_laser.angle_increment*180/pi
-    
-        
-
-
-
-
-
-
-
-    
-
-
-
-        
-
-    
-

@@ -7,8 +7,6 @@ from typing import List
 
 import rospy
 
-
-
 from globals.tick import CallbackTicker
 from globals.globals import *
 from math_utils.vector_utils import TupleVector3
@@ -43,7 +41,7 @@ class LocaliserNode:
         self.objects = [FieldObject(Color.from_string(c.color_name), \
                                     c.type, TupleVector3.from_vector3(c.player_distance) , None) \
                         for c in data.field_components]
-   
+
     def laser_cb(self, msg: LaserScan):
         '''Callback for the laser subscriber.
         '''
