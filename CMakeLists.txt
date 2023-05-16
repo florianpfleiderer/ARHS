@@ -180,10 +180,7 @@ catkin_install_python(
   scripts/player_sm.py
   scripts/object_detector.py
   scripts/color_calibrator.py
-<<<<<<< HEAD
-=======
   scripts/localiser_node.py
->>>>>>> 121abd75b563e3afb500936ddf0b1b5754fb099e
   # scripts/states/avoid_obstacle_server.py
   # scripts/states/drive_randomly_server.py
   scripts/behaviours/find_destination_server.py

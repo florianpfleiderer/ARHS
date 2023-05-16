@@ -6,6 +6,44 @@ from math_utils.vector_utils import *
 from typing import *
 from field_components.colors import Color
 import sys
+import cv2
+from visualization.screen_utils import *
+import random
+from data_utils.topic_handlers import *
+
+# Since the ratios of pole positions is known, any 3 adjacent poles along one line can be used to calculate the field dimensions.
+# Assuming ordering of the poles from right to left (ordered by increasing angle), we can create a lookup table
+# to determine which poles we have in order to calculate the field dimensions.
+# The result has a 180d rotational symmetry, so detecting the closest goal or puck is required to determine the orientation.
+# The origin (x, y) of the field is assumed to be in A.
+# 
+# Pole setup (in units):
+# 
+#                    5
+# 
+#     N   M    L     K     J    I   H
+#
+#
+# 3                                     h
+#
+#
+#     A   B    C     D     E    F   G
+#     |0.5|0.75| 1.25| 1.25|0.75|0.5|
+#                    w
+#
+# Ratio table:
+# 0.5  : 0.75 = 2/3 => A, B, C => w = BC * 20/3 => x = A.x
+# 0.75 : 1.25 = 3/5 => B, C, D => w = CD * 4    => x = B.x - w * 0.1
+# 1.25 : 1.25 = 1   => C, D, E => w = CD * 4    => x = C.x - w * 0.25
+# 1.25 : 0.75 = 5/3 => D, E, F => w = DE * 4    => x = D.x - w * 0.5
+# 0.75 : 0.5  = 3/2 => E, F, G => w = EF * 20/3 => x = E.x - w * 0.75
+#
+# For width calculation, the longer distance is used
+# h = w * 3/5
+# y = 0
+#
+
+DIMENSION_FACTORS = [[2/3, 3/5, 1, 5/3, 3/2], [20/3, 4, 4, 4, 20/3], [0, 0.1, 0.25, 0.5, 0.75]]
 
 class FieldObject:
     '''Class representing a field object.
@@ -21,7 +59,7 @@ class FieldObject:
         position: absolute position of the object in the field in x, y coordinates
         
     '''
-    def __init__(self, color, type, distance, half_size):
+    def __init__(self, color: Color, type, distance: TupleVector3, half_size: TupleVector3):
         self.color: Color = color
         self.type = type
         self.distance: TupleVector3 = distance
@@ -48,6 +86,9 @@ class FieldObject:
         typeclass = getattr(sys.modules[__name__], field_component.type)
         return typeclass(TupleVector3.from_vector3(field_component.player_distance),
                          TupleVector3.from_vector3(field_component.half_size))
+    
+    def draw_icon(self, image, rect):
+        pass
 
     def __str__(self) -> str:
         value = self.distance.convert()
@@ -61,6 +102,41 @@ class Robot(FieldObject):
     def __init__(self, distance, half_size):
         super().__init__(Color.RED, "Robot", distance, half_size)
 
+class Player(FieldObject):
+    def __init__(self, distance, half_size):
+        super().__init__(Color.RED, "Player", distance, half_size)
+
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        # body + wheels
+        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.75), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.rectangle(image, get_point_in_rect(rect, 0, 0.35), get_point_in_rect(rect, 0.7, 0.85), (0, 0, 255), -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.2, 0.8), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.17, 0.8), scale_rect(rect, 0.06, 0.11), 0, 0, 360, (0, 200, 200), -1)
+
+        # head shadow
+        cv2.rectangle(image, get_point_in_rect(rect, 0.3, 0.4), get_point_in_rect(rect, 0.7, 0.55), (0, 0, 155), -1)
+
+        # platform + yellow dots
+        cv2.rectangle(image, get_point_in_rect(rect, -0.08, 0.34), get_point_in_rect(rect, 0.36, 0.42), (10, 10, 10), -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.43, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.57, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.7, 0.45), scale_rect(rect, 0.04, 0.12), 0, 90, 270, (0, 100, 150), -1)
+
+        # head
+        cv2.rectangle(image, get_point_in_rect(rect, 0.35, 0.13), get_point_in_rect(rect, 0.85, 0.5), (0, 0, 255), -1)
+
+        # right eye
+        cv2.ellipse(image, get_point_in_rect(rect, 0.6, 0.12), scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
+        # cv2.ellipse(image, get_point_in_rect(rect, 0.6, 0.12), scale_rect(rect, 0.1, 0.2), 0, 0, 360, (0, 0, 0), 1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.13), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
+
+        # left eye
+        cv2.ellipse(image, get_point_in_rect(rect, 0.875, 0.08), scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
+        # cv2.ellipse(image, get_point_in_rect(rect, 0.875, 0.08), scale_rect(rect, 0.1, 0.2), 0, 0, 360, (0, 0, 0), 1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.925, 0.09), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
+
+
 class YellowPuck(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
@@ -68,6 +144,10 @@ class YellowPuck(FieldObject):
 
     def __init__(self, distance, half_size):
         super().__init__(Color.YELLOW, "YellowPuck", distance, half_size)
+
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
 
 class BluePuck(FieldObject):
     color = Color.BLUE
@@ -77,6 +157,10 @@ class BluePuck(FieldObject):
     def __init__(self, distance, half_size):
         super().__init__(Color.BLUE, "BluePuck", distance, half_size)
 
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
+
 class YellowGoal(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
@@ -84,6 +168,10 @@ class YellowGoal(FieldObject):
 
     def __init__(self, distance, half_size):
         super().__init__(Color.YELLOW, "YellowGoal", distance, half_size)
+
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        cv2.rectangle(image, get_point_in_rect(rect, 0, 0), get_point_in_rect(rect, 1, 1), self.color.default(), -1)
 
 class BlueGoal(FieldObject):
     color = Color.BLUE
@@ -93,6 +181,10 @@ class BlueGoal(FieldObject):
     def __init__(self, distance, half_size):
         super().__init__(Color.BLUE, "BlueGoal", distance, half_size)
 
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        cv2.rectangle(image, get_point_in_rect(rect, 0, 0), get_point_in_rect(rect, 1, 1), self.color.default(), -1)
+
 class Pole(FieldObject):
     color = Color.GREEN
     area_detect_range = (AREA_MIN, None)
@@ -100,6 +192,10 @@ class Pole(FieldObject):
 
     def __init__(self, distance, half_size):
         super().__init__(Color.GREEN, "Pole", distance, half_size)
+
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
 
 class LaserPoint(FieldObject):
     color = Color.ORANGE
@@ -125,9 +221,102 @@ class FallingEdge(FieldObject):
     def __init__(self, distance, half_size):
         super().__init__(Color.RED, "FallingEdge", distance, half_size)
 
+class Fan(FieldObject):
+    def __init__(self, distance, half_size):
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
+        color = Color.BLUE
+        color.default_bgr = (b, g, r)
 
-if __name__ == "__main__":
-    fc = FieldComponent("yellow", "YellowPuck", Vector3(0, 0, 0), Vector3(0, 0, 0))
-    fo = FieldObject.from_field_component(fc)
+        super().__init__(color, "Fan", distance, half_size)
 
-    print(fo)
+    def draw_icon(self, image, rect):
+        x, y, w, h = rect
+        shirt = self.color.default()
+        skin = (168, 189, 255)
+        black = (10, 10, 10)
+        dark_red = (0, 0, 100)
+        brown = (16, 21, 36)
+        # shirt
+        cv2.rectangle(image, get_point_in_rect(rect, 0.33, 0.5), get_point_in_rect(rect, 0.66, 0.8), shirt, -1)
+        # head
+        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.3), round(w * 0.3), skin, -1)
+        cv2.circle(image, get_point_in_rect(rect, 0.4, 0.25), round(w * 0.05), black, -1)
+        cv2.circle(image, get_point_in_rect(rect, 0.6, 0.25), round(w * 0.05), black, -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.5, 0.37), scale_rect(rect, 0.16, 0.125), 0, 0, 180, dark_red, -1)
+        # hands
+        cv2.circle(image, get_point_in_rect(rect, 0.1, 0.35), round(w * 0.08), skin, -1)
+        cv2.circle(image, get_point_in_rect(rect, 0.9, 0.35), round(w * 0.08), skin, -1)
+        # feet
+        cv2.ellipse(image, get_point_in_rect(rect, 0.35, 0.8), scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
+        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.8), scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
+
+class Field(FieldObject):
+    def __init__(self):
+        super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
+        self.field_component_sub = FieldComponentsSubscriber()
+        self.field_objects: List[FieldObject] = None
+
+    def get_objects_by_class(self, class_name):
+        return [o for o in self.field_objects if o.type == class_name]
+
+    def calculate_dimensions(self, *poles):
+        if len(poles) != 3:
+            rospy.logwarn(f"Not enough poles to calculate dimensions, got {len(poles)}")
+            return False
+        
+        # sort poles by angle phi
+        sorted_poles = sorted(poles, key=lambda pole: pole.distance.convert(Coordinate.CYLINDRICAL)[1])
+
+        pole1: Pole = sorted_poles[0]
+        pole2: Pole = sorted_poles[1]
+        pole3: Pole = sorted_poles[2]
+
+        angle_threshold = 15
+        ratio_threshold = 0.1
+
+        angle = (pole2.distance - pole1.distance).angle(pole3.distance - pole2.distance)
+        if angle > angle_threshold:
+            rospy.logwarn(f"Poles are not in a straight line, got {angle}")
+            return False
+        
+        dist12 = pole1.distance.distance(pole2.distance)
+        dist23 = pole2.distance.distance(pole3.distance)
+        detect_ratio = dist12 / dist23
+
+        dim_factor = sorted([(dim, detect_ratio) for dim in zip(*DIMENSION_FACTORS)], key=lambda e: abs(e[0][0] - e[1]))[0][0]
+
+        if abs(detect_ratio - dim_factor[0]) > ratio_threshold:
+            rospy.logwarn(f"No matching ratio, got {detect_ratio}")
+            return False
+        
+        w = max(dist12, dist23) * dim_factor[1]
+        origin = pole1.distance - (pole1.distance - pole2.distance).unit_vector() * dim_factor[2]
+        
+        return (w, w * 3/5), origin
+
+    def update(self):
+        if self.field_component_sub.data is None:
+            return
+        
+        detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
+        detected_field_objects = sorted(detected_field_objects, key=lambda fo: fo.distance.convert(Coordinate.CYLINDRICAL)[1])
+        detected_poles = [fo for fo in detected_field_objects if fo.type == "Pole"]
+
+        if len(detected_poles) < 3:
+            return
+        
+        for i in range(len(detected_poles) - 2):
+            result = self.calculate_dimensions(*detected_field_objects[i:i+3])
+            if result != False:
+                break
+        
+        if result == False:
+            return
+        
+        rospy.loginfo(f"Field dimensions: {result[0][0]} x {result[0][1]}, origin: {result[1]}")
+        self.half_size = TupleVector3((-result[0][0]/2, -result[0][1]/2))
+        self.distance = -result[1]
+
+        self.field_objects = detected_field_objects

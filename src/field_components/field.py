@@ -62,7 +62,7 @@ class Field(object):
     def change_coordinates(self, coordinates: Coordinate):
         '''Changes the distamce attribute to the new coordinate system.'''
         for pole in self.poles:
-            pole.distance = pole.distance.convert(coordinates)
+            pole.distance.coordinates = coordinates
 
     def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.

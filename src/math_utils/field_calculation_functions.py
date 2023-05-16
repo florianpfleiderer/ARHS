@@ -17,9 +17,9 @@ def cosine_theorem(pole_a : Pole, pole_b : Pole):
     Returns:
         distance between the two poles
     '''
-    a = pole_a.distance[0]
-    b = pole_b.distance[0]
-    gamma = abs(pole_a.distance[2] - pole_b.distance[2])
+    a = pole_a.distance.tuple[0]
+    b = pole_b.distance.tuple[0]
+    gamma = abs(pole_a.distance.tuple[2] - pole_b.distance.tuple[2])
 
     return sqrt(a**2 + b**2 - 2 * a * b * cosd(gamma))
 

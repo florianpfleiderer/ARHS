@@ -20,15 +20,21 @@ class TupleVector3:
 
     def value(self):
         return self.tuple
-    
-    def convert(self, coordinates=None):
-        return convert_vector(self.tuple, Coordinate.CARTESIAN, self.coordinates if coordinates is None else coordinates)
+
+    def convert(self, convert_coordinates=Coordinate.CARTESIAN):
+        return convert_vector(self.tuple, Coordinate.CARTESIAN, convert_coordinates)
     
     def length(self):
         return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2 + self.tuple[2] ** 2)
     
     def distance(self, vector):
         return (self - vector).length()
+    
+    def angle(self, vector):
+        return acosd(self * vector / (self.length() * vector.length()))
+    
+    def unit_vector(self):
+        return self / self.length()
 
     def __add__(self, value):
         if type(value) is TupleRotator3:
@@ -76,6 +82,8 @@ class TupleVector3:
             tup = value
         elif type(value) is int or type(value) is float:
             tup = (value, value, value)
+        else:
+            raise TypeError(f"bad type for vector subtraction: {type(value)}")
 
         vec = TupleVector3((self.tuple[0] - tup[0],
                             self.tuple[1] - tup[1],
@@ -98,18 +106,23 @@ class TupleVector3:
         return vec
     
     def __mul__(self, value):
+        if type(value) is int or type(value) is float:
+            tup = (value, value, value)
+
+            vec = TupleVector3((self.tuple[0] * tup[0],
+                                self.tuple[1] * tup[1],
+                                self.tuple[2] * tup[2]))
+            vec.coordinates = self.coordinates
+            return vec
+        
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
             tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
 
-        vec = TupleVector3((self.tuple[0] * tup[0],
-                            self.tuple[1] * tup[1],
-                            self.tuple[2] * tup[2]))
-        vec.coordinates = self.coordinates
-        return vec
+        return (self.tuple[0] * tup[0] +
+                self.tuple[1] * tup[1] +
+                self.tuple[2] * tup[2])
         
     def __rmul__(self, value):
         return self.__mul__(value)
@@ -142,35 +155,69 @@ class TupleVector3:
         vec.coordinates = self.coordinates
         return vec    
 
-    def __lt__(self, tuple_vector):
-        return (self.tuple[0] < tuple_vector.tuple[0] and
-                self.tuple[1] < tuple_vector.tuple[1] and
-                self.tuple[2] < tuple_vector.tuple[2] )
+    def __lt__(self, value):
+        if type(value) == TupleVector3:
+            len = value.length()
+        elif type(value) == tuple:
+            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
+        elif type(value) == int or type(value) == float:
+            len = value
+        
+        return self.length() < len
     
-    def __gt__(self, tuple_vector):
-        return (self.tuple[0] > tuple_vector.tuple[0] and
-                self.tuple[1] > tuple_vector.tuple[1] and
-                self.tuple[2] > tuple_vector.tuple[2] )
+    def __gt__(self, value):
+        if type(value) == TupleVector3:
+            len = value.length()
+        elif type(value) == tuple:
+            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
+        elif type(value) == int or type(value) == float:
+            len = value
+        
+        return self.length() > len
     
-    def __eq__(self, tuple_vector):
-        return (self.tuple[0] == tuple_vector.tuple[0] and
-                self.tuple[1] == tuple_vector.tuple[1] and
-                self.tuple[2] == tuple_vector.tuple[2] )
+    def __eq__(self, value):
+        if type(value) == TupleVector3:
+            tup = value.tuple
+        elif type(value) == tuple:
+            tup = value
+        elif type(value) == int or type(value) == float:
+            tup = (value, value, value)
+        
+        return (self.tuple[0] == tup[0] and
+                self.tuple[1] == tup[1] and
+                self.tuple[2] == tup[2] )
     
-    def __ne__(self, tuple_vector):
-        return (self.tuple[0] != tuple_vector.tuple[0] or
-                self.tuple[1] != tuple_vector.tuple[1] or
-                self.tuple[2] != tuple_vector.tuple[2] )
+    def __ne__(self, value):
+        if type(value) == TupleVector3:
+            tup = value.tuple
+        elif type(value) == tuple:
+            tup = value
+        elif type(value) == int or type(value) == float:
+            tup = (value, value, value)
+        
+        return (self.tuple[0] != tup[0] and
+                self.tuple[1] != tup[1] and
+                self.tuple[2] != tup[2] )
     
-    def __le__(self, tuple_vector):
-        return (self.tuple[0] <= tuple_vector.tuple[0] and
-                self.tuple[1] <= tuple_vector.tuple[1] and
-                self.tuple[2] <= tuple_vector.tuple[2] )
+    def __le__(self, value):
+        if type(value) == TupleVector3:
+            len = value.length()
+        elif type(value) == tuple:
+            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
+        elif type(value) == int or type(value) == float:
+            len = value
+        
+        return self.length() <= len
     
-    def __ge__(self, tuple_vector):
-        return (self.tuple[0] >= tuple_vector.tuple[0] and
-                self.tuple[1] >= tuple_vector.tuple[1] and
-                self.tuple[2] >= tuple_vector.tuple[2] )
+    def __ge__(self, value):
+        if type(value) == TupleVector3:
+            len = value.length()
+        elif type(value) == tuple:
+            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
+        elif type(value) == int or type(value) == float:
+            len = value
+        
+        return self.length() >= len
 
     def __neg__(self):
         vec = TupleVector3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
@@ -181,7 +228,7 @@ class TupleVector3:
         pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
         pref_y = "y" if self.coordinates == Coordinate.CARTESIAN else "phi" if self.coordinates == Coordinate.CYLINDRICAL else "theta"
         pref_z = "z" if self.coordinates != Coordinate.SPHERICAL else "alpha"
-        value = self.convert()
+        value = self.convert(self.coordinates)
         return f"{chr(10)}" + \
                f"{pref_x: >10} {value[0]: >6.2f}{chr(10)}" + \
                f"{pref_y: >10} {value[1]: >6.2f}{chr(10)}" + \
@@ -314,7 +361,7 @@ def cylindrical_to_cartesian(polar_vector):
 
 def cartesian_to_cylindrical(cartesian_vector):
     x, y, z = cartesian_vector
-    return (math.sqrt(x ** 2 + y ** 2), math.atan2(y, x), z)
+    return (math.sqrt(x ** 2 + y ** 2), atan2d(y, x), z)
 
 def spherical_to_cartesian(spherical_vector):
     r, theta, phi = spherical_vector
@@ -374,5 +421,5 @@ def test_rotator():
     test((v - r).value(), (0, 0, 1))
 
 if __name__ == "__main__":
-    # test_vector()
+    test_vector()
     test_rotator()

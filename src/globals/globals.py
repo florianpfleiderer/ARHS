@@ -3,11 +3,7 @@ from math_utils.math_function_utils import *
 import cv2
 
 SIMULATION_MODE = True
-<<<<<<< HEAD
-LAUNCH_MODE = True
-=======
 LAUNCH_MODE = False
->>>>>>> 121abd75b563e3afb500936ddf0b1b5754fb099e
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)

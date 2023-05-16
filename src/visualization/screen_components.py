@@ -23,7 +23,7 @@ class Screen:
         self.image = empty_image(dimensions)
 
     def get_local_distance(self, distance) -> TupleVector3:
-        return distance - self.origin_offset - self.angle_offset 
+        return distance - self.origin_offset - self.angle_offset
     
     def get_global_distance(self, local_distance) -> TupleVector3:
         return local_distance + self.angle_offset + self.origin_offset
@@ -104,7 +104,7 @@ class Screen:
 
         return True
 
-    def draw_object(self, obj, draw_text=True, draw_center=True):
+    def draw_object(self, obj, draw_text=True, draw_center=True, draw_icon=False, draw_rect=True):
         if issubclass(type(obj), fc.FieldObject):
             rect = self.get_rect(obj)
 
@@ -120,18 +120,22 @@ class Screen:
                 # rospy.logerr(f"Object is too big: {w} x {h}, field object: {obj}")
                 return
             
-            cv2.rectangle(self.image, (x, y), (x+w, y+h), obj.color.default, 1)
+            if draw_rect:
+                cv2.rectangle(self.image, (x, y), (x+w, y+h), obj.color.default(), 1)
 
             if draw_center:
-                cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default, -1)
+                cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default(), -1)
 
             if draw_text:
                 cv2.putText(self.image, str(obj), (x, int(y - 50 * CV2_DEFAULT_FONT_SCALE)),
                             CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
-                            Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)    
+                            Color.YELLOW.default(), CV2_DEFAULT_THICKNESS, cv2.LINE_AA)    
                 cv2.putText(self.image, f"{x}, {y}, {w} x {h}", (x, int(y - 10 * CV2_DEFAULT_FONT_SCALE)),
                             CV2_DEFAULT_FONT, CV2_DEFAULT_FONT_SCALE,
-                            Color.YELLOW.default, CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
+                            Color.YELLOW.default()  , CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
+                
+            if draw_icon:
+                obj.draw_icon(self.image, rect)
                 
     @classmethod
     def KinectScreen(cls, name):
@@ -147,7 +151,23 @@ class Screen:
     
     @classmethod
     def BirdEyeScreen(cls, name):
-        return cls(name, (640, 480), KINECT_FOV, ProjectionType.SPHERICAL, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+        return cls(name, (640, 480), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+
+    @classmethod
+    def FieldScreen(cls, name, field):
+        return FieldScreen(name, field)
+    
+class FieldScreen(Screen):
+    def __init__(self, name, field):
+        super().__init__(name, (1280, 720), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+        self.field: fc.Field = field
+
+    def update(self):
+        self.angle_offset = TupleRotator3((-self.field.distance.convert(Coordinate.CYLINDRICAL)[1], 90, 0))
+        self.origin_offset = -self.field.distance + (0, 0, 10)
+
+        rospy.loginfo(f"field relative rotation: {self.angle_offset}")
+
 
 class ImageViewer:
     def __init__(self, name):
@@ -279,8 +299,43 @@ def birdeye_screen_test():
     while True:
         cv2.waitKey(10)
 
+
+def field_screen_test():
+    import time
+    field = fc.Field()
+    field.half_size = TupleVector3((1, 1, 0), Coordinate.CARTESIAN)
+    sc = Screen.FieldScreen("field", field)
+    bsc = Screen.BirdEyeScreen("BirdEye")
+    fo = sc.create_field_object((100, 100, 100, 100), 10, fc.Player)
+    fo = fc.Player(TupleVector3((2, 0, 0)), TupleVector3((1, 1, 0)))
+
+    print(fo)
+
+    fan1 = sc.create_field_object((50, 50, 100, 100), 10, fc.Fan)
+
+    offset_angle = 0
+
+    while True:
+        sc.image = empty_image(sc.dimensions, (50, 50, 50))
+        sc.draw_object(fo, False, False, True, False)
+        sc.draw_object(fan1, False, False, True, False)
+        # sc.draw_object(field, False, False, False, True)
+        sc.show_image()
+
+        bsc.draw_object(fo, False, False, True, False)
+        bsc.show_image()
+
+        offset_angle = (offset_angle + 10) % 360
+        field.distance = TupleVector3((1, 90, offset_angle), Coordinate.SPHERICAL)
+        sc.update()
+        print(sc.angle_offset)
+        print(sc.origin_offset)
+        cv2.waitKey(10)
+        time.sleep(1)
+
 # test screen object creation and correct visualization
 if __name__ == "__main__":
     # kinect_screen_test()
     # laser_screen_test()
-    birdeye_screen_test()
+    # birdeye_screen_test()
+    field_screen_test()

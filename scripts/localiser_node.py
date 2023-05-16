@@ -17,6 +17,7 @@ from field_components.field import Field
 from field_components.field_components import FieldObject, Pole
 from field_components.colors import Color
 from sensor_msgs.msg import LaserScan
+from data_utils.topic_handlers import *
 
 class LocaliserNode:
     '''This node turns the robot and searches for the three outer most poles.'''
@@ -25,27 +26,15 @@ class LocaliserNode:
         rospy.init_node("localiser_node")
         rospy.loginfo("Initialised LocaliserNode")
 
-        self.comp_sub = rospy.Subscriber('player/field_components', FieldComponents, self.callback)
-        self.laser_sub = rospy.Subscriber("/robot1/front_laser/scan", LaserScan, self.laser_cb)
+        self.comp_sub = FieldComponentsSubscriber()
+        self.laser_sub = LaserSubscriber() # rospy.Subscriber("/robot1/front_laser/scan", LaserScan, self.laser_cb)
         self.position_pub = rospy.Publisher('player/position', Pose, queue_size=10)
-        self.velocity_pub = rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) 
+        self.velocity_pub = VelocityPublisher() # rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) 
 
         self.field = Field()
         self.objects: List[FieldComponent] = None
         self.goal_found: FieldObject = None
         self.laser: LaserScan = None
-
-    def callback(self, data: FieldComponents):
-        '''Callback for the field components subscriber.
-        '''
-        self.objects = [FieldObject(Color.from_string(c.color_name), \
-                                    c.type, TupleVector3.from_vector3(c.player_distance) , None) \
-                        for c in data.field_components]
-
-    def laser_cb(self, msg: LaserScan):
-        '''Callback for the laser subscriber.
-        '''
-        self.laser = msg
 
     def set_velocities(self, linear, angular):
         """Use this to set linear and angular velocities
@@ -59,6 +48,11 @@ class LocaliserNode:
     def execute(self):
         '''Main loop of the localiser node.
         '''
+        self.objects = [FieldObject(Color.from_string(c.color_name), \
+                                    c.type, TupleVector3.from_vector3(c.player_distance) , None) \
+                        for c in self.comp_sub.data]
+        
+        self.laser = self.laser_sub.data
         # while len(self.field.poles) < 3:
         #     self.set_velocities(0, 0.2)
         #     self.field.set_objects(self.objects)

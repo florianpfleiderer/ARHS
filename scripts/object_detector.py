@@ -221,11 +221,8 @@ if __name__ == '__main__':
 
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else False
-<<<<<<< HEAD
     rospy.loginfo("Testmode: " + str(testmode))
 
-=======
->>>>>>> 121abd75b563e3afb500936ddf0b1b5754fb099e
     detect_classes = [CLASSES[key.lower()] for key in args[2:]] if len(args) > 2 else list(CLASSES.values())
     
     kinect_det = KinectDetector(testmode)
@@ -235,15 +232,18 @@ if __name__ == '__main__':
     field_components_pub = FieldComponentsPublisher()
     target_sub = TargetComponentSubscriber()
 
-    screens: List[Screen] = []
     objects: List[FieldObject] = []
 
+    field: Field = Field()
+    field_screen = Screen.FieldScreen("field", field)
+
+    screens: List[Screen] = [kinect_det.screen, laser_det.screen, laser_det.laser_screen_rgb, top_screen, field_screen]
+
     def init_detection_cycle():
-        screens.clear()
         objects.clear()
 
-        screens.append(top_screen)
         top_screen.image = empty_image(top_screen.dimensions)
+        field_screen.image = empty_image(field_screen.dimensions, (50, 50, 50))
         draw_fov_bird_eye(KINECT_FOV, top_screen)
         draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
@@ -289,10 +289,10 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
-    def draw_objects(objects, draw_text=True, draw_center=True, *screens: Screen):
+    def draw_objects(objects, draw_text=True, draw_center=True, draw_icon=False, draw_rect=True, *screens: Screen):
         for screen in screens:
             for obj in objects:
-                screen.draw_object(obj, draw_text, draw_center)
+                screen.draw_object(obj, draw_text, draw_center, draw_icon, draw_rect)
 
     def show_screens(*screens: Screen):
         for screen in screens:
@@ -324,7 +324,8 @@ if __name__ == '__main__':
 
         rospy.loginfo(f"Detected {len(combined_objects)} field components")
 
-        draw_objects(combined_objects, False, False, top_screen)
+        draw_objects(combined_objects, False, False, False, True, top_screen)
+        draw_objects(combined_objects, False, False, True, False, field_screen)
         
         if combined_objects and len(combined_objects) > 0:
             field_components_pub.publish(FieldComponents(
@@ -342,7 +343,9 @@ if __name__ == '__main__':
                             # lambda: draw_objects(run_laser_detection, False, True, top_screen),
                             combine_detection,
                             lambda: draw_target(top_screen),
-                            lambda: show_screens(*screens)
+                            lambda: show_screens(*screens),
+                            field.update,
+                            field_screen.update
                             )
 
     imgticker = CVTicker(TICK_RATE)
