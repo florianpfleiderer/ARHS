@@ -322,6 +322,7 @@ if __name__ == '__main__':
         draw_objects(combined_objects, False, False, top_screen)
 
         if len(combined_objects) > 0:
+            # TODO: redo publish function (look at Milestone3 Tag)
             field_components_pub.publish(list([o.get_field_component() for o in combined_objects]))
     
     def draw_target(screen: Screen):
