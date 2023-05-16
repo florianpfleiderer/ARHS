@@ -320,10 +320,11 @@ if __name__ == '__main__':
         rospy.loginfo(f"Detected {len(combined_objects)} field components")
 
         draw_objects(combined_objects, False, False, top_screen)
-
-        if len(combined_objects) > 0:
-            # TODO: redo publish function (look at Milestone3 Tag)
-            field_components_pub.publish(list([o.get_field_component() for o in combined_objects]))
+        
+        if combined_objects and len(combined_objects) > 0:
+            field_components_pub.publish(FieldComponents(
+                [FieldComponent(o.color.__str__() , o.type, Vector3(*o.distance.tuple),
+                                None ) for o in combined_objects]))
 
     def draw_target(screen: Screen):
         if target_sub.data is not None:

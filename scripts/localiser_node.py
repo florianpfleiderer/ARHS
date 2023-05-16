@@ -9,7 +9,7 @@ import rospy
 
 from globals.tick import CallbackTicker
 from globals.globals import *
-from math_utils.vector_utils import TupleVector3
+from math_utils.vector_utils import TupleVector3, Coordinate
 from math_utils.field_calculation_functions import get_position
 from player.msg import FieldComponents, FieldComponent
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
@@ -84,6 +84,8 @@ class LocaliserNode:
             if not self.field.set_objects(cur_objects):
                 rospy.logwarn("Field Objects could not be set")
                 return
+            
+            self.field.change_coordinates(Coordinate.SPHERICAL)
 
             if not self.field.check_poles():
                 return

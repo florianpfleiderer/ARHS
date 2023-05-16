@@ -7,6 +7,7 @@ from math import pi
 from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, FieldObject
 from field_components.colors import Color
 from math_utils.field_calculation_functions import cosine_theorem, get_position
+from math_utils.vector_utils import Coordinate
 from sensor_msgs.msg import LaserScan
 from globals.globals import *
 
@@ -50,18 +51,18 @@ class Field(object):
         self.clear_objects()
 
         if field_objects:
-            self.poles.extend([o for o in field_objects if o.type == "pole"])
-            self.yellowPucks.extend([o for o in field_objects if o.type == "puck" \
-                and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW])
-            self.bluePucks.extend([o for o in field_objects if o.type == "puck" \
-                and o.color is Color.SIM_BLUE or Color.REAL_BLUE])
-            self.yellowGoal = [o for o in field_objects if o.type == "goal" \
-                and o.color is Color.SIM_YELLOW or Color.REAL_YELLOW]
-            self.blueGoal = [o for o in field_objects if o.type == "goal" \
-                and o.color is Color.SIM_BLUE or Color.REAL_BLUE]
+            self.poles.extend([o for o in field_objects if o.type == "Pole"])
+            self.yellowPucks.extend([o for o in field_objects if o.type == "YellowPuck"])
+            self.bluePucks.extend([o for o in field_objects if o.type == "BluePuck"])
+            self.yellowGoal = [o for o in field_objects if o.type == "YellowGoal"]
+            self.blueGoal = [o for o in field_objects if o.type == "BlueGoal"]
             return True
         return False
 
+    def change_coordinates(self, coordinates: Coordinate):
+        '''Changes the distamce attribute to the new coordinate system.'''
+        for pole in self.poles:
+            pole.distance = pole.distance.convert(coordinates)
 
     def calculate_robot_position(self) -> Tuple:
         ''' Calculates the robot position from the poles.
@@ -71,8 +72,8 @@ class Field(object):
         You can get the Robot Position depending on the Color of your goal and three Poles.
         After this, you can increment the position with the velocity data.
         
-        poles.spherical_distance[0] = r
-        poles.spherical_distance[2] = phi 
+        poles.distance[0] = r
+        poles.distance[2] = phi 
             (0 is the direction of robot, - is right, + is left)
         '''
 
@@ -156,10 +157,10 @@ class Field(object):
 
     def sort_poles_by_angle_phi(self):
         # sort poles by spherical distance, so from right to left
-        self.poles = sorted(self.poles, key=lambda pole: pole.spherical_distance[2])
+        self.poles = sorted(self.poles, key=lambda pole: pole.distance[2])
 
         rospy.loginfo(f'poles: {[pole.type for pole in self.poles]}' \
-                       f'{[pole.spherical_distance[2] for pole in self.poles]}')
+                       f'{[pole.distance[2] for pole in self.poles]}')
 
     def check_poles(self) -> bool:
         if len(self.poles) < 3:
@@ -196,7 +197,7 @@ class Field(object):
 
     def pole_to_laser(self,pole: Pole, cur_laser: LaserScan) -> Tuple[float, float, float]:
         ''' Transforms the pole positions to the laser scan frame. '''
-        direction_rad = pole.spherical_distance[2]*pi/180
+        direction_rad = pole.distance[2]*pi/180
 
         index = int(len(cur_laser.ranges)/2 + direction_rad/cur_laser.angle_increment)
 
@@ -205,8 +206,8 @@ class Field(object):
         outer_pole_distances = cur_laser.ranges[index - dist_ind: index + dist_ind]
         rospy.loginfo(f'Outer pole distance: {outer_pole_distances}')
 
-        dist_min = pole.spherical_distance[0] - 0.5
-        dist_max = pole.spherical_distance[0] + 0.5
+        dist_min = pole.distance[0] - 0.5
+        dist_max = pole.distance[0] + 0.5
 
         pole_indices_array: float = []
 
@@ -228,7 +229,7 @@ class Field(object):
         rospy.loginfo(f'Pole distance:' \
                         f'{cur_laser.ranges[total_idx]}\n' \
                         f'Angle to Pole rgb: ' \
-                        f'{pole.spherical_distance[2]}\n' \
+                        f'{pole.distance[2]}\n' \
                         f'Angle to Pole laser: ' \
                         f'{(total_idx - len(cur_laser.ranges)/2)*cur_laser.angle_increment*180/pi}')
 
