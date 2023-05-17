@@ -11,6 +11,7 @@ import field_components.field_components as fc
 from field_components.colors import Color
 from visualization.screen_utils import *
 from typing import Tuple
+import time
 
 class Screen:
     def __init__(self, name, dimensions, FOV, projection, origin_offset, angle_offset):
@@ -29,6 +30,17 @@ class Screen:
         return local_distance + self.angle_offset + self.origin_offset
 
     def get_rect(self, obj):
+        '''
+        Returns the rectangle of the object in the screen in pixels.
+        x is the position in the horizontal axis, 0 at the left, positive to the right.
+        y is the position in the vertical axis, 0 at the top, positive to the bottom.
+        w is the width of the object in the horizontal axis.
+        h is the height of the object in the vertical axis.
+        The top left corner is given by (x, y), the bottom right corner is given by (x + w, y + h).
+
+        Args:
+        obj -- the object to get the rectangle from. Can be a tuple (x_ang, y_ang, w_ang, h_ang) or a FieldObject.
+        '''
         if type(obj) is tuple:
             x_ang, y_ang, w_ang, h_ang = obj
         elif issubclass(type(obj), fc.FieldObject):
@@ -41,6 +53,17 @@ class Screen:
         return x, y, abs(w), abs(h)
     
     def get_angles(self, obj):
+        '''
+        Returns the angles of the object in the screen in degrees.
+        x_ang is the angle in the horizontal axis, 0 at the center, positive to the right.
+        y_ang is the angle in the vertical axis, 0 at the center, positive to the bottom.
+        w_ang is the width of the object in the horizontal axis.
+        h_ang is the height of the object in the vertical axis.
+        The top left corner is given by (x_ang, y_ang), the bottom right corner is given by (x_ang + w_ang, y_ang + h_ang).
+        
+        Args:
+        obj -- the object to get the angles from. Can be a rect tuple (x, y, w, h) or a FieldObject.
+        '''
         if type(obj) is tuple:
             x, y, w, h = obj
             x_ang = screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
@@ -49,13 +72,13 @@ class Screen:
             h_ang = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
 
         elif issubclass(type(obj), fc.FieldObject):
-            corner_min = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
-            corner_max = self.get_local_distance(obj.distance + obj.half_size).convert(Coordinate.SPHERICAL)
+            corner_br = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
+            corner_ul = self.get_local_distance(obj.distance + obj.half_size).convert(Coordinate.SPHERICAL)
             
-            x_ang = - corner_max[2]# alpha max
-            y_ang = corner_min[1] - 90 # theta min
-            w_ang = - corner_min[2] - x_ang # alpha min
-            h_ang = corner_max[1] - 90 - y_ang # theta max
+            x_ang = - corner_ul[2]# alpha max
+            y_ang = corner_ul[1] - 90 # theta min
+            w_ang = - corner_br[2] - x_ang # alpha min
+            h_ang = corner_br[1] - 90 - y_ang # theta max
         return x_ang, y_ang, w_ang, h_ang
     
     def get_center(self, obj):
@@ -82,7 +105,7 @@ class Screen:
     def create_field_object(self, rect, r, obj_type):
         x_ang, y_ang, w_ang, h_ang = self.get_angles(rect)
         local_distance = TupleVector3((r, y_ang + h_ang / 2 + 90, - (x_ang + w_ang / 2)), Coordinate.SPHERICAL)
-        local_corner = TupleVector3((r, y_ang + h_ang + 90, - x_ang), Coordinate.SPHERICAL)
+        local_corner = TupleVector3((r, y_ang + 90, - x_ang), Coordinate.SPHERICAL)
 
         global_distance = self.get_global_distance(local_distance)
         global_corner = self.get_global_distance(local_corner)
@@ -159,12 +182,12 @@ class Screen:
     
 class FieldScreen(Screen):
     def __init__(self, name, field):
-        super().__init__(name, (1280, 720), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+        super().__init__(name, (640, 480), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((90, 90, 0)))
         self.field: fc.Field = field
 
     def update(self):
-        self.angle_offset = TupleRotator3((-self.field.distance.convert(Coordinate.CYLINDRICAL)[1], 90, 0))
-        self.origin_offset = -self.field.distance + (0, 0, 10)
+        # self.angle_offset = TupleRotator3((self.field.distance.convert(Coordinate.CYLINDRICAL)[1], 90, 0))
+        # self.origin_offset = self.field.origin.distance + (0, 0, 10)
 
         rospy.loginfo(f"field relative rotation: {self.angle_offset}")
 
@@ -200,21 +223,24 @@ class TestParameter:
         print(f"{self.name}: {str(self._test_value)}")
 
 class TrackbarParameter(TestParameter):
-    def __init__(self, default, trackbar_name, window_name, value_transformation=lambda x: x, inverse_transformation=lambda x: x):
-        super().__init__(trackbar_name, value_transformation(default))
+    def __init__(self, default, trackbar_name, window_name, min=0, max=100, value_factor=1, value_transformation=None, inverse_transformation=None):
+        super().__init__(trackbar_name, default)
         self.trackbar_name = trackbar_name
         self.window = window_name
-        self.value_transformation = value_transformation
-        self.inverse_transformation = inverse_transformation
+        self.min = min
+        self.max = max
+        self.value_factor = value_factor
+        self.value_transformation = value_transformation if value_transformation is not None else lambda x: (self.min + x/100 * (self.max-self.min)) * self.value_factor
+        self.inverse_transformation = inverse_transformation if inverse_transformation is not None else lambda x: (x/self.value_factor - self.min) / (self.max - self.min) * 100
 
         cv2.namedWindow(self.window)
-        cv2.createTrackbar(self.trackbar_name, self.window, self._default, 100, self.update_value)
+        cv2.createTrackbar(self.trackbar_name, self.window, round(self.inverse_transformation(default)), 100, self.update_value)
         
     def set_value(self, value):
-        cv2.setTrackbarPos(self.trackbar_name, self.window, self.value_transformation(value))
+        cv2.setTrackbarPos(self.trackbar_name, self.window, round(self.inverse_transformation(value)))
 
     def update_value(self, value):
-        super().set_value(self.inverse_transformation(value))
+        super().set_value(self.value_transformation(value))
 
 class TestImage(TestParameter):
     def __init__(self, name, image):
@@ -301,17 +327,16 @@ def birdeye_screen_test():
 
 
 def field_screen_test():
-    import time
     field = fc.Field()
     field.half_size = TupleVector3((1, 1, 0), Coordinate.CARTESIAN)
     sc = Screen.FieldScreen("field", field)
     bsc = Screen.BirdEyeScreen("BirdEye")
-    fo = sc.create_field_object((100, 100, 100, 100), 10, fc.Player)
+
     fo = fc.Player(TupleVector3((2, 0, 0)), TupleVector3((1, 1, 0)))
+    fan1 = sc.create_field_object((50, 50, 100, 100), 10, fc.Fan)
 
     print(fo)
 
-    fan1 = sc.create_field_object((50, 50, 100, 100), 10, fc.Fan)
 
     offset_angle = 0
 
@@ -333,9 +358,41 @@ def field_screen_test():
         cv2.waitKey(10)
         time.sleep(1)
 
+def rotation_test():
+    yaw = TrackbarParameter(0, "yaw", "test", -180, 180)
+    pitch = TrackbarParameter(0, "pitch", "test", -180, 180)
+    roll = TrackbarParameter(0, "roll", "test", -180, 180)
+
+    x = TrackbarParameter(-0.4, "x", "test", -200, 200, 0.01)
+    y = TrackbarParameter(0, "y", "test", -200, 200, 0.01)
+    z = TrackbarParameter(0, "z", "test", -200, 200, 0.01)
+    sc = Screen("test", (640, 480), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((-1, 0, 0)), TupleRotator3())
+
+    fo = fc.Player(TupleVector3((0, 0, 0)), TupleVector3((0.05, 0.05, 0.05)))
+    fo2 = fc.Fan(TupleVector3((0.3, 0.3, 0)), TupleVector3((0.05, 0.05, 0.05)))
+
+    print(fo)
+    print(fo2)
+    print(sc.get_angles(fo))
+    print(sc.get_rect(fo))
+    print(sc.get_local_distance(fo.distance))
+
+    while True:
+        sc.angle_offset = TupleRotator3((yaw.get_value(True), pitch.get_value(True), roll.get_value(True)))
+        sc.origin_offset = TupleVector3((x.get_value(True), y.get_value(True), z.get_value(True)))
+        print(sc.angle_offset)
+        print(sc.origin_offset)
+        sc.image = empty_image(sc.dimensions, (50, 50, 50))
+        sc.draw_object(fo, False, False, True, True)
+        sc.draw_object(fo2, False, False, True, True)
+        sc.show_image()
+        cv2.waitKey(10)
+        time.sleep(0.5)
+
 # test screen object creation and correct visualization
 if __name__ == "__main__":
     # kinect_screen_test()
     # laser_screen_test()
     # birdeye_screen_test()
-    field_screen_test()
+    # field_screen_test()
+    rotation_test()

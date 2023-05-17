@@ -31,10 +31,23 @@ class TupleVector3:
         return (self - vector).length()
     
     def angle(self, vector):
-        return acosd(self * vector / (self.length() * vector.length()))
+        return acosd(self.dot(vector) / (self.length() * vector.length()))
     
     def unit_vector(self):
         return self / self.length()
+
+    def approx(self, vector, tolerance):
+        return self.distance(vector) <= tolerance
+
+    def dot(self, value):
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+
+        return (self.tuple[0] * tup[0] +
+                self.tuple[1] * tup[1] +
+                self.tuple[2] * tup[2])
 
     def __add__(self, value):
         if type(value) is TupleRotator3:
@@ -74,8 +87,23 @@ class TupleVector3:
 
     def __sub__(self, value):
         if type(value) is TupleRotator3:
-            vec = self + (-value)
+            a, b, c = value.value()
+            ca = cosd(a)
+            sa = sind(a)
+            cb = cosd(b)
+            sb = sind(b)
+            cc = cosd(c)
+            sc = sind(c)            
+            inv_rot_matrix = ((ca * cb, sa * cb, -sb),
+                              (ca * sb * sc - sa * cc, sa * sb * sc + ca * cc, cb * sc),
+                              (ca * sb * cc + sa * sc, sa * sb * cc - ca * sc, cb * cc))
+            x = self.tuple[0] * inv_rot_matrix[0][0] + self.tuple[1] * inv_rot_matrix[0][1] + self.tuple[2] * inv_rot_matrix[0][2]
+            y = self.tuple[0] * inv_rot_matrix[1][0] + self.tuple[1] * inv_rot_matrix[1][1] + self.tuple[2] * inv_rot_matrix[1][2]
+            z = self.tuple[0] * inv_rot_matrix[2][0] + self.tuple[1] * inv_rot_matrix[2][1] + self.tuple[2] * inv_rot_matrix[2][2]
+            vec = TupleVector3((x, y, z))
+            vec.coordinates = self.coordinates
             return vec
+        
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -106,23 +134,18 @@ class TupleVector3:
         return vec
     
     def __mul__(self, value):
-        if type(value) is int or type(value) is float:
-            tup = (value, value, value)
-
-            vec = TupleVector3((self.tuple[0] * tup[0],
-                                self.tuple[1] * tup[1],
-                                self.tuple[2] * tup[2]))
-            vec.coordinates = self.coordinates
-            return vec
-        
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
             tup = value
+        elif type(value) is int or type(value) is float:
+            tup = (value, value, value)
 
-        return (self.tuple[0] * tup[0] +
-                self.tuple[1] * tup[1] +
-                self.tuple[2] * tup[2])
+        vec = TupleVector3((self.tuple[0] * tup[0],
+                            self.tuple[1] * tup[1],
+                            self.tuple[2] * tup[2]))
+        vec.coordinates = self.coordinates
+        return vec
         
     def __rmul__(self, value):
         return self.__mul__(value)
@@ -417,8 +440,13 @@ def test_rotator():
     v = TupleVector3((1, 0, 0))
     print(v)
     test((v.convert(Coordinate.SPHERICAL)), (1, 90, 0))
-    test((v + r).value(), (0, 0, -1))
-    test((v - r).value(), (0, 0, 1))
+    val = (v + r).value()
+    test((round(val[0]), round(val[1]), round(val[2])), (0, 0, -1))
+    val = (v - r).value()
+    test((round(val[0]), round(val[1]), round(val[2])), (0, -1, 0))
+
+    test((v - r + r).value(), v.value())
+    test((v + r - r).value(), v.value())
 
 if __name__ == "__main__":
     test_vector()

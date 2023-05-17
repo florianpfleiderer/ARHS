@@ -86,9 +86,14 @@ class KinectDetector(FieldDetector):
 
         self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
         self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
-        self.lateral_offset = TrackbarParameter(KINECT_OFFSET[0], "laser lateral offset", "laser rgb image", lambda x: int(100 * x) + 50, lambda x: (x - 50) / 100)
-        self.height_offset = TrackbarParameter(KINECT_OFFSET[1], "laser height offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
-        self.depth_offset = TrackbarParameter(KINECT_OFFSET[2], "laser depth offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
+        self.depth_offset = TrackbarParameter(KINECT_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01)
+        self.lateral_offset = TrackbarParameter(KINECT_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01)
+        self.height_offset = TrackbarParameter(KINECT_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01)
+
+        # self.lens_correction_const = TrackbarParameter(0, "const", "top_view", -50, 50, 0.01)
+        # self.lens_correction_lin = TrackbarParameter(0, "lin", "top_view", -50, 50, 0.01)
+        # self.lens_correction_quad = TrackbarParameter(0, "quad", "top_view", 0, 100, 0.01)
+        # self.lens_correction_cub = TrackbarParameter(0, "cub", "top_view", 0, 100, 0.01)
 
         img = empty_image(KINECT_DIMENSIONS)
         self.add_test_parameters(TestImage("depth_masked_image", img),
@@ -150,6 +155,11 @@ class KinectDetector(FieldDetector):
             cx = min(int(x + w/2), image_w)
             cy = min(int(y + h/2), image_h)
             r = depth_image[cy, cx] if SIMULATION_MODE else depth_image[cy, cx] / 1000
+
+            # correction for lens warp
+            edge_dist = (abs(cx/image_w - 1/2) + abs(cy/image_h - 1/2))
+            r *= 1 + 0.14 * (edge_dist) ** 2 + 0.53 * (edge_dist) ** 4
+                 
             if check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
                 field_objects.append(fo)
@@ -159,7 +169,6 @@ class KinectDetector(FieldDetector):
 
         self.detected_objects.extend(field_objects)
         
-
         return True
     
 class LaserScanDetector(FieldDetector):
@@ -171,9 +180,9 @@ class LaserScanDetector(FieldDetector):
         self.laser_handler = LaserScanHandler(self.laser_sub.copy_data())
 
         self.testmode = testmode
-        self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
-        self.lateral_offset = TrackbarParameter(LASER_OFFSET[1], "laser lateral offset", "laser rgb image", lambda x: int(100 * x) + 50, lambda x: (x - 50) / 100)
-        self.height_offset = TrackbarParameter(LASER_OFFSET[2], "laser height offset", "laser rgb image", lambda x: int(100 * x), lambda x: x / 100)
+        self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01)
+        self.lateral_offset = TrackbarParameter(LASER_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01)
+        self.height_offset = TrackbarParameter(LASER_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01)
 
         self.laser_screen_rgb = Screen.KinectScreen("laser rgb image")
 
@@ -323,14 +332,30 @@ if __name__ == '__main__':
                 combined_objects.append(laser_obj)
 
         rospy.loginfo(f"Detected {len(combined_objects)} field components")
-
-        draw_objects(combined_objects, False, False, False, True, top_screen)
-        draw_objects(combined_objects, False, False, True, False, field_screen)
         
         if combined_objects and len(combined_objects) > 0:
             field_components_pub.publish(FieldComponents(
                 [FieldComponent(o.color.__str__() , o.type, Vector3(*o.distance.tuple),
                                 None ) for o in combined_objects]))
+
+        field.update()
+        field_screen.update()
+
+        draw_objects(combined_objects, False, False, False, True, top_screen)
+        draw_objects(combined_objects, False, False, False, True, field_screen)
+        draw_objects(field.field_objects, False, False, True, False, field_screen)
+
+    def kinect_warp_correction():
+        kinect_objects = run_kinect_detection()
+        laser_objects = run_laser_detection()
+
+        if kinect_objects is None or laser_objects is None:
+            return
+
+        draw_objects(kinect_objects, False, False, False, True, top_screen)
+        draw_objects(laser_objects, False, False, False, True, top_screen)
+
+
 
     def draw_target(screen: Screen):
         if target_sub.data is not None:
@@ -342,10 +367,11 @@ if __name__ == '__main__':
                             # lambda: draw_objects(run_kinect_detection, False, True, top_screen),
                             # lambda: draw_objects(run_laser_detection, False, True, top_screen),
                             combine_detection,
-                            lambda: draw_target(top_screen),
-                            lambda: show_screens(*screens),
-                            field.update,
-                            field_screen.update
+                            # kinect_warp_correction,
+                            # lambda: draw_target(top_screen),
+                            # lambda: show_screens(*screens),
+                            # lambda: show_screens(top_screen),
+                            lambda: show_screens(top_screen, field_screen)
                             )
 
     imgticker = CVTicker(TICK_RATE)
