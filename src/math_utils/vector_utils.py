@@ -254,8 +254,8 @@ class TupleVector3:
         elif type(value) == int or type(value) == float:
             tup = (value, value, value)
         
-        return (self.tuple[0] != tup[0] and
-                self.tuple[1] != tup[1] and
+        return (self.tuple[0] != tup[0] or
+                self.tuple[1] != tup[1] or
                 self.tuple[2] != tup[2] )
     
     def __le__(self, value):
@@ -386,7 +386,7 @@ class TupleRotator3:
     def __rmul__(self, value):
         return self.__mul__(value)
     
-    def __div__(self, value):
+    def __truediv__(self, value):
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.'''
         if type(value) is TupleRotator3:
@@ -400,7 +400,7 @@ class TupleRotator3:
                               self.tuple[1] / tup[1],
                               self.tuple[2] / tup[2]))
 
-    def __rdiv__(self, value):
+    def __rtruediv__(self, value):
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.
         Sets coordinate value to 0 if the divisor is 0.'''
