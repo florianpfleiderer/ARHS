@@ -336,7 +336,7 @@ def field_screen_test():
     sc = Screen.FieldScreen("field", field)
     bsc = Screen.BirdEyeScreen("BirdEye")
 
-    fo = fc.Player(TupleVector3((2, 0, 0)), TupleVector3((1, 1, 0)))
+    fo = fc.Robot(TupleVector3((2, 0, 0)), TupleVector3((1, 1, 0)))
     fan1 = sc.create_field_object((50, 50, 100, 100), 10, fc.Fan)
 
     print(fo)
@@ -349,10 +349,10 @@ def field_screen_test():
         sc.draw_object(fo, False, False, True, False)
         sc.draw_object(fan1, False, False, True, False)
         # sc.draw_object(field, False, False, False, True)
-        sc.show_image()
 
         bsc.draw_object(fo, False, False, True, False)
         bsc.show_image()
+        sc.show_image()
 
         offset_angle = (offset_angle + 10) % 360
         field.distance = TupleVector3((1, 90, offset_angle), Coordinate.SPHERICAL)
@@ -398,5 +398,5 @@ if __name__ == "__main__":
     # kinect_screen_test()
     # laser_screen_test()
     # birdeye_screen_test()
-    # field_screen_test()
-    rotation_test()
+    field_screen_test()
+    # rotation_test()

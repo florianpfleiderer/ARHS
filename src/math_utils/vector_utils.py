@@ -42,7 +42,8 @@ class TupleVector3:
     
     def angle(self, vector):
         '''Returns the angle between the vector and the given vector'''
-        return acosd(self.dot(vector) / (self.length() * vector.length()))
+        l = self.length() * vector.length()
+        return acosd(self.dot(vector) / l) if l != 0 else 0
     
     def unit_vector(self):
         '''Returns the unit vector of the vector'''

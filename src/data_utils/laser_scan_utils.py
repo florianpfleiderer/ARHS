@@ -165,11 +165,12 @@ def object_from_contour(contour: LaserContour, laser_scan: LaserScanHandler, scr
     start_index = laser_scan.laser_index(contour.start_angle)
     end_index = laser_scan.laser_index(contour.end_angle)
 
-    assert end_index != start_index
-    
-    d = sum([laser_scan.get_ranges()[i+1] for i in range(start_index, end_index)]) / (end_index - start_index)
+    if end_index == start_index:
+        d = laser_scan.get_ranges()[start_index+1]
+    else:
+        d = sum([laser_scan.get_ranges()[i+1] for i in range(start_index, end_index)]) / (end_index - start_index)
 
-    x_ang = - contour.start_angle
+    x_ang = - contour.start_angle - laser_scan.laser_scan.angle_increment * 180 / (pi * 2)
     w_ang = abs(contour.start_angle - contour.end_angle)
 
     laser_height = LASER_OFFSET[2]

@@ -321,7 +321,7 @@ if __name__ == '__main__':
         for obj in kinect_objects:
             result_obj = obj
             for i, laser_obj in enumerate(laser_objects):
-                if laser_obj.distance.angle(obj.distance) < 10 and laser_obj.distance.distance(obj.distance) < 0.15:
+                if laser_obj.distance.angle(obj.distance) < 5 and laser_obj.distance.distance(obj.distance)/laser_obj.distance.length() < 0.1:
                     laser_merged_indices.append(i)
                     result_obj.distance = laser_obj.distance
                     # result_obj = result_obj.merge(laser_obj, return_type=type(obj))
@@ -357,8 +357,6 @@ if __name__ == '__main__':
         draw_objects(kinect_objects, False, False, False, True, top_screen)
         draw_objects(laser_objects, False, False, False, True, top_screen)
 
-
-
     def draw_target(screen: Screen):
         if target_sub.data is not None:
             screen.draw_object(FieldObject.from_field_component(target_sub.data), False, True)
@@ -371,7 +369,7 @@ if __name__ == '__main__':
                             combine_detection,
                             # kinect_warp_correction,
                             # lambda: draw_target(top_screen),
-                            # lambda: show_screens(*screens),
+                            lambda: show_screens(*screens),
                             # lambda: show_screens(top_screen),
                             lambda: show_screens(top_screen, field_screen)
                             )

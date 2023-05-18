@@ -149,8 +149,8 @@ def get_vector_cloud_offset_2D_max(base: List[TupleVector3], compare: List[Tuple
 
         if DRAW_TEST:
             img = empty_image((500, 500))
-            draw_vector_cloud(img, base, (0, 255, 0))
-            draw_vector_cloud(img, compare, (255, 0, 0))
+            draw_vector_cloud(img, base, (0, 255, 0), 40)
+            draw_vector_cloud(img, compare, (255, 0, 0), 40)
 
         cases = [([v1, v2], [v1_max, v2_max], (0, 0, 255)),
                  ([v1, v2], [v2_max, v1_max], (0, 255, 255)),
@@ -166,7 +166,7 @@ def get_vector_cloud_offset_2D_max(base: List[TupleVector3], compare: List[Tuple
             print(f"got {len(result)} results")
 
             if DRAW_TEST:
-                draw_vector_cloud(img, result, c[2])
+                draw_vector_cloud(img, result, c[2], 40)
 
             if matching_clouds(base, result, tolerance):
                 if DRAW_TEST:
@@ -218,15 +218,15 @@ def get_vector_offset_2D(base: List[TupleVector3], compare: List[TupleVector3]):
 def get_random_vector_cloud(count=10):
     return [TupleVector3(((random.random() - 0.5) * 20, (random.random() - 0.5) * 20, 0)) for i in range(count)]
 
-def draw_vector_cloud(image, cloud: List[TupleVector3], color: Tuple[float, float, float] = (0, 0, 255)):
+def draw_vector_cloud(image, cloud: List[TupleVector3], color: Tuple[float, float, float] = (0, 0, 255), scale=20):
     for v in cloud:
-        draw_vector(image, v, TupleVector3(), color)
+        draw_vector(image, v, TupleVector3(), color, scale)
 
-def draw_vector(image, vector: TupleVector3, point: TupleVector3, color: Tuple[float, float, float] = (0, 0, 255)):
+def draw_vector(image, vector: TupleVector3, point: TupleVector3, color: Tuple[float, float, float] = (0, 0, 255), scale=20):
     dim = image.shape
     center = (int(dim[0]/2), int(dim[1]/2))
-    cv2.arrowedLine(image, (center[0] + int(point.tuple[0] * 20), center[1] - int(point.tuple[1] * 20)),
-                           (center[0] + int((point + vector).tuple[0] * 20), center[1] - int((point + vector).tuple[1] * 20)), color, 1)
+    cv2.arrowedLine(image, (center[0] + int(point.tuple[0] * scale), center[1] - int(point.tuple[1] * scale)),
+                           (center[0] + int((point + vector).tuple[0] * scale), center[1] - int((point + vector).tuple[1] * scale)), color, 1)
 
 def test_cloud_matching():
     base = get_random_vector_cloud(10)
@@ -321,7 +321,40 @@ def test_matching_function():
         cv2.waitKey(1)
         time.sleep(1)
 
+def test_matching_poles():
+    field = fc.Field()
+    poles = field.generate_poles(5, 3)
+    base = [p.distance for p in poles]
+
+    while True:
+        random_offset = TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2
+        random_rotation = TupleRotator3((random.random() * 100, 0, 0))
+        random_deviation = 0.1
+
+        rand_pos = base.copy()
+        random.shuffle(rand_pos)
+        compare = rand_pos[0:3]
+        compare = [v + random_offset + random_rotation + TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2 * random_deviation for v in compare]
+
+        offset, offset_rotation = get_vector_cloud_offset_2D_max(base, compare, 0.2, 0)
+
+        img = empty_image((400, 400))
+        draw_vector_cloud(img, base, (0, 255, 0))
+        draw_vector_cloud(img, compare, (255, 0, 0))
+
+        if offset is None:
+            print("no offset found")
+        else:
+            print(offset, offset_rotation)
+            result = [v - offset_rotation - offset for v in compare]
+            draw_vector_cloud(img, result, (0, 0, 255))
+
+        cv2.imshow("test", img)
+        cv2.waitKey(1)
+        time.sleep(1)
+
 if __name__ == "__main__":
     # test_cloud_matching()
-    stress_test_cloud_matching()
+    # stress_test_cloud_matching()
     # test_matching_function()
+    test_matching_poles()
