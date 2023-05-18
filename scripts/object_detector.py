@@ -92,8 +92,9 @@ class KinectDetector(FieldDetector):
 
         # self.lens_correction_const = TrackbarParameter(0, "const", "top_view", -50, 50, 0.01)
         # self.lens_correction_lin = TrackbarParameter(0, "lin", "top_view", -50, 50, 0.01)
-        # self.lens_correction_quad = TrackbarParameter(0, "quad", "top_view", 0, 100, 0.01)
-        # self.lens_correction_cub = TrackbarParameter(0, "cub", "top_view", 0, 100, 0.01)
+        # self.lens_correction_quad = TrackbarParameter(0.2, "quad", "top_view", 0, 100, 0.01)
+        # self.lens_correction_quart = TrackbarParameter(0.6, "quart", "top_view", 0, 100, 0.01)
+        self.lens_correction_ang = TrackbarParameter(0, "ang", "top_view", 0, 100, 0.01)
 
         img = empty_image(KINECT_DIMENSIONS)
         self.add_test_parameters(TestImage("depth_masked_image", img),
@@ -159,7 +160,7 @@ class KinectDetector(FieldDetector):
             # correction for lens warp
             edge_dist = (abs(cx/image_w - 1/2) + abs(cy/image_h - 1/2))
             r *= 1 + 0.14 * (edge_dist) ** 2 + 0.53 * (edge_dist) ** 4
-                 
+
             if check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
                 field_objects.append(fo)
@@ -320,9 +321,10 @@ if __name__ == '__main__':
         for obj in kinect_objects:
             result_obj = obj
             for i, laser_obj in enumerate(laser_objects):
-                if laser_obj.distance.distance(obj.distance) < 0.15:
+                if laser_obj.distance.angle(obj.distance) < 10 and laser_obj.distance.distance(obj.distance) < 0.15:
                     laser_merged_indices.append(i)
-                    result_obj = result_obj.merge(laser_obj, return_type=type(obj))
+                    result_obj.distance = laser_obj.distance
+                    # result_obj = result_obj.merge(laser_obj, return_type=type(obj))
                     print("merged")
 
             combined_objects.append(result_obj)
@@ -343,7 +345,7 @@ if __name__ == '__main__':
 
         draw_objects(combined_objects, False, False, False, True, top_screen)
         draw_objects(combined_objects, False, False, False, True, field_screen)
-        draw_objects(field.field_objects, False, False, True, False, field_screen)
+        field.draw(field_screen)
 
     def kinect_warp_correction():
         kinect_objects = run_kinect_detection()

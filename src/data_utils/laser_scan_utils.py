@@ -162,10 +162,12 @@ def expand_contour(start_index, end_index, edges: List[LaserEdge]):
 
 
 def object_from_contour(contour: LaserContour, laser_scan: LaserScanHandler, screen: Screen, object_type=GenericObject):
-    center_phi = (contour.start_angle + contour.end_angle) / 2
-    center_index = laser_scan.laser_index(center_phi)
+    start_index = laser_scan.laser_index(contour.start_angle)
+    end_index = laser_scan.laser_index(contour.end_angle)
 
-    d = laser_scan.get_ranges()[center_index]
+    assert end_index != start_index
+    
+    d = sum([laser_scan.get_ranges()[i+1] for i in range(start_index, end_index)]) / (end_index - start_index)
 
     x_ang = - contour.start_angle
     w_ang = abs(contour.start_angle - contour.end_angle)

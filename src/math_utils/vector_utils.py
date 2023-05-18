@@ -471,7 +471,11 @@ def test_vector():
     test(v == v2, False)
     test(v != v2, True)
     test(round(v.length(), 2), 5.48)
+    test(round(v.distance(v2), 2), 6.16)
     test(round(v.angle(v2), 2), 81.58)
+    v3 = TupleVector3((1, 2, 4))
+    test(v.approx(v3, 0.5), False)
+    test(v.approx(v3, 2), True)
 
     test((v + v2).value(), (3, 5, 4))
     test((v + (1, 2, 3)).value(), (2, 4, 8))
@@ -484,6 +488,7 @@ def test_vector():
     test((v * v2).value(), (2, 6, -5))
     test((v * (1, 2, 3)).value(), (1, 4, 15))
     test((v * 3).value(), (3, 6, 15))
+    test((v * 0).value(), (0, 0, 0))
 
     test(v.dot(v2), 3)
     test(v.dot((1, 2, 3)), 20)

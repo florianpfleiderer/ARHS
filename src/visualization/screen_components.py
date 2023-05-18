@@ -181,15 +181,19 @@ class Screen:
         return FieldScreen(name, field)
     
 class FieldScreen(Screen):
+    default_offset = TupleVector3((2.5, 1.5, 15))
+    default_angle_offset = TupleRotator3((0, 90, 0))
     def __init__(self, name, field):
-        super().__init__(name, (640, 480), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((90, 90, 0)))
+        super().__init__(name, (640, 480), (32, 24), ProjectionType.PLANAR, FieldScreen.default_offset, FieldScreen.default_angle_offset)
         self.field: fc.Field = field
 
     def update(self):
-        # self.angle_offset = TupleRotator3((self.field.distance.convert(Coordinate.CYLINDRICAL)[1], 90, 0))
-        # self.origin_offset = self.field.origin.distance + (0, 0, 10)
+        if self.field.distance is not None and self.field.angle_offset is not None:
+            self.angle_offset = FieldScreen.default_angle_offset + self.field.angle_offset
+            self.origin_offset = FieldScreen.default_offset + self.field.distance
 
-        rospy.loginfo(f"field relative rotation: {self.angle_offset}")
+        rospy.loginfo(f"field relative rotation: {self.angle_offset.value()[0]}")
+
 
 
 class ImageViewer:

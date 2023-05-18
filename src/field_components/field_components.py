@@ -261,7 +261,7 @@ class Field(FieldObject):
         super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
         self.field_component_sub = FieldComponentsSubscriber()
         self.field_objects: List[FieldObject] = []
-        self.origin: Pole = None
+        self.angle_offset: TupleRotator3 = None
 
     def get_objects_by_class(self, class_name):
         return [o for o in self.field_objects if o.type == class_name]
@@ -279,87 +279,90 @@ class Field(FieldObject):
         pos3: TupleVector3 = sorted_poles[2].distance
 
         angle_threshold = 15
-        ratio_threshold = 0.1
+        ratio_threshold = 0.05
 
         angle = (pos2 - pos1).angle(pos3 - pos2)
         if angle > angle_threshold:
             rospy.logwarn(f"Poles are not in a straight line, got {angle}")
-            return False
+            return None, None
         
         dist12 = pos1.distance(pos2)
         dist23 = pos2.distance(pos3)
         detect_ratio = dist12 / dist23
 
-        dim_factor = sorted([(dim, detect_ratio) for dim in zip(*DIMENSION_FACTORS)], key=lambda e: abs(e[0][0] - e[1]))[0][0]
+        dim_factor = sorted(zip(*DIMENSION_FACTORS), key=lambda e: abs(detect_ratio - e[0]))[0]
 
         if abs(detect_ratio - dim_factor[0]) > ratio_threshold:
             rospy.logwarn(f"No matching ratio, got {detect_ratio}")
-            return False
+            return None, None
         
         w = max(dist12, dist23) * dim_factor[1]
-
-        unit = ((pos3 + pos2 - 2 * pos1) / 2).unit_vector() # average unit vector of the two distances from pos1
-        A_dist = pos1 - unit * dim_factor[2] * w
-        G_dist = pos1 + unit * (1 - dim_factor[2]) * w
-        
-        return (w, w * 3/5), A_dist, G_dist
+        return w, w * 3/5
 
     def update(self):
+        from math_utils.field_calculation_functions import get_vector_cloud_offset_2D_max
+        
         if self.field_component_sub.data is None:
             return
         
         detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
-        detected_field_objects = sorted(detected_field_objects, key=lambda fo: fo.distance.convert(Coordinate.CYLINDRICAL)[1])
         detected_poles = [fo for fo in detected_field_objects if fo.type == "Pole"]
 
         if len(detected_poles) < 3:
             return
         
+        print(f"detected {len(detected_poles)} poles")
+        detected_poles.sort(key=lambda fo: fo.distance.convert(Coordinate.CYLINDRICAL)[1])
+        
         for i in range(len(detected_poles) - 2):
-            result = self.calculate_dimensions(*detected_field_objects[i:i+3])
-            if result != False:
+            w, h = self.calculate_dimensions(*detected_poles[i:i+3])
+            if w is not None:
                 break
-        
-        if result == False:
+        if w is None:
             return
         
-        initial_set = self.field_objects == []
+        rospy.loginfo(f"Field dimensions: {w} x {h}")
 
-        if initial_set:
-            rospy.loginfo(f"Field dimensions: {result[0][0]} x {result[0][1]}, origin: {result[1]}")
-            self.half_size = TupleVector3((-result[0][0]/2, -result[0][1]/2, 0))
-            self.distance = -result[1] + self.half_size
+        w = 5
+        h = 3
+        self.half_size = TupleVector3((w/2, h/2, 0))
 
-            self.field_objects.extend(self.generate_poles(result[1], result[2]))
-            return
+        gen_poles = self.generate_poles(w, h)
 
-        # for fo in detected_field_objects:
-        #     if self.origin.distance.approx(fo.distance, 0.05):
-        #         self.origin = (fo.distance + self.origin) / 2
-        #         rospy.loginfo(f"updated origin: {self.origin}")
-        #         break
+        base = [pole.distance for pole in gen_poles]
+        compare = [fo.distance * (1, 1, 0) for fo in detected_poles]
+        origin_offset, angle_offset = get_vector_cloud_offset_2D_max(base, compare, 0.2, 2)
 
+        if origin_offset is not None:
+            self.distance = origin_offset
+            self.angle_offset = angle_offset
+
+            self.field_objects = gen_poles
+            self.field_objects.append(Player(-origin_offset, (0.3, 0.3, 0.3)))
+        else:
+            rospy.logwarn("No offset found")
+
+    def draw(self, screen: Screen, draw_text=False, draw_center=False, draw_icon=True, draw_rect=False):
+        for fo in self.field_objects:
+            fo_copy = copy.copy(fo)
+            fo_copy.distance = fo_copy.distance + self.distance + self.angle_offset
+            screen.draw_object(fo_copy, draw_text, draw_center, draw_icon, draw_rect)
+        cv2.putText(screen.image, f"{self.half_size.tuple[0]*2:.2f} x {self.half_size.tuple[1]*2:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
         
-    def generate_poles(self, A_pole_dist: TupleVector3, G_pole_dist: TupleVector3):
+    def generate_poles(self, w, h):
         poles = []
-        A_dist = A_pole_dist * (1, 1, 0)
-        G_dist = G_pole_dist * (1, 1, 0)
+        origin = TupleVector3((0, 0, 0))
+        vec_w = TupleVector3((w, 0, 0))
+        offset_h = TupleVector3((0, h, 0))
+        
+        distances = [origin + vec_w * x for x in [0.1, 0.25, 0.5, 0.75, 0.9, 1]]
+        distances.insert(0, origin)
 
-        AG_dist = G_dist - A_dist
-
-        distances = [A_dist + AG_dist * x for x in [0.1, 0.25, 0.5, 0.75, 0.9]]
-        distances.append(A_dist)
-        distances.append(G_dist)
-
-        AG_dist_tup = AG_dist.tuple
-        AN_dist = TupleVector3((-AG_dist_tup[1], AG_dist_tup[0], 0)) * 3/5
-
-        distances.extend([dist + AN_dist for dist in distances])
+        distances.extend([dist + offset_h for dist in distances])
 
         poles = [Pole(dist, TupleVector3((0.05, 0.05, 0))) for dist in distances]
 
         return poles
-
 
 
     # def draw_icon(self, image, rect):
