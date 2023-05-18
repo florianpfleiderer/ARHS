@@ -14,32 +14,47 @@ class Coordinate(Enum):
     SPHERICAL = 2
 
 class TupleVector3:
+    '''This class stores a cartesian 3D vector tuple and overrides arithmetic functions to handle those tuples.
+    Other useful functions like length and distance are also implemented.
+    '''
     def __init__(self, value=(0, 0, 0), coordinates=Coordinate.CARTESIAN):
+        '''Value: tuple of 3 values, can be given in cartesian (x, y, z), cylindrical (r, phi, z) or spherical (r, theta, alpha) coordinates.
+        Coordinates: Coordinate enum, defines the coordinate system of the given value, which is converted to cartesian coordinates.
+        The coordinates variable is stored in the class and used for the __str__ function.'''
         self.tuple = convert_vector(value, coordinates, Coordinate.CARTESIAN)
         self.coordinates = coordinates
 
     def value(self):
+        '''Returns the cartesian (x, y, z) tuple'''
         return self.tuple
 
     def convert(self, convert_coordinates=Coordinate.CARTESIAN):
+        '''Returns a tuple of the vector in the given coordinate system'''
         return convert_vector(self.tuple, Coordinate.CARTESIAN, convert_coordinates)
     
     def length(self):
+        '''Returns the length of the vector'''
         return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2 + self.tuple[2] ** 2)
     
     def distance(self, vector):
+        '''Returns the distance between the vector and the given vector'''
         return (self - vector).length()
     
     def angle(self, vector):
+        '''Returns the angle between the vector and the given vector'''
         return acosd(self.dot(vector) / (self.length() * vector.length()))
     
     def unit_vector(self):
+        '''Returns the unit vector of the vector'''
         return self / self.length()
 
     def approx(self, vector, tolerance):
+        '''Returns true if the distance between the vector and the given vector is smaller than the tolerance'''
         return self.distance(vector) <= tolerance
 
     def dot(self, value):
+        '''Returns the dot product of the vector and the given vector.
+        Value can be a TupleVector3 or a (x, y, z) tuple'''
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -50,6 +65,9 @@ class TupleVector3:
                 self.tuple[2] * tup[2])
 
     def __add__(self, value):
+        '''Element-wise addition.
+        Value can be TupleVector3, tuple or int/float.
+        If a TupleRotator3 is given, the vector is rotated by the rotator.'''
         if type(value) is TupleRotator3:
             a, b, c = value.value()
             ca = cosd(a)
@@ -86,6 +104,9 @@ class TupleVector3:
         return self.__add__(tuple_vector)
 
     def __sub__(self, value):
+        '''Element-wise subtraction.
+        Value can be TupleVector3, tuple or int/float.
+        If a TupleRotator3 is given, the vector is rotated by the rotator in the reverse direction.'''
         if type(value) is TupleRotator3:
             a, b, c = value.value()
             ca = cosd(a)
@@ -134,6 +155,8 @@ class TupleVector3:
         return vec
     
     def __mul__(self, value):
+        '''Element-wise multiplication.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -151,6 +174,8 @@ class TupleVector3:
         return self.__mul__(value)
     
     def __truediv__(self, value):
+        '''Element-wise division.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -165,6 +190,9 @@ class TupleVector3:
         return vec
     
     def __rtruediv__(self, value):
+        '''Element-wise division.
+        Value can be TupleVector3, tuple or int/float.
+        Sets the coordinate value to 0 if the divisor is 0.'''
         if type(value) is TupleVector3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -179,6 +207,8 @@ class TupleVector3:
         return vec    
 
     def __lt__(self, value):
+        '''Compares the lengths of the vector and the given value.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             len = value.length()
         elif type(value) == tuple:
@@ -189,6 +219,8 @@ class TupleVector3:
         return self.length() < len
     
     def __gt__(self, value):
+        '''Compares the lengths of the vector and the given value.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             len = value.length()
         elif type(value) == tuple:
@@ -199,6 +231,8 @@ class TupleVector3:
         return self.length() > len
     
     def __eq__(self, value):
+        '''Element-wise comparison.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             tup = value.tuple
         elif type(value) == tuple:
@@ -211,6 +245,8 @@ class TupleVector3:
                 self.tuple[2] == tup[2] )
     
     def __ne__(self, value):
+        '''Element-wise comparison.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             tup = value.tuple
         elif type(value) == tuple:
@@ -223,6 +259,8 @@ class TupleVector3:
                 self.tuple[2] != tup[2] )
     
     def __le__(self, value):
+        '''Element-wise comparison.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             len = value.length()
         elif type(value) == tuple:
@@ -233,6 +271,8 @@ class TupleVector3:
         return self.length() <= len
     
     def __ge__(self, value):
+        '''Element-wise comparison.
+        Value can be TupleVector3, tuple or int/float.'''
         if type(value) == TupleVector3:
             len = value.length()
         elif type(value) == tuple:
@@ -243,11 +283,13 @@ class TupleVector3:
         return self.length() >= len
 
     def __neg__(self):
+        '''Element-wise negation.'''
         vec = TupleVector3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
         vec.coordinates = self.coordinates
         return vec
 
     def __str__(self):
+        '''Converts the vector into a string based on the coordinates that have been given on initialization.'''
         pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
         pref_y = "y" if self.coordinates == Coordinate.CARTESIAN else "phi" if self.coordinates == Coordinate.CYLINDRICAL else "theta"
         pref_z = "z" if self.coordinates != Coordinate.SPHERICAL else "alpha"
@@ -258,14 +300,20 @@ class TupleVector3:
                f"{pref_z: >10} {value[2]: >6.2f}"
 
     def make_vector3(self):
+        '''Converts the vector into a geometry_msg Vector3'''
         return Vector3(*self.tuple)
     
-    
     @classmethod
+
     def from_vector3(cls, vector3, coordinates=Coordinate.CARTESIAN):
-        return cls((vector3.x, vector3.y, vector3.z), coordinates)
+        '''Creates a TupleVector3 from a geometry_msg Vector3.
+        The display coordinates are set to the given coordinates.'''
+        vec = cls((vector3.x, vector3.y, vector3.z))
+        vec.coordinates = coordinates
+        return vec
 
 class TupleRotator3:
+    '''This class stores a tuple of 3 rotation values (yaw, pitch, roll) and overrides arithmetic functions to handle those tuples.'''
     def __init__(self, value=(0, 0, 0)):
         self.tuple = value
 
@@ -279,6 +327,8 @@ class TupleRotator3:
                f"{'roll': >10} {self.tuple[2]: >6.2f}"
     
     def __add__(self, value):
+        '''Element-wise addition.
+        Value can be TupleRotator3, tuple or int/float.'''
         if type(value) is TupleRotator3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -294,6 +344,8 @@ class TupleRotator3:
         return self.__add__(value)
     
     def __sub__(self, value):
+        '''Element-wise subtraction.
+        Value can be TupleRotator3, tuple or int/float.'''
         if type(value) is TupleRotator3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -318,6 +370,8 @@ class TupleRotator3:
                               tup[2] - self.tuple[2]))
     
     def __mul__(self, value):
+        '''Element-wise multiplication.
+        Value can be TupleRotator3, tuple or int/float.'''
         if type(value) is TupleRotator3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -333,6 +387,8 @@ class TupleRotator3:
         return self.__mul__(value)
     
     def __div__(self, value):
+        '''Element-wise division.
+        Value can be TupleRotator3, tuple or int/float.'''
         if type(value) is TupleRotator3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -345,6 +401,9 @@ class TupleRotator3:
                               self.tuple[2] / tup[2]))
 
     def __rdiv__(self, value):
+        '''Element-wise division.
+        Value can be TupleRotator3, tuple or int/float.
+        Sets coordinate value to 0 if the divisor is 0.'''
         if type(value) is TupleRotator3:
             tup = value.tuple
         elif type(value) is tuple:
@@ -358,6 +417,7 @@ class TupleRotator3:
 
 
     def __neg__(self):
+        '''Element-wise negation.'''
         rot = TupleRotator3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
         return rot
 
@@ -404,13 +464,33 @@ def cartesian_to_spherical(cartesian_vector):
 #     return (vector1[0] - vector2[0], vector1[1] - vector2[1], vector1[2] - vector2[2])
 
 def test_vector():
-    v = TupleVector3((1, 2, 3))
+    v = TupleVector3((1, 2, 5))
     v2 = TupleVector3((2, 3, -1))
-    print(v < v2)
-    print(v + v2)
-    print(v - v2)
-    print(v * v2)
-    print(v * 10.5)
+    test(v < v2, False)
+    test(v > v2, True)
+    test(v == v2, False)
+    test(v != v2, True)
+    test(round(v.length(), 2), 5.48)
+    test(round(v.angle(v2), 2), 81.58)
+
+    test((v + v2).value(), (3, 5, 4))
+    test((v + (1, 2, 3)).value(), (2, 4, 8))
+    test((v + 3).value(), (4, 5, 8))
+
+    test((v - v2).value(), (-1, -1, 6))
+    test((v - (1, 2, 3)).value(), (0, 0, 2))
+    test((v - 3).value(), (-2, -1, 2))
+
+    test((v * v2).value(), (2, 6, -5))
+    test((v * (1, 2, 3)).value(), (1, 4, 15))
+    test((v * 3).value(), (3, 6, 15))
+
+    test(v.dot(v2), 3)
+    test(v.dot((1, 2, 3)), 20)
+
+    test((v / v2).value(), (0.5, 2/3, -5))
+    test((v / (1, 2, 3)).value(), (1, 1, 5/3))
+    test((v / 3).value(), (1/3, 2/3, 5/3))
 
     print("-- Test Conversion --")
     v = (1, 0, 0)
@@ -420,9 +500,9 @@ def test_vector():
 
     print("--")
     v = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
-    print(v.tuple)
-    print(v.value())
-    print(v.convert())
+    test(v.tuple, (1, 0, 0))
+    test(v.value(), (1, 0, 0))
+    test(v.convert(Coordinate.SPHERICAL), (1, 90, 0))
     print(v)
     v2 = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
     print(v + v2)
