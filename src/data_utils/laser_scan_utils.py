@@ -52,7 +52,7 @@ class LaserScanHandler:
 
                 for screen in screens:
                     if check_range(x_ang, - screen.FOV[0] / 2, screen.FOV[0] / 2):
-                        screen.draw_object(fo, False)
+                        screen.draw_object(fo, False, True, False, False, False)
 
     def update(self, laser_scan: LaserScan):
         if laser_scan is None:

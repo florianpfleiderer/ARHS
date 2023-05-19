@@ -268,7 +268,7 @@ if __name__ == '__main__':
             screens.extend([kinect_det.screen])
 
             for obj in found_objects:
-                kinect_det.screen.draw_object(obj)
+                kinect_det.screen.draw_object(obj, True, True, False, False, True)
 
             if testmode:    
                 kinect_det.show_test_parameters()
@@ -289,8 +289,8 @@ if __name__ == '__main__':
             screens.extend([laser_det.screen, laser_det.laser_screen_rgb])
 
             for obj in found_objects:
-                laser_det.screen.draw_object(obj)
-                laser_det.laser_screen_rgb.draw_object(obj)
+                laser_det.screen.draw_object(obj, True, True, False, True, False)
+                laser_det.laser_screen_rgb.draw_object(obj, True, True, False, False, True)
 
             if testmode:
                 laser_det.show_test_parameters()
@@ -343,8 +343,8 @@ if __name__ == '__main__':
         field.update()
         field_screen.update()
 
-        draw_objects(combined_objects, False, False, False, True, top_screen)
-        draw_objects(combined_objects, False, False, False, True, field_screen)
+        draw_objects(combined_objects, False, False, False, False, True, top_screen)
+        draw_objects(combined_objects, False, False, False, False, True, field_screen)
         field.draw(field_screen)
 
     def kinect_warp_correction():

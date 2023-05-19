@@ -81,6 +81,17 @@ class Screen:
             h_ang = corner_br[1] - 90 - y_ang # theta max
         return x_ang, y_ang, w_ang, h_ang
     
+    def get_box(self, obj):
+        if issubclass(type(obj), fc.FieldObject):
+            offsets = [(-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+                       (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)]
+            corners = [self.get_local_distance(obj.distance + obj.half_size * offset).convert(Coordinate.SPHERICAL) for offset in offsets]
+            
+            corner_positions = [[screen_angle_to_pos(-c[2], self.dimensions[0], self.FOV[0], self.projection),
+                                 screen_angle_to_pos(c[1] - 90, self.dimensions[1], self.FOV[1], self.projection)] for c in corners]
+
+            return corner_positions
+    
     def get_center(self, obj):
         if type(obj) is tuple:
             x, y, w, h = obj
@@ -127,7 +138,7 @@ class Screen:
 
         return True
 
-    def draw_object(self, obj, draw_text=True, draw_center=True, draw_icon=False, draw_rect=True):
+    def draw_object(self, obj, draw_text=True, draw_center=True, draw_icon=False, draw_rect=False, draw_box=True):
         if issubclass(type(obj), fc.FieldObject):
             rect = self.get_rect(obj)
 
@@ -148,6 +159,16 @@ class Screen:
 
             if draw_center:
                 cv2.circle(self.image, self.get_center(rect), 2, Color.ORANGE.default(), -1)
+
+            if draw_box:
+                points = self.get_box(obj)
+                bottom = points[:4]
+                top = points[4:]
+                connections = [np.array([bottom[i], top[i]], np.int32).reshape((-1, 1, 2)) for i in range(len(bottom))]
+
+                btm_pts = np.array(bottom, np.int32).reshape((-1, 1, 2))
+                top_pts = np.array(top, np.int32).reshape((-1, 1, 2))
+                cv2.polylines(self.image, [btm_pts, top_pts, *connections], True, obj.color.default(), 1)
 
             if draw_text:
                 cv2.putText(self.image, str(obj), (x, int(y - 50 * CV2_DEFAULT_FONT_SCALE)),
@@ -174,7 +195,7 @@ class Screen:
     
     @classmethod
     def BirdEyeScreen(cls, name):
-        return cls(name, (640, 480), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 10)), TupleRotator3((0, 90, 0)))
+        return cls(name, (1280, 720), KINECT_FOV, ProjectionType.PLANAR, TupleVector3((0, 0, 8)), TupleRotator3((0, 90, 0)))
 
     @classmethod
     def FieldScreen(cls, name, field):

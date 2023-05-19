@@ -92,7 +92,8 @@ def get_position(pole_a: fc.Pole, pole_b: fc.Pole, pole_c: fc.Pole) -> Tuple:
 
 
 def find_max_distance(vectors: List[TupleVector3]):
-    '''Finds the maximum distance between two vectors in a list of vectors.'''
+    '''Finds the maximum distance between two vectors in a list of vectors.
+    It's not really the maximum distance, but a good enough estimate.'''
     v1 = max(vectors)
     v2 = max(vectors, key=lambda v: v1-v)
 
