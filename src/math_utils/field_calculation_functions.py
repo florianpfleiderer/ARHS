@@ -136,50 +136,35 @@ def get_vector_cloud_offset_2D_max(base: List[TupleVector3], compare: List[Tuple
     DRAW_TEST = True
 
     v1_max, v2_max = find_max_distance(compare)
-
-    print(f"comparing {len(compare)} objects")
-
     distances = calculate_distances(base)
     compare_dist = v1_max.distance(v2_max)
     distances.sort(key=lambda d: abs(d[0]-compare_dist))
 
-    print([round(abs(d[0]-compare_dist), 2) for d in distances[:3]], f"and {len(distances)-3} more")
+    offset = None
+    offset_rotation = None
 
     for i in range(iterations if iterations > 0 else len(distances)):
         base_dist, v1, v2 = distances[i]
-
-        if DRAW_TEST:
-            img = empty_image((500, 500))
-            draw_vector_cloud(img, base, (0, 255, 0), 40)
-            draw_vector_cloud(img, compare, (255, 0, 0), 40)
 
         cases = [([v1, v2], [v1_max, v2_max], (0, 0, 255)),
                  ([v1, v2], [v2_max, v1_max], (0, 255, 255)),
                  ([v2, v1], [v1_max, v2_max], (255, 0, 255)),
                  ([v2, v1], [v2_max, v1_max], (255, 255, 0))]
 
-        print(f"evaluating {len(cases)} cases")
-
         for c in cases:
             offset, offset_rotation = get_vector_offset_2D(c[0], c[1])
             result = [v - offset_rotation - offset for v in compare]
 
-            print(f"got {len(result)} results")
-
-            if DRAW_TEST:
-                draw_vector_cloud(img, result, c[2], 40)
-
             if matching_clouds(base, result, tolerance):
-                if DRAW_TEST:
-                    cv2.imshow("test", img)
+                print(f"found angle {offset_rotation.value()[0]}")
                 return offset, offset_rotation
+            
+                # if offset_rotation.value()[0] <= 90:
+                #     return offset, offset_rotation
+                # else:
+                #     return offset, offset_rotation - (180, 0, 0)
         
-        # return offset, offset_rotation
-        
-    # rospy.logerr("Offset could not be found")
-    cv2.imshow("test", img)
     return None, None
-
 
 def get_vector_cloud_offset_2D(base: List[TupleVector3], compare: List[TupleVector3]):
     '''Calculates the average offset distance and rotation of two clouds of vectors.

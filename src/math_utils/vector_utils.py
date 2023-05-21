@@ -36,10 +36,18 @@ class TupleVector3:
         '''Returns the length of the vector'''
         return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2 + self.tuple[2] ** 2)
     
+    def length_xy(self):
+        '''Returns the length of the vector in the xy plane'''
+        return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2)
+    
     def distance(self, vector):
         '''Returns the distance between the vector and the given vector'''
         return (self - vector).length()
     
+    def distance_xy(self, vector):
+        '''Returns the distance between the vector and the given vector in the xy plane'''
+        return (self - vector).length_xy()
+
     def angle(self, vector):
         '''Returns the angle between the vector and the given vector'''
         l = self.length() * vector.length()
@@ -289,6 +297,14 @@ class TupleVector3:
         vec.coordinates = self.coordinates
         return vec
 
+    def __getitem__(self, index):
+        return self.tuple[index]
+    
+    def __setitem__(self, index, value):
+        tlist = list(self.tuple)
+        tlist[index] = value
+        self.tuple = tuple(tlist)
+
     def __str__(self):
         '''Converts the vector into a string based on the coordinates that have been given on initialization.'''
         pref_x = "x" if self.coordinates == Coordinate.CARTESIAN else "r"
@@ -422,6 +438,14 @@ class TupleRotator3:
         rot = TupleRotator3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
         return rot
 
+    def __getitem__(self, index):
+        return self.tuple[index]
+    
+    def __setitem__(self, index, value):    
+        tlist = list(self.tuple)
+        tlist[index] = value
+        self.tuple = tuple(tlist)
+
 def convert_vector(vector, from_coordinates, to_coordinates):
     from_vector = ()
 
@@ -513,6 +537,9 @@ def test_vector():
     v2 = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
     print(v + v2)
     print(v * 2)
+
+    v[0] = 2
+    test(v.tuple, (2, 0, 0))
 
 
 def test_rotator():

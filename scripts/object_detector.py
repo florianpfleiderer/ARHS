@@ -299,7 +299,7 @@ if __name__ == '__main__':
         else:
             rospy.loginfo("Waiting for laser scan to process...")
 
-    def draw_objects(objects, draw_text=True, draw_center=True, draw_icon=False, draw_rect=True, *screens: Screen):
+    def draw_objects(objects, draw_text=True, draw_center=True, draw_icon=False, draw_rect=True, draw_cube=True, *screens: Screen):
         for screen in screens:
             for obj in objects:
                 screen.draw_object(obj, draw_text, draw_center, draw_icon, draw_rect)

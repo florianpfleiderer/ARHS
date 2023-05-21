@@ -106,7 +106,7 @@ def draw_edges(laser_scan: LaserScanHandler, edges: List[LaserEdge], laser_scree
         w_ang = 0
         h_ang = laser_screen.FOV[1] - 5
         fo = laser_screen.create_field_object(laser_screen.get_rect((x_ang, y_ang, w_ang, h_ang)), laser_scan.get_range_bounds()[1] * 100, RisingEdge if edge.is_rising else FallingEdge)
-        laser_screen.draw_object(fo, False, False)
+        laser_screen.draw_object(fo, False, False, False, True, False)
 
 def detect_contours(laser_scan: LaserScanHandler, edges: List[LaserEdge]):
     # contour = (max_phi, min_phi)
