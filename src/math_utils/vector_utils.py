@@ -72,6 +72,20 @@ class TupleVector3:
         return (self.tuple[0] * tup[0] +
                 self.tuple[1] * tup[1] +
                 self.tuple[2] * tup[2])
+    
+    def cross(self, value):
+        '''Returns the cross product of the vector and the given vector.
+        Value can be a TupleVector3 or a (x, y, z) tuple'''
+        if type(value) is TupleVector3:
+            tup = value.tuple
+        elif type(value) is tuple:
+            tup = value
+
+        vec = TupleVector3((self.tuple[1] * tup[2] - self.tuple[2] * tup[1],
+                            self.tuple[2] * tup[0] - self.tuple[0] * tup[2],
+                            self.tuple[0] * tup[1] - self.tuple[1] * tup[0]))
+        vec.coordinates = self.coordinates
+        return vec
 
     def __add__(self, value):
         '''Element-wise addition.
