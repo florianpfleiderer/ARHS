@@ -9,6 +9,7 @@ from geometry_msgs.msg import Vector3
 from globals.tick import CallbackTicker
 from globals.globals import *
 from data_utils.topic_handlers import *
+from referee_communication import referee_communication as ref_com
 
 class LocomotionSM():
     def __init__(self):
@@ -54,6 +55,11 @@ class TestPublisher:
 
 if __name__ == "__main__":
     rospy.init_node("player_sm")
+    
+    ref_com.send_name()
+    ref_com.wait_for_game()
+    
+    
     loc_sm = LocomotionSM()    
     sis = IntrospectionServer("player_state_machine", loc_sm.sm, "/SM_ROOT")
     sis.start()
