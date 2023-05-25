@@ -1,27 +1,43 @@
 #!/usr/bin/env python
-
+'''Locomotion state machine
+'''
+import random
 import rospy
-from player.msg import *
 import smach
 from smach_ros import SimpleActionState, IntrospectionServer
-import random
+from player.msg import FindDestinationAction, MoveToDestinationAction, FindDestinationGoal,\
+      GetGameSetupAction, ReleasePuckAction
 from geometry_msgs.msg import Vector3
 from globals.tick import CallbackTicker
-from globals.globals import *
-from data_utils.topic_handlers import *
-from referee_communication import referee_communication as ref_com
+from data_utils.topic_handlers import FieldComponentsSubscriber, FieldComponentsPublisher
+from field_components.field_components import FieldComponent
+
 
 class LocomotionSM():
+    '''This state machine moves the robot to a destination and then finds a new destination.
+
+    '''
     def __init__(self):
         self.sm = smach.StateMachine(outcomes=["succeeded", "preempted", "aborted"])
         self.sm.userdata.target_component = FieldComponent()
+        
 
 
         with self.sm:
+            smach.StateMachine.add("GET_GAME_SETUP",
+                        SimpleActionState("get_game_setup",
+                                          GetGameSetupAction,
+                                          result_slots=["target_component"]),
+                        transitions={"succeeded": "FIND_DESTINATION",
+                                     "preempted": "GET_GAME_SETUP",
+                                     "aborted": "GET_GAME_SETUP"},
+                        remapping={"target_component": "target"})
+            
             smach.StateMachine.add("FIND_DESTINATION",
                         SimpleActionState("find_destination",
                                           FindDestinationAction,
                                           goal=FindDestinationGoal(),
+                                          goal_slots=["target"],
                                           result_slots=["target_component"]),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
                                      "preempted": "FIND_DESTINATION",
@@ -31,12 +47,23 @@ class LocomotionSM():
             smach.StateMachine.add("MOVE_TO_DESTINATION",
                         SimpleActionState("move_to_destination",
                                           MoveToDestinationAction,
-                                          goal_slots=["target_component"]),
-                        transitions={"succeeded": "FIND_DESTINATION",
+                                          goal_slots=["target_component"],
+                                          result_slots=['target_reached','target_lost']),
+                        transitions={"succeeded": "RELEASE_PUCK",
                                      "preempted": "FIND_DESTINATION",
                                      "aborted": "MOVE_TO_DESTINATION"})
+            
+            smach.StateMachine.add("RELEASE_PUCK",
+                        SimpleActionState("release_puck",
+                                          ReleasePuckAction,
+                                          result_slots=["target_component"]),
+                        transitions={"succeeded": "FIND_DESTINATION",
+                                     "preempted": "RELEASE_PUCK",
+                                     "aborted": "FIND_DESTINATION"},
+                        remapping={"target_component": "target_component"})
 
     def execute(self):
+        '''execute the state machine'''
         return self.sm.execute()
 
 class TestPublisher:

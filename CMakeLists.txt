@@ -80,6 +80,8 @@ add_action_files(
   # VisualizeComponents.action
   FindDestination.action
   MoveToDestination.action
+  GetGameSetup.action
+  ReleasePuck.action
 )
 
 # Generate added messages and services with any dependencies listed here
@@ -185,6 +187,8 @@ catkin_install_python(
   # scripts/states/drive_randomly_server.py
   scripts/behaviours/find_destination_server.py
   scripts/behaviours/move_to_destination_server.py
+  scripts/behaviours/get_game_setup_server.py
+  scripts/behaviours/release_puck_server.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # all install targets should use catkin DESTINATION variables

@@ -1,5 +1,4 @@
-FieldComponent target
 ---
 FieldComponent target_component
 ---
-string message
+string feedback

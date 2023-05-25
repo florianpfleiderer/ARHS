@@ -371,7 +371,7 @@ if __name__ == '__main__':
                             # lambda: draw_target(top_screen),
                             # lambda: show_screens(*screens),
                             # lambda: show_screens(top_screen),
-                            lambda: show_screens(top_screen, field_screen)
+                            lambda: show_screens(top_screen, field_screen, kinect_det.screen)
                             )
 
     imgticker = CVTicker(TICK_RATE)

@@ -58,14 +58,14 @@ class LaserSubscriber(SubscriberWrapper):
 
 class FieldComponentsSubscriber(SubscriberWrapper):
     def __init__(self):
-        super().__init__("player/field_components", FieldComponents)
+        super().__init__("/player/field_components", FieldComponents)
 
     def callback_func(self, msg: FieldComponents):
         self.data = msg.field_components
 
 class TargetComponentSubscriber(SubscriberWrapper):
     def __init__(self):
-        super().__init__("player/target_component", FieldComponent)
+        super().__init__("/player/target_component", FieldComponent)
         
 class ShutdownSubscriber(SubscriberWrapper):
     def __init__(self):
@@ -78,15 +78,15 @@ class ShutdownSubscriber(SubscriberWrapper):
 
 class FieldComponentsPublisher(rospy.Publisher):
     def __init__(self):
-        super().__init__("player/field_components", FieldComponents)
+        super().__init__("/player/field_components", FieldComponents, queue_size=50)
 
 class TargetComponentPublisher(rospy.Publisher):
     def __init__(self):
-        super().__init__("player/target_component", FieldComponent)
+        super().__init__("/player/target_component", FieldComponent, queue_size=10)
 
 class VelocityPublisher(rospy.Publisher):
     def __init__(self):
-        super().__init__(NAMESPACE + "cmd_vel", Twist)
+        super().__init__(NAMESPACE + "cmd_vel", Twist, queue_size=10)
 
 
 
