@@ -83,8 +83,8 @@ class TestPublisher:
 if __name__ == "__main__":
     rospy.init_node("player_sm")
     
-    ref_com.send_name()
-    ref_com.wait_for_game()
+    # ref_com.send_name()
+    # ref_com.wait_for_game()
     
     
     loc_sm = LocomotionSM()    
