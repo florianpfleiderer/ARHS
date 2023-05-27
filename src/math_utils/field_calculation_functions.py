@@ -11,37 +11,91 @@ import random
 import cv2
 from visualization.imgops import *
 from itertools import combinations
+import time
+from testing.testing import *
 
-class Triangle(NamedTuple):
-    '''This class represents a triangle in 3D space.
-    It is automatically oriented so that the shortest side is side a (BC).'''
-    A: TupleVector3
-    B: TupleVector3
-    C: TupleVector3
-    area: float
-    gamma: float
-
-    def __str__(self):
-        return f'Triangle({self.A}, {self.B}, {self.C})'
+class PointCloud:
+    def __init__(self, points: List[TupleVector3], origin=None):
+        assert len(points) > 0, "You must provide at least one point"
+        self.points = points
+        self.origin = sum(points) / len(points) if origin is None else origin
     
-    def __init__(self, A: TupleVector3, B: TupleVector3, C: TupleVector3):
-        self.A = A
-        self.B = B
-        self.C = C
-        a = C - B
-        b = C - A
-        c = B - A
+    def rotate(self, rotation: TupleRotator3):
+        self.points = [p + rotation for p in self.points]
 
-        min_side = min(a.length(), b.length(), c.length())
-        if min_side == b.length():
-            self.A, self.B, self.C = self.B, self.C, self.A
-            a, b, c = b, c, a
-        elif min_side == c.length():
-            self.A, self.B, self.C = self.C, self.A, self.B
-            a, b, c = c, a, b
+    def offset(self, offset: TupleVector3):
+        self.points = [p + offset for p in self.points]
 
-        self.area = 0.5 * c.cross(b).length()
-        self.gamma = c.angle(b)
+    def distance(self, other_point_cloud: 'PointCloud'):
+        return other_point_cloud.origin - self.origin
+    
+    def get_triangles(self):
+        return sorted([Triangle(*tri) for tri in combinations(self.points, 3)], lambda tri: tri.area)
+
+    def angle(self, other_point_cloud: 'PointCloud', iterations=0):
+        tris = self.get_triangles()
+        other_tris = other_point_cloud.get_triangles()
+
+        for i in range(iterations if iterations > 0 else len(tris)):
+            for other_tri in other_tris:
+                if tris[i].matches(other_tri):
+                    return tris[i].angle(other_tri)
+
+        return False
+
+class Triangle(PointCloud):
+    '''Class that represents a triangle in 3D space. Points are oriented counterclockwise around the z axis.'''
+    def __init__(self, points: List[TupleVector3]):
+        assert len(points) == 3
+        super().__init__(points)
+        self.points = sorted(self.points, key=lambda p: (p-self.origin).convert(Coordinate.CYLINDRICAL)[1])
+        A = self.points[0]
+        B = self.points[1]
+        C = self.points[2]
+        self.a = C - B
+        self.b = C - A
+        self.c = B - A
+        self.area = 0.5 * self.c.cross(self.b).length()
+        alpha = self.c.angle(self.b)
+        beta = self.a.angle(self.c)
+        gamma = self.b.angle(self.a)
+        self.angles = [alpha, beta, gamma]
+
+    def point_permutations(self):
+        A = self.points[0]
+        B = self.points[1]
+        C = self.points[2]
+        return [(A, B, C), (B, C, A), (C, A, B)]
+    
+    def angle_permutations(self):
+        alpha = self.angles[0]
+        beta = self.angles[1]
+        gamma = self.angles[2]
+        return [(alpha, beta, gamma), (beta, gamma, alpha), (gamma, alpha, beta)]
+    
+    def matches(self, other_triangle: 'Triangle', tolerance=0.1):
+        # check if areas match
+        if abs(self.area / other_triangle.area - 1) > tolerance:
+            return False
+        
+        # check if all angles match
+        angs_other = other_triangle.angle_permutations()
+        for perm in angs_other:
+            if sum([abs(self.angles[i] / perm[i] - 1) for i in range(3)]) / 3 > tolerance:
+                return False
+        
+        return True
+    
+    def angle_xy(self, other_triangle: 'Triangle'):
+        if self.matches(other_triangle):
+            max_dist = max(p1 - p2 for p1, p2 in combinations(self.points, 2))
+            max_other = max(p1 - p2 for p1, p2 in combinations(other_triangle.points, 2))
+            return max_other.angle_xy(max_dist)
+        else:
+            return False
+    
+    def __str__(self) -> str:
+        return f'Triangle({self.points[0].value_rounded(2)}, {self.points[1].value_rounded(2)}, {self.points[2].value_rounded(2)})'
 
 class Result(NamedTuple):
     value: Any
@@ -140,7 +194,7 @@ def find_large_triangle(vectors: List[TupleVector3]):
 
 def find_max_distance(vectors: List[TupleVector3]):
     '''Finds the maximum distance between two vectors in the given list'''
-    return max(vectors, key=lambda v: max(v.distance(v2) for v2 in vectors if v2 != v))
+    return max(combinations(vectors, 2), key=lambda cmb: (cmb[1]-cmb[0]).length())
 
 def find_max_triangle(vectors: List[TupleVector3]):
     '''Finds the triangle with the largest area in the given list of vectors'''
@@ -163,35 +217,47 @@ def find_distance(dist, vectors: List[TupleVector3], tolerance=0.01):
     print(f"Find distance: tolerance exceeded by {d_min - tolerance}!")
     return vectors[i_min], vectors[j_min]
 
-def find_triangle(triangle: Triangle, sorted_triangles: List[Triangle], max_tolerance=0.1, delta_tolerance=0.1):
+def find_triangle(triangle: Triangle, sorted_triangles: List[Triangle], max_tolerance=0.1, delta_tolerance=0.1) -> List[Triangle]:
     '''Finds triangles in the list of triangles sorted by area that approximately match the given triangle.
     Args:
     max_tolerance: The maximum relative difference in area and angle between the given triangle and the found triangles.
     delta_tolerance: The maximum difference of the differences of the results relative to the best result. An accurate best result yields fewer secondary results.'''
     results: List[Result] = []
+
     for tri in sorted_triangles:
         area_percent = tri.area / triangle.area
+
         if area_percent < 1 - max_tolerance:
             continue
-        if area_percent > 1 + max_tolerance:
+        elif area_percent > 1 + max_tolerance:
             break
 
-        angle_percent = tri.gamma / triangle.gamma
-        if 1 - max_tolerance < angle_percent < 1 + max_tolerance:
+        angle_percent = sum([abs(ang1 / ang2) for ang1, ang2 in zip(sorted(tri.angles()), sorted(triangle.angles()))]) / 3
+
+        if 1 - max_tolerance <= angle_percent <= 1 + max_tolerance:
             results.append(Result(tri, abs(area_percent - 1) + abs(angle_percent - 1)))
-    
+
     if len(results) == 0:
         return None
     
-    results.sort(key=lambda e: e.error, reverse=True)
+    # sort results by error
+    results.sort(key=lambda e: e.error)
     best_result = results[0]
-    return [best_result, *[r[0] for r in results[1:] if abs(r.error - best_result.error) / best_result.error < delta_tolerance]]
+
+    # return all results with an error within delta_tolerance of the best result
+    if best_result.error == 0:
+        return [best_result[0]]
+    else:
+        return [best_result[0], *[r[0] for r in results[1:] if abs(r.error - best_result.error) / best_result.error < delta_tolerance]]
 
 def get_triangles(vectors: List[TupleVector3]):
-    '''Returns a list of all triangles in the given list of vectors, sorted by area'''
+    '''Returns a list of all triangles in the given list of vectors, sorted by area.
+    Triangles with area ~ 0 are omitted.'''
     triangles: List[Triangle] = []
     for tri in combinations(vectors, 3):
-        triangles.append(Triangle(*tri))
+        new_tri = Triangle(*tri)
+        if new_tri.area > 0.05:
+            triangles.append(new_tri)
     return sorted(triangles, key=lambda t: t.area)
 
 def calculate_distances(vectors: List[TupleVector3]):
@@ -231,30 +297,40 @@ def get_vector_cloud_offset_2D_max(base: List[TupleVector3], compare: List[Tuple
                  ([v2, v1], [v2_max, v1_max], (255, 255, 0))]
 
         for c in cases:
-            offset, offset_rotation = get_vector_offset_2D(c[0], c[1])
+            try:
+                offset, offset_rotation = get_vector_offset_2D(c[0], c[1])
+            except AssertionError:
+                continue
+
             result = [v - offset_rotation - offset for v in compare]
 
             if matching_clouds(base, result, tolerance):
-                print(f"found angle {offset_rotation.value()[0]}")
                 return offset, offset_rotation
-            
-                # if offset_rotation.value()[0] <= 90:
-                #     return offset, offset_rotation
-                # else:
-                #     return offset, offset_rotation - (180, 0, 0)
         
     return None, None
 
 def get_vector_cloud_offset_2D_tri(base: List[TupleVector3], compare: List[TupleVector3], tolerance=0.1, iterations=0):
     base_tris = get_triangles(base)
     compare_tris = get_triangles(compare)
-    compare_tris.sort(key=lambda t: t.area, reverse=True)
 
     for i in range(iterations if iterations > 0 else len(compare_tris)):
-        compare_tri = compare_tris[i]
+        compare_tri = compare_tris[-1-i]
         results = find_triangle(compare_tri, base_tris, tolerance, tolerance)
+
         if results is not None:
-            return get_triangle_offset_2D(results[0], compare_tri)
+            try:
+                offset, offset_rotation = get_triangle_offset_2D(results[0], compare_tri)
+            except AssertionError:
+                continue
+
+            result = [v - offset_rotation - offset for v in compare]
+
+            if matching_clouds(base, result, tolerance):
+                return offset, offset_rotation
+            else:
+                print("result not matching")
+        
+    return None, None
 
 def get_vector_cloud_offset_2D(base: List[TupleVector3], compare: List[TupleVector3]):
     '''Calculates the average offset distance and rotation of two clouds of vectors.
@@ -271,7 +347,12 @@ def get_vector_cloud_offset_2D(base: List[TupleVector3], compare: List[TupleVect
     offset_rotations = []
 
     for i in range(len(compare)-1):
-        offset, offset_rotation = get_vector_offset_2D(base[i:i+2], compare[i:i+2])
+        try:
+            offset, offset_rotation = get_vector_offset_2D(base[i:i+2], compare[i:i+2])
+        except AssertionError:
+            print(f"vectors {i} and {i+1} do not match")
+            raise
+        
         offsets.append(offset)
         offset_rotations.append(offset_rotation)
 
@@ -281,23 +362,46 @@ def get_vector_cloud_offset_2D(base: List[TupleVector3], compare: List[TupleVect
     return offset, offset_rotation
 
 def get_vector_offset_2D(base: List[TupleVector3], compare: List[TupleVector3]):
-    '''Calculates the offset distance and angle of two sets of two vectors.'''
+    '''Calculates the offset distance and angle of two sets of two points.'''
+    assert len(base) == 2, "base must contain exactly two vectors"
+    assert len(compare) == 2, "compare must contain exactly two vectors"
 
-    offset_angle = (base[1] - base[0]).angle(compare[1] - compare[0])
+    base_vec = base[1] - base[0]
+    compare_vec = compare[1] - compare[0]
+
+    assert base_vec.length() - compare_vec.length() < 0.05, "vectors must have the same length"
+
+    offset_angle = compare_vec.angle_xy(base_vec)
     offset_rotation = TupleRotator3((offset_angle, 0, 0))
 
-    v = compare[0] - offset_rotation
-    offset = v - base[0]
+    offset = compare[0] - offset_rotation - base[0]
 
+    test_vec = compare[1] - offset_rotation - offset
+
+    assert test_vec.approx(base[1], 0.05), f"offsets do not match by {(test_vec - base[1]).length()}"
     return offset, offset_rotation
 
 def get_triangle_offset_2D(base: Triangle, compare: Triangle):
     '''Calculates the offset distance and rotation of two triangles.'''
-    offset, offset_rotation = get_vector_cloud_offset_2D([base.a, base.b, base.c], [compare.a, compare.b, compare.c])
-    return offset, offset_rotation
+    compare_perm = [compare, 
+                    Triangle(compare.A, compare.C, compare.B),
+                    Triangle(compare.B, compare.A, compare.C),
+                    Triangle(compare.B, compare.C, compare.A),
+                    Triangle(compare.C, compare.A, compare.B),
+                    Triangle(compare.C, compare.B, compare.A)]
+
+    for tri in compare_perm:
+        try:
+            offset, offset_rotation = get_vector_offset_2D(base.points()[:2], tri.points()[:2])
+            assert (tri.points()[2] - offset_rotation - offset).approx(base.points()[2], 0.01)
+            return offset, offset_rotation
+        except AssertionError:
+            pass
+
+    raise AssertionError("triangles do not match")
 
 def get_random_vector_cloud(count=10):
-    return [TupleVector3(((random.random() - 0.5) * 20, (random.random() - 0.5) * 20, 0)) for i in range(count)]
+    return [TupleVector3.random_xy(10) for i in range(count)]
 
 def draw_vector_cloud(image, cloud: List[TupleVector3], color: Tuple[float, float, float] = (0, 0, 255), scale=20):
     for v in cloud:
@@ -309,86 +413,88 @@ def draw_vector(image, vector: TupleVector3, point: TupleVector3, color: Tuple[f
     cv2.arrowedLine(image, (center[0] + int(point.tuple[0] * scale), center[1] - int(point.tuple[1] * scale)),
                            (center[0] + int((point + vector).tuple[0] * scale), center[1] - int((point + vector).tuple[1] * scale)), color, 1)
 
-def test_cloud_matching():
+def test_random_cloud_offset(printout = False, offset_calculation_method=get_vector_cloud_offset_2D_max, *offset_calculation_args):
     base = get_random_vector_cloud(10)
+    test_cloud_offset(base, 4, printout, offset_calculation_method, *offset_calculation_args)
 
-    winname = "test"
-    random_intensity = TrackbarParameter(1, "random_intensity", winname, value_factor=0.1)
+def test_pole_cloud_offset(printout = False):
+    field = fc.Field()
+    poles = field.generate_poles(5, 3)
+    base = [p.distance for p in poles]
+    test_cloud_offset(base, 3, printout, get_vector_cloud_offset_2D_tri)
+
+def test_cloud_offset(base, compare_slice_count, printout = False, offset_calculation_method=get_vector_cloud_offset_2D_max, *offset_calculation_args):
+    random_intensity = 1
     random_deviation = 0
 
-    while True:
+    if printout:
+        winname = "test"
+        random_intensity_trackbar = TrackbarParameter(1, "random_intensity", winname, value_factor=0.1)
+        random_intensity = random_intensity_trackbar.get_value(True)
+
+    if printout:
         img = empty_image((500, 500))
-        random_rotator = TupleRotator3((random.random() * 10 * random_intensity.get_value(True), 0, 0))
-        random_offset = TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2 * random_intensity.get_value(True)
-        
-        compare = [v + TupleVector3((random.random()-0.5, random.random()-0.5, 0))*random_deviation for v in base]
-        random.shuffle(compare)
-        compare.pop(0)
-        compare.pop(1)
-        compare.pop(2)
 
-        assert matching_clouds(base, compare, 0.1)
+    random_rotator = TupleRotator3.random_xy(10) * random_intensity
+    random_offset = TupleVector3.random_xy() * random_intensity
+    
+    compare = base.copy()
+    random.shuffle(compare)
+    compare = compare[0:compare_slice_count]
 
-        compare = [v + random_offset + random_rotator for v in compare]
+    if printout:
+        test(matching_clouds(base, compare, 0.1), True)
+    assert matching_clouds(base, compare, 0.1)
 
-        offset, offset_rotation = get_vector_cloud_offset_2D_max(base, compare, 0.1, 0)
+    compare = [v + random_offset + random_rotator + TupleVector3.random_xy() * random_deviation for v in compare]
 
-        print(offset, random_offset)
-        print(offset_rotation, random_rotator)
+    offset, offset_rotation = offset_calculation_method(base, compare, *offset_calculation_args)
 
+    if printout:
+        if not test(offset is not None, True):
+            pass # breakpoint here
+    else:
+        assert offset is not None, "no offset found"
+
+    if printout:
+        test(offset.value_rounded(5), random_offset.value_rounded(5))
+        test(offset_rotation.value_rounded(5), random_rotator.value_rounded(5))
+    else:
+        assert offset.approx(random_offset, 0.01), f"offsets do not match by {(offset - random_offset).length()}"
+        assert offset_rotation.tuple[0] - random_rotator.tuple[0] < 2, f"rotations do not match by {offset_rotation.tuple[0] - random_rotator.tuple[0]}"
+
+    if printout:
         draw_vector_cloud(img, base, (0, 255, 0))
         draw_vector_cloud(img, compare, (255, 0, 0))
 
-        if offset is not None:
-            result = [v - offset_rotation - offset for v in compare]
-            draw_vector_cloud(img, result, (0, 0, 255))
-            draw_vector_cloud(img, [offset], (0, 255, 255))
+    result = [v - offset_rotation - offset for v in compare]
 
+    if printout:
+        test(matching_clouds(base, result, 0.1), True)
+    else:
+        assert matching_clouds(base, result, 0.1)
+
+    if printout:
+        draw_vector_cloud(img, result, (0, 0, 255))
+        draw_vector_cloud(img, [offset], (0, 255, 255))
+
+    if printout:
         v1, v2 = find_max_distance(compare)
         draw_vector(img, v2 - v1, v1, (255, 255, 255))
 
-
+    if printout:
         cv2.putText(img, "base", (0, 490), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
         cv2.putText(img, "compare", (0, 470), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0))
         cv2.putText(img, "result", (0, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
         cv2.imshow(winname, img)
-
-        cv2.waitKey(10)
-        time.sleep(3)
-
-def stress_test_cloud_matching():
-    random_intensity = 1
-    random_deviation = 0.2
-    test_tolerance = 0.4
-    test_max_iterations = 2
-    successes = 0
-    n = 100
-    base_count = 15
-
-    draw_time = 0
-    start_time = time.time()
-
-    for i in range(n):
-        img = empty_image((400, 400))
-        base = get_random_vector_cloud(base_count)
-        random_rotator = TupleRotator3((random.random() * 10 * random_intensity, 0, 0))
-        random_offset = TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2 * random_intensity
-
-        compare = [v + random_offset + random_rotator + (TupleVector3((random.random()-0.5, random.random()-0.5, 0))*2*random_deviation) for v in base[random.randint(0, int(base_count/2)):]]
-        random.shuffle(compare)
-
-        offset, offset_rotation = get_vector_cloud_offset_2D_max(base, compare, test_tolerance, test_max_iterations)
-        if offset is not None:
-            successes += 1
-    
-    print(f"Stress test completed. Average time: {(time.time()-start_time)/n*1000: .2f}ms success rate: {successes*100/n:.2f}%")
+        cv2.waitKey(5)
 
 def test_matching_function():
     random_deviation = TrackbarParameter(0, "random", "test", value_factor=0.01)
     base = get_random_vector_cloud(10)
 
     while True:
-        compare = [v + TupleVector3((random.random()-0.5, random.random()-0.5, 0))*2*random_deviation.get_value(True) for v in base]
+        compare = [v + TupleVector3.random_xy() * random_deviation.get_value(True) for v in base]
 
         result = matching_clouds(base, compare, 2*random_deviation.get_value(True))
         print(result)
@@ -402,41 +508,105 @@ def test_matching_function():
         cv2.waitKey(1)
         time.sleep(1)
 
-def test_matching_poles():
-    field = fc.Field()
-    poles = field.generate_poles(5, 3)
-    base = [p.distance for p in poles]
+def random_triangle_xy(length=1):
+    return Triangle(TupleVector3.random_xy(length), TupleVector3.random_xy(length), TupleVector3.random_xy(length))
 
-    while True:
-        random_offset = TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2
-        random_rotation = TupleRotator3((random.random() * 100, 0, 0))
-        random_deviation = 0.1
+def test_triangle_functions(printout=False):
+    points = [TupleVector3.random_xy(), TupleVector3.random_xy(), TupleVector3.random_xy()]
+    tri_base = Triangle(*points)
 
-        rand_pos = base.copy()
-        random.shuffle(rand_pos)
-        compare = rand_pos[0:3]
-        compare = [v + random_offset + random_rotation + TupleVector3((random.random() - 0.5, random.random() - 0.5, 0)) * 2 * random_deviation for v in compare]
+    random.shuffle(points)
+    tri_compare = Triangle(*points)
 
-        offset, offset_rotation = get_vector_cloud_offset_2D_tri(base, compare, 0.1, 0)
+    if printout:
+        print(tri_base)
+        print(tri_compare)
 
+    offset, offset_rotation = get_triangle_offset_2D(tri_base, tri_compare)
+
+    assert offset is not None, "no offset found"
+    assert offset.value_rounded(5) == (0, 0, 0), f"offsets do not match by {offset.value_rounded(5)}"
+    assert offset_rotation.value_rounded(5) == (0, 0, 0), f"rotations do not match by {offset_rotation.value_rounded(5)}"
+
+    rand_offset = TupleVector3.random(1) * (1, 1, 0)
+    rand_offset_rotation = TupleRotator3.random(10) * (1, 0, 0)
+    tri_compare = Triangle(*[v + rand_offset + rand_offset_rotation for v in tri_compare.points()])
+
+    offset, offset_rotation = get_triangle_offset_2D(tri_base, tri_compare)
+
+    assert offset.value_rounded(5) == rand_offset.value_rounded(5), f"offsets do not match by {offset.value_rounded(5) - rand_offset.value_rounded(5)}"
+    assert offset_rotation.value_rounded(5) == rand_offset_rotation.value_rounded(5), f"rotations do not match by {offset_rotation.value_rounded(5)[1] - rand_offset_rotation.value_rounded(5)[1]}"
+    
+    tri_result = Triangle(*[v - rand_offset_rotation - rand_offset for v in tri_compare.points()])
+    
+    if printout:
+        print(tri_result)
         img = empty_image((400, 400))
-        draw_vector_cloud(img, base, (0, 255, 0))
-        draw_vector_cloud(img, compare, (255, 0, 0))
-
-        if offset is None:
-            print("no offset found")
-        else:
-            print(offset, offset_rotation)
-            result = [v - offset_rotation - offset for v in compare]
-            draw_vector_cloud(img, result, (0, 0, 255))
-
+        draw_vector_cloud(img, tri_base.points(), (0, 255, 0))
+        draw_vector_cloud(img, tri_compare.points(), (255, 0, 0))
+        draw_vector_cloud(img, tri_result.points(), (0, 0, 255))
         cv2.imshow("test", img)
-        cv2.waitKey(1)
-        time.sleep(1)
+        cv2.waitKey(10)
 
+def test_find_triangle(printout=False):
+    tris_base = [random_triangle_xy(5) for i in range(10)]
+    tris_base.sort(key=lambda tri: tri.area)
+
+    find_tri_index = random.randint(0, len(tris_base)-1)
+    find_tri = tris_base[find_tri_index]
+
+    results = find_triangle(find_tri, tris_base)
+
+    if printout:
+        test((results is not None), True)
+    else:
+        assert results is not None, "no triangle found"
+
+    if printout:
+        if not test(tris_base.index(results[0]), find_tri_index):
+            print("to find: ", find_tri)
+            print("in:")
+            for tri in tris_base:
+                print("       ", tri)
+            print("found:   ", *results)
+            raise AssertionError("found triangle does not match base triangle")
+    else:
+        assert tris_base.index(results[0]) == find_tri_index, f"found triangle does not match base triangle"
+
+
+def test_vector_matching(printout = False):
+    base1 = TupleVector3.random(1)
+    base2 = TupleVector3.random(1)
+    rand_offset = TupleVector3.random(1) * (1, 1, 0)
+    rand_offset_rotation = TupleRotator3.random(10) * (1, 0, 0)
+
+    compare1 = base1 + rand_offset + rand_offset_rotation
+    compare2 = base2 + rand_offset + rand_offset_rotation
+
+    offset, offset_rotation = get_vector_offset_2D([base1, base2], [compare1, compare2])
+    if printout:
+        test(offset.value_rounded(5), rand_offset.value_rounded(5))
+        test(offset_rotation.value_rounded(5), rand_offset_rotation.value_rounded(5))
+    else:
+        assert offset.value_rounded(5) == rand_offset.value_rounded(5)
+        assert offset_rotation.value_rounded(5) == rand_offset_rotation.value_rounded(5)
 
 if __name__ == "__main__":
-    # test_cloud_matching()
-    # stress_test_cloud_matching()
-    # test_matching_function()
-    test_matching_poles()
+    # test_vector_matching(True)
+    # stress_test(test_vector_matching, 10000)
+
+    # test_cloud_offset(True)
+    # interval_test(lambda: test_cloud_offset(True), 3)
+    # stress_test(test_random_cloud_offset, 1000)
+
+    # test_triangle_functions(True)
+    # stress_test(test_triangle_functions, 10000)
+    # test_find_triangle(True)
+    # stress_test(test_find_triangle, 10000)
+
+    # test_cloud_offset(True, get_vector_cloud_offset_2D_tri)
+    # interval_test(lambda: test_random_cloud_offset(True, get_vector_cloud_offset_2D_tri), 2)
+    stress_test(lambda: test_random_cloud_offset(False, get_vector_cloud_offset_2D_tri), 1000)
+
+    # interval_test(lambda: test_pole_cloud_offset(True), 1)
+    # stress_test(test_pole_cloud_offset, 100)

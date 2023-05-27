@@ -7,6 +7,7 @@ import rospy
 from math_utils.math_function_utils import *
 from enum import Enum
 from testing.testing import *
+import random
 
 class Coordinate(Enum):
     CARTESIAN = 0
@@ -27,6 +28,13 @@ class TupleVector3:
     def value(self):
         '''Returns the cartesian (x, y, z) tuple'''
         return self.tuple
+    
+    def value_rounded(self, ndigits):
+        '''Returns the cartesian (x, y, z) tuple with values rounded to n digits.
+        This function is mainly used for testing purposes'''
+        return (round(self.tuple[0], ndigits),
+                round(self.tuple[1], ndigits),
+                round(self.tuple[2], ndigits))
 
     def convert(self, convert_coordinates=Coordinate.CARTESIAN):
         '''Returns a tuple of the vector in the given coordinate system'''
@@ -52,6 +60,17 @@ class TupleVector3:
         '''Returns the angle between the vector and the given vector'''
         l = self.length() * vector.length()
         return acosd(self.dot(vector) / l) if l != 0 else 0
+    
+    def angle_xy(self, vector):
+        '''Returns the angle between the vector and the given vector in the xy plane'''
+        a1 = self.convert(Coordinate.CYLINDRICAL)[1]
+        a2 = vector.convert(Coordinate.CYLINDRICAL)[1]
+        ang = a1 - a2
+        if ang > 180:
+            ang -= 360
+        elif ang < -180:
+            ang += 360
+        return ang
     
     def unit_vector(self):
         '''Returns the unit vector of the vector'''
@@ -335,13 +354,20 @@ class TupleVector3:
         return Vector3(*self.tuple)
     
     @classmethod
-
     def from_vector3(cls, vector3, coordinates=Coordinate.CARTESIAN):
         '''Creates a TupleVector3 from a geometry_msg Vector3.
         The display coordinates are set to the given coordinates.'''
         vec = cls((vector3.x, vector3.y, vector3.z))
         vec.coordinates = coordinates
         return vec
+    
+    @classmethod
+    def random(cls, length=10):
+        return cls(((random.random() - 0.5) * 2 * length, (random.random() - 0.5) * 2 *  length, (random.random() - 0.5) * 2 *  length))
+    
+    @classmethod
+    def random_xy(cls, length=10):
+        return cls(((random.random() - 0.5) * 2 * length, (random.random() - 0.5) * 2 *  length, 0))
 
 class TupleRotator3:
     '''This class stores a tuple of 3 rotation values (yaw, pitch, roll) and overrides arithmetic functions to handle those tuples.'''
@@ -349,7 +375,15 @@ class TupleRotator3:
         self.tuple = value
 
     def value(self):
+        '''Returns the rotator (yaw, pitch, roll) tuple'''
         return self.tuple
+    
+    def value_rounded(self, ndigits):
+        '''Returns the rotator (yaw, pitch, roll) tuple with values rounded to n digits.
+        This function is mainly used for testing purposes'''
+        return (round(self.tuple[0], ndigits),
+                round(self.tuple[1], ndigits),
+                round(self.tuple[2], ndigits))
 
     def __str__(self):
         return f"{chr(10)}" + \
@@ -459,6 +493,15 @@ class TupleRotator3:
         tlist = list(self.tuple)
         tlist[index] = value
         self.tuple = tuple(tlist)
+
+    @classmethod
+    def random(cls, angle=180):
+        return cls(((random.random() - 0.5) * 2 * angle, (random.random() - 0.5) * 2 *  angle, (random.random() - 0.5) * 2 *  angle))
+
+    @classmethod
+    def random_xy(cls, angle=180):
+        return cls(((random.random() - 0.5) * 2 * angle, 0, 0))
+
 
 def convert_vector(vector, from_coordinates, to_coordinates):
     from_vector = ()
