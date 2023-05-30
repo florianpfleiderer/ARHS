@@ -6,7 +6,8 @@ from actionlib import SimpleActionServer
 from globals.globals import *
 from ref_com.communication import *
 from ref_com.utils import TeamColorUtil, LocaliserUtil
-from data_utils.topic_handlers import *
+from data_utils.topic_handlers import VelocityPublisher
+from geometry_msgs.msg import Twist
 
 
 class GetGameSetupServer:
@@ -18,7 +19,15 @@ class GetGameSetupServer:
         self.teamname = None
         self.color = None
         self.dimensions = None
+        self.velocity_pub = VelocityPublisher()
         
+    def set_velocities(self, linear, angular):
+        """Use this to set linear and angular velocities
+        """
+        msg = Twist()
+        msg.linear.x = linear
+        msg.angular.z = angular
+        self.velocity_pub.publish(msg)
 
     def check_preempt(self):
         '''check if the action has been preempted'''
@@ -30,7 +39,6 @@ class GetGameSetupServer:
     
     def execute(self, goal):
         result = GetGameSetupResult()
-        rospy.logwarn('STARTUNG:::::::::::::::::::')
         wait_for_referee()
         self.teamname = send_names('RoBros', 'Los RosBros', 'Terminators')
         if SIMULATION_MODE:
@@ -40,14 +48,18 @@ class GetGameSetupServer:
         
         #4 localise
         localiser_util = LocaliserUtil()
-        #poles = localiser_util.search_three_poles()
-        #dimensions = localiser_util.calculate_dimensions(poles)
-        #rospy.logwarn(f'{dimensions=}')
+        self.set_velocities(0, 0.5)
+        self.dimensions = localiser_util.get_dimensions()
+        self.set_velocities(0, 0)
+        self.dimensions = send_field_dimension(self.teamname, self.dimensions[0][1], self.dimensions[0][0])
         
         #5 send team color
         team_color_util = TeamColorUtil()
+        self.set_velocities(0, 0.5)
         self.color = team_color_util.determine_color()
+        self.set_velocities(0, 0)
         self.color = send_color(self.teamname, self.color)
+        
         team_color_util.get_first_target()
         
         #5.5 send opponent color
@@ -57,7 +69,7 @@ class GetGameSetupServer:
         
         target = team_color_util.get_first_target()
         result.target_component = target
-        rospy.logwarn(f"target acquired: {target}")
+        rospy.loginfo(f"target acquired: {target}")
         self.server.set_succeeded(result)
 
 if __name__ == "__main__":

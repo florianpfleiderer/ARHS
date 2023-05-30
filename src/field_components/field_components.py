@@ -267,7 +267,7 @@ class Field(FieldObject):
         return [o for o in self.field_objects if o.type == class_name]
 
     def calculate_dimensions(self, *poles):
-        if len(poles) != 3:
+        if len(poles) < 3:
             rospy.logwarn(f"Not enough poles to calculate dimensions, got {len(poles)}")
             return False
         

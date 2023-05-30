@@ -35,12 +35,11 @@ def send_field_dimension(name, width, length):
     rospy.wait_for_service('/SendDimensions')
     send_dimension_srv = rospy.ServiceProxy('/SendDimensions', SendDimensions)
     
-    dimension = Point()
-    dimension.x = length
-    dimension.y = width
-    
-    result = send_dimension_srv(name, dimension)
-    if not result.ok:
-        return result.correctDimensions
-    else:
-        return dimension
+    dimensions = Point()
+    dimensions.x = length
+    dimensions.y = width
+    dimensions.z = 0
+    rospy.logwarn(f'calculated dimensions={dimensions}')
+    result = send_dimension_srv(name, dimensions)
+    rospy.logwarn(f'{result.correctDimensions=}')
+    return result.correctDimensions

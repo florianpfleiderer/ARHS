@@ -4,13 +4,15 @@ import os
 import rospy
 import copy
 from cv_bridge import CvBridge, CvBridgeError
-from data_utils.data_validation import *
-from visualization.screen_components import *
+#from data_utils.data_validation import *
+#from visualization.screen_components import *
 from sensor_msgs.msg import Image, LaserScan
 import time
-from visualization.imgops import *
+#from visualization.imgops import *
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
+from globals.globals import *
+from player.msg import FieldComponents, FieldComponent
 
 class SubscriberWrapper:
     def __init__(self, topic, data_class):
@@ -106,11 +108,11 @@ if __name__ == "__main__":
     shutdown_sub = ShutdownSubscriber()
     
     while not rospy.is_shutdown():
-        if img_sub.is_valid():
-            cv2.imshow("image", img_sub.copy_data())
+        #if img_sub.is_valid():
+        #    cv2.imshow("image", img_sub.copy_data())
 
-        if laser_sub.is_valid():
-            cv2.imshow("laser", laser_scan_to_image(laser_sub.copy_data()))
+        #if laser_sub.is_valid():
+        #    cv2.imshow("laser", laser_scan_to_image(laser_sub.copy_data()))
 
         cv2.waitKey(10)
         time.sleep(0.5)
