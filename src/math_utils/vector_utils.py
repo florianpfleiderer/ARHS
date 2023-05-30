@@ -3,11 +3,11 @@
 import math
 from geometry_msgs.msg import Vector3
 from player.msg import *
-import rospy
 from math_utils.math_function_utils import *
 from enum import Enum
 from testing.testing import *
 import random
+import numpy as np
 
 class Coordinate(Enum):
     CARTESIAN = 0
@@ -22,12 +22,32 @@ class TupleVector3:
         '''Value: tuple of 3 values, can be given in cartesian (x, y, z), cylindrical (r, phi, z) or spherical (r, theta, alpha) coordinates.
         Coordinates: Coordinate enum, defines the coordinate system of the given value, which is converted to cartesian coordinates.
         The coordinates variable is stored in the class and used for the __str__ function.'''
-        self.tuple = convert_vector(value, coordinates, Coordinate.CARTESIAN)
+        self.tuple = np.array(convert_vector(value, coordinates, Coordinate.CARTESIAN))
         self.coordinates = coordinates
+
+    def __get_tup(self, value):
+        if type(value) is TupleVector3:
+            tup = np.array(value.tuple)
+        elif type(value) is tuple:
+            tup = np.array(value)
+        elif type(value) is int or type(value) is float:
+            tup = np.array((value, value, value))
+        else:
+            raise TypeError(f"Bad type for vector operation: {type(value)}")
+        return tup
+    
+    def __get_len(self, value):
+        if type(value) is TupleVector3:
+            len = value.length()
+        elif type(value) is tuple:
+            len = math.sqrt(np.sum(np.power(value, np.array((2, 2, 2)))))
+        elif type(value) is int or type(value) is float:
+            len = value
+        return len
 
     def value(self):
         '''Returns the cartesian (x, y, z) tuple'''
-        return self.tuple
+        return tuple(self.tuple)
     
     def value_rounded(self, ndigits):
         '''Returns the cartesian (x, y, z) tuple with values rounded to n digits.
@@ -42,11 +62,11 @@ class TupleVector3:
     
     def length(self):
         '''Returns the length of the vector'''
-        return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2 + self.tuple[2] ** 2)
-    
+        return math.sqrt(np.sum(self.tuple ** 2))
+
     def length_xy(self):
         '''Returns the length of the vector in the xy plane'''
-        return math.sqrt(self.tuple[0] ** 2 + self.tuple[1] ** 2)
+        return math.sqrt(np.sum(np.power(self.tuple[0:2], 2)))
     
     def distance(self, vector):
         '''Returns the distance between the vector and the given vector'''
@@ -83,26 +103,14 @@ class TupleVector3:
     def dot(self, value):
         '''Returns the dot product of the vector and the given vector.
         Value can be a TupleVector3 or a (x, y, z) tuple'''
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-
-        return (self.tuple[0] * tup[0] +
-                self.tuple[1] * tup[1] +
-                self.tuple[2] * tup[2])
+        tup = self.__get_tup(value)
+        return np.dot(self.tuple, tup)
     
     def cross(self, value):
         '''Returns the cross product of the vector and the given vector.
         Value can be a TupleVector3 or a (x, y, z) tuple'''
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-
-        vec = TupleVector3((self.tuple[1] * tup[2] - self.tuple[2] * tup[1],
-                            self.tuple[2] * tup[0] - self.tuple[0] * tup[2],
-                            self.tuple[0] * tup[1] - self.tuple[1] * tup[0]))
+        tup = self.__get_tup(value)
+        vec = TupleVector3(np.cross(self.tuple, tup))
         vec.coordinates = self.coordinates
         return vec
 
@@ -111,33 +119,18 @@ class TupleVector3:
         Value can be TupleVector3, tuple or int/float.
         If a TupleRotator3 is given, the vector is rotated by the rotator.'''
         if type(value) is TupleRotator3:
-            a, b, c = value.value()
-            ca = cosd(a)
-            sa = sind(a)
-            cb = cosd(b)
-            sb = sind(b)
-            cc = cosd(c)
-            sc = sind(c)
-            rot_matrix = ((ca * cb, ca * sb * sc - sa * cc, ca * sb * cc + sa * sc),
-                            (sa * cb, sa * sb * sc + ca * cc, sa * sb * cc - ca * sc),
-                            (-sb, cb * sc, cb * cc))
-            x = self.tuple[0] * rot_matrix[0][0] + self.tuple[1] * rot_matrix[0][1] + self.tuple[2] * rot_matrix[0][2]
-            y = self.tuple[0] * rot_matrix[1][0] + self.tuple[1] * rot_matrix[1][1] + self.tuple[2] * rot_matrix[1][2]
-            z = self.tuple[0] * rot_matrix[2][0] + self.tuple[1] * rot_matrix[2][1] + self.tuple[2] * rot_matrix[2][2]
-            vec = TupleVector3((x, y, z))
+            ca, cb, cc = np.cos(value.tuple * math.pi / 180)
+            sa, sb, sc = np.sin(value.tuple * math.pi / 180)
+            rot_matrix = np.array([(ca * cb, ca * sb * sc - sa * cc, ca * sb * cc + sa * sc),
+                                   (sa * cb, sa * sb * sc + ca * cc, sa * sb * cc - ca * sc),
+                                   (-sb, cb * sc, cb * cc)])
+            vec = TupleVector3(np.matmul(rot_matrix, self.tuple))
             vec.coordinates = self.coordinates
             return vec
         
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
 
-        vec = TupleVector3((self.tuple[0] + tup[0],
-                            self.tuple[1] + tup[1],
-                            self.tuple[2] + tup[2]))
+        vec = TupleVector3(np.add(self.tuple, tup))
         vec.coordinates = self.coordinates
         return vec
     
@@ -150,65 +143,31 @@ class TupleVector3:
         Value can be TupleVector3, tuple or int/float.
         If a TupleRotator3 is given, the vector is rotated by the rotator in the reverse direction.'''
         if type(value) is TupleRotator3:
-            a, b, c = value.value()
-            ca = cosd(a)
-            sa = sind(a)
-            cb = cosd(b)
-            sb = sind(b)
-            cc = cosd(c)
-            sc = sind(c)            
-            inv_rot_matrix = ((ca * cb, sa * cb, -sb),
+            ca, cb, cc = np.cos(value.tuple * math.pi / 180)
+            sa, sb, sc = np.sin(value.tuple * math.pi / 180)
+            inv_rot_matrix = np.array([(ca * cb, sa * cb, -sb),
                               (ca * sb * sc - sa * cc, sa * sb * sc + ca * cc, cb * sc),
-                              (ca * sb * cc + sa * sc, sa * sb * cc - ca * sc, cb * cc))
-            x = self.tuple[0] * inv_rot_matrix[0][0] + self.tuple[1] * inv_rot_matrix[0][1] + self.tuple[2] * inv_rot_matrix[0][2]
-            y = self.tuple[0] * inv_rot_matrix[1][0] + self.tuple[1] * inv_rot_matrix[1][1] + self.tuple[2] * inv_rot_matrix[1][2]
-            z = self.tuple[0] * inv_rot_matrix[2][0] + self.tuple[1] * inv_rot_matrix[2][1] + self.tuple[2] * inv_rot_matrix[2][2]
-            vec = TupleVector3((x, y, z))
+                              (ca * sb * cc + sa * sc, sa * sb * cc - ca * sc, cb * cc)])
+            vec = TupleVector3(np.matmul(inv_rot_matrix, self.tuple))
             vec.coordinates = self.coordinates
             return vec
         
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
-        else:
-            raise TypeError(f"bad type for vector subtraction: {type(value)}")
-
-        vec = TupleVector3((self.tuple[0] - tup[0],
-                            self.tuple[1] - tup[1],
-                            self.tuple[2] - tup[2]))
+        tup = self.__get_tup(value)
+        vec = TupleVector3(self.tuple - tup)
         vec.coordinates = self.coordinates
         return vec
 
     def __rsub__(self, value):
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
-
-        vec = TupleVector3((tup[0] - self.tuple[0],
-                            tup[1] - self.tuple[1],
-                            tup[2] - self.tuple[2]))
+        tup = self.__get_tup(value)
+        vec = TupleVector3(tup - self.tuple)
         vec.coordinates = self.coordinates
         return vec
     
     def __mul__(self, value):
         '''Element-wise multiplication.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
-
-        vec = TupleVector3((self.tuple[0] * tup[0],
-                            self.tuple[1] * tup[1],
-                            self.tuple[2] * tup[2]))
+        tup = self.__get_tup(value)
+        vec = TupleVector3(self.tuple * tup)
         vec.coordinates = self.coordinates
         return vec
         
@@ -216,18 +175,11 @@ class TupleVector3:
         return self.__mul__(value)
     
     def __truediv__(self, value):
-        '''Element-wise division.
+        '''Element-wise safe division.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
-
-        vec = TupleVector3((self.tuple[0] / tup[0],
-                            self.tuple[1] / tup[1],
-                            self.tuple[2] / tup[2]))
+        tup = self.__get_tup(value)
+        safediv = np.frompyfunc(safe_div, 2, 1)
+        vec = TupleVector3(safediv(self.tuple, tup))
         vec.coordinates = self.coordinates
         return vec
     
@@ -235,98 +187,53 @@ class TupleVector3:
         '''Element-wise division.
         Value can be TupleVector3, tuple or int/float.
         Sets the coordinate value to 0 if the divisor is 0.'''
-        if type(value) is TupleVector3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is int or type(value) is float:
-            tup = (value, value, value)
-
-        vec = TupleVector3((tup[0] / self.tuple[0] if self.tuple[0] != 0 else 0,
-                            tup[1] / self.tuple[1] if self.tuple[1] != 0 else 0,
-                            tup[2] / self.tuple[2] if self.tuple[2] != 0 else 0))
+        tup = self.__get_tup(value)
+        safediv = np.frompyfunc(safe_div, 2, 1)
+        vec = TupleVector3(safediv(tup, self.tuple))
         vec.coordinates = self.coordinates
         return vec    
 
     def __lt__(self, value):
         '''Compares the lengths of the vector and the given value.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            len = value.length()
-        elif type(value) == tuple:
-            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
-        elif type(value) == int or type(value) == float:
-            len = value
-        
+        len = self.__get_len(value)
         return self.length() < len
     
     def __gt__(self, value):
         '''Compares the lengths of the vector and the given value.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            len = value.length()
-        elif type(value) == tuple:
-            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
-        elif type(value) == int or type(value) == float:
-            len = value
-        
+        len = self.__get_len(value)
         return self.length() > len
     
     def __eq__(self, value):
         '''Element-wise comparison.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            tup = value.tuple
-        elif type(value) == tuple:
-            tup = value
-        elif type(value) == int or type(value) == float:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
         
-        return (self.tuple[0] == tup[0] and
-                self.tuple[1] == tup[1] and
-                self.tuple[2] == tup[2] )
+        return np.array_equal(self.tuple, tup)
     
     def __ne__(self, value):
         '''Element-wise comparison.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            tup = value.tuple
-        elif type(value) == tuple:
-            tup = value
-        elif type(value) == int or type(value) == float:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
         
-        return (self.tuple[0] != tup[0] or
-                self.tuple[1] != tup[1] or
-                self.tuple[2] != tup[2] )
+        return not np.array_equal(self.tuple, tup)
     
     def __le__(self, value):
-        '''Element-wise comparison.
+        '''Comparison by length.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            len = value.length()
-        elif type(value) == tuple:
-            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
-        elif type(value) == int or type(value) == float:
-            len = value
-        
+        len = self.__get_len(value)
         return self.length() <= len
     
     def __ge__(self, value):
-        '''Element-wise comparison.
+        '''Comparison by length.
         Value can be TupleVector3, tuple or int/float.'''
-        if type(value) == TupleVector3:
-            len = value.length()
-        elif type(value) == tuple:
-            len = math.sqrt(value[0] ** 2 + value[1] ** 2 + value[2] ** 2)
-        elif type(value) == int or type(value) == float:
-            len = value
-        
+        len = self.__get_len(value)
         return self.length() >= len
 
     def __neg__(self):
         '''Element-wise negation.'''
-        vec = TupleVector3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
+        vec = TupleVector3(self.tuple * -1)
         vec.coordinates = self.coordinates
         return vec
 
@@ -334,9 +241,7 @@ class TupleVector3:
         return self.tuple[index]
     
     def __setitem__(self, index, value):
-        tlist = list(self.tuple)
-        tlist[index] = value
-        self.tuple = tuple(tlist)
+        self.tuple[index] = value
 
     def __str__(self):
         '''Converts the vector into a string based on the coordinates that have been given on initialization.'''
@@ -345,9 +250,9 @@ class TupleVector3:
         pref_z = "z" if self.coordinates != Coordinate.SPHERICAL else "alpha"
         value = self.convert(self.coordinates)
         return f"{chr(10)}" + \
-               f"{pref_x: >10} {value[0]: >6.2f}{chr(10)}" + \
-               f"{pref_y: >10} {value[1]: >6.2f}{chr(10)}" + \
-               f"{pref_z: >10} {value[2]: >6.2f}"
+               f"{pref_x:>10} {value[0]:>6.2f}{chr(10)}" + \
+               f"{pref_y:>10} {value[1]:>6.2f}{chr(10)}" + \
+               f"{pref_z:>10} {value[2]:>6.2f}"
 
     def make_vector3(self):
         '''Converts the vector into a geometry_msg Vector3'''
@@ -363,7 +268,7 @@ class TupleVector3:
     
     @classmethod
     def random(cls, length=10):
-        return cls(((random.random() - 0.5) * 2 * length, (random.random() - 0.5) * 2 *  length, (random.random() - 0.5) * 2 *  length))
+        return cls(np.random.uniform(-length, length, 3))
     
     @classmethod
     def random_xy(cls, length=10):
@@ -372,11 +277,20 @@ class TupleVector3:
 class TupleRotator3:
     '''This class stores a tuple of 3 rotation values (yaw, pitch, roll) and overrides arithmetic functions to handle those tuples.'''
     def __init__(self, value=(0, 0, 0)):
-        self.tuple = value
+        self.tuple = np.array(value)
+
+    def __get_tup(self, value):
+        if type(value) is TupleRotator3:
+            tup = np.array(value.tuple)
+        elif type(value) is tuple:
+            tup = np.array(value)
+        elif type(value) is float or type(value) is int:
+            tup = np.array((value, value, value))
+        return tup
 
     def value(self):
         '''Returns the rotator (yaw, pitch, roll) tuple'''
-        return self.tuple
+        return tuple(self.tuple)
     
     def value_rounded(self, ndigits):
         '''Returns the rotator (yaw, pitch, roll) tuple with values rounded to n digits.
@@ -387,23 +301,15 @@ class TupleRotator3:
 
     def __str__(self):
         return f"{chr(10)}" + \
-               f"{'yaw': >10} {self.tuple[0]: >6.2f}{chr(10)}" + \
-               f"{'pitch': >10} {self.tuple[1]: >6.2f}{chr(10)}" + \
-               f"{'roll': >10} {self.tuple[2]: >6.2f}"
+               f"{'yaw':>10} {self.tuple[0]:>6.2f}{chr(10)}" + \
+               f"{'pitch':>10} {self.tuple[1]:>6.2f}{chr(10)}" + \
+               f"{'roll':>10} {self.tuple[2]:>6.2f}"
     
     def __add__(self, value):
         '''Element-wise addition.
         Value can be TupleRotator3, tuple or int/float.'''
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
-
-        return TupleRotator3((self.tuple[0] + tup[0],
-                              self.tuple[1] + tup[1],
-                              self.tuple[2] + tup[2]))
+        tup = self.__get_tup(value)
+        return TupleRotator3(self.tuple + tup)
         
     def __radd__(self, value):
         return self.__add__(value)
@@ -411,42 +317,21 @@ class TupleRotator3:
     def __sub__(self, value):
         '''Element-wise subtraction.
         Value can be TupleRotator3, tuple or int/float.'''
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
 
-        return TupleRotator3((self.tuple[0] - tup[0],
-                              self.tuple[1] - tup[1],
-                              self.tuple[2] - tup[2]))
+        return TupleRotator3(self.tuple - tup)
         
     def __rsub__(self, value):
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
 
-        return TupleRotator3((tup[0] - self.tuple[0],
-                              tup[1] - self.tuple[1],
-                              tup[2] - self.tuple[2]))
+        return TupleRotator3(tup - self.tuple)
     
     def __mul__(self, value):
         '''Element-wise multiplication.
         Value can be TupleRotator3, tuple or int/float.'''
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
+        tup = self.__get_tup(value)
 
-        return TupleRotator3((self.tuple[0] * tup[0],
-                              self.tuple[1] * tup[1],
-                              self.tuple[2] * tup[2]))
+        return TupleRotator3(self.tuple * tup)
         
     def __rmul__(self, value):
         return self.__mul__(value)
@@ -454,49 +339,33 @@ class TupleRotator3:
     def __truediv__(self, value):
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.'''
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
-
-        return TupleRotator3((self.tuple[0] / tup[0],
-                              self.tuple[1] / tup[1],
-                              self.tuple[2] / tup[2]))
+        tup = self.__get_tup(value)
+        safediv = np.frompyfunc(safe_div, 2, 1)
+        return TupleRotator3(safediv(self.tuple, tup))
 
     def __rtruediv__(self, value):
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.
         Sets coordinate value to 0 if the divisor is 0.'''
-        if type(value) is TupleRotator3:
-            tup = value.tuple
-        elif type(value) is tuple:
-            tup = value
-        elif type(value) is float or type(value) is int:
-            tup = (value, value, value)
-
-        return TupleRotator3((tup[0] / self.tuple[0] if self.tuple[0] != 0 else 0,
-                              tup[1] / self.tuple[1] if self.tuple[1] != 0 else 0,
-                              tup[2] / self.tuple[2] if self.tuple[1] != 0 else 0))
+        tup = self.__get_tup(value)
+        safediv = np.frompyfunc(safe_div, 2, 1)
+        return TupleRotator3(safediv(tup, self.tuple))
 
 
     def __neg__(self):
         '''Element-wise negation.'''
-        rot = TupleRotator3((-self.tuple[0], -self.tuple[1], -self.tuple[2]))
+        rot = TupleRotator3(self.tuple * -1)
         return rot
 
     def __getitem__(self, index):
         return self.tuple[index]
     
     def __setitem__(self, index, value):    
-        tlist = list(self.tuple)
-        tlist[index] = value
-        self.tuple = tuple(tlist)
+        self.tuple[index] = value
 
     @classmethod
     def random(cls, angle=180):
-        return cls(((random.random() - 0.5) * 2 * angle, (random.random() - 0.5) * 2 *  angle, (random.random() - 0.5) * 2 *  angle))
+        return cls(np.random.uniform(-angle, angle, 3))
 
     @classmethod
     def random_xy(cls, angle=180):
@@ -587,8 +456,7 @@ def test_vector():
 
     print("--")
     v = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
-    test(v.tuple, (1, 0, 0))
-    test(v.value(), (1, 0, 0))
+    test(v.value_rounded(5), (1, 0, 0))
     test(v.convert(Coordinate.SPHERICAL), (1, 90, 0))
     print(v)
     v2 = TupleVector3((1, 90, 0), Coordinate.SPHERICAL)
@@ -596,10 +464,11 @@ def test_vector():
     print(v * 2)
 
     v[0] = 2
-    test(v.tuple, (2, 0, 0))
+    test(v.value_rounded(5), (2, 0, 0))
 
 
 def test_rotator():
+    print("test rotator")
     r = TupleRotator3((90, 90, 0))
     print(r)
     print(r.value())
@@ -610,13 +479,11 @@ def test_rotator():
     v = TupleVector3((1, 0, 0))
     print(v)
     test((v.convert(Coordinate.SPHERICAL)), (1, 90, 0))
-    val = (v + r).value()
-    test((round(val[0]), round(val[1]), round(val[2])), (0, 0, -1))
-    val = (v - r).value()
-    test((round(val[0]), round(val[1]), round(val[2])), (0, -1, 0))
+    test((v + r).value_rounded(5), (0, 0, -1))
+    test((v - r).value_rounded(5), (0, -1, 0))
 
-    test((v - r + r).value(), v.value())
-    test((v + r - r).value(), v.value())
+    test((v - r + r).value_rounded(5), v.value())
+    test((v + r - r).value_rounded(5), v.value())
 
 if __name__ == "__main__":
     test_vector()

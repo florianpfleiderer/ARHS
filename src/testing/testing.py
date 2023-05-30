@@ -10,6 +10,7 @@ def test(value, expected):
         return False
     
 def stress_test(function, n):
+    print(f"starting stress test for function {function.__name__}")
     start_time = time.time()
     errors = 0
     for i in range(n):
