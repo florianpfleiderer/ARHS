@@ -4,9 +4,9 @@ import rospy
 from player.msg import GetGameSetupAction, GetGameSetupResult
 from actionlib import SimpleActionServer
 from globals.globals import *
-from data_utils.topic_handlers import *
 from ref_com.communication import *
 from ref_com.utils import TeamColorUtil, LocaliserUtil
+from data_utils.topic_handlers import *
 
 
 class GetGameSetupServer:
@@ -18,10 +18,6 @@ class GetGameSetupServer:
         self.teamname = None
         self.color = None
         self.dimensions = None
-        
-        self.velocity_pub = VelocityPublisher()
-        self.field_components_sub = FieldComponentsSubscriber()
-        self.field_components: List[FieldComponent] = None
         
 
     def check_preempt(self):
@@ -43,13 +39,14 @@ class GetGameSetupServer:
         wait_for_start()
         
         #4 localise
-        #localiser_util = LocaliserUtil()
-        #self.dimensions = localiser_util.get_dimensions()
-        #self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
+        localiser_util = LocaliserUtil()
+        #poles = localiser_util.search_three_poles()
+        #dimensions = localiser_util.calculate_dimensions(poles)
+        #rospy.logwarn(f'{dimensions=}')
         
         #5 send team color
         team_color_util = TeamColorUtil()
-        self.color = team_color_util.determine()
+        self.color = team_color_util.determine_color()
         self.color = send_color(self.teamname, self.color)
         team_color_util.get_first_target()
         
