@@ -50,9 +50,6 @@ REPULSION_FACTOR = 0.005
 TARGET_REACHED_R_THRESHOLD = 0.1
 TARGET_REACHED_THETA_THRESHOLD = 0.1
 
-# team name gets overriden with the chosen one of the list after initial referee communication
-TEAM_NAME = ["Wall-Es", "Terminators", "R2-D2s"]
-
 
 # Laser scan:
 # header: 
