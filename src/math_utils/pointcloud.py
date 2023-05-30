@@ -376,7 +376,7 @@ def test_point_cloud(base: PointCloud, compare_slice_size, tolerance=0.05, itera
     # assert set([tuple(p) for p in points.tolist()]).issubset(set([tuple(p) for p in base.points.copy().tolist()]))
 
     random_intensity = 1
-    random_deviation = 0
+    random_deviation = 0.2
 
     random_offset = TupleVector3.random_xy(3 * random_intensity)
     random_rotation = TupleRotator3.random_xy(70 * random_intensity)
