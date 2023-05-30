@@ -49,6 +49,11 @@ class LocaliserNode:
         '''Main loop of the localiser node.
         
         '''
+        self.objects = [FieldObject(Color.from_string(c.color_name), \
+                                    c.type, TupleVector3.from_vector3(c.player_distance) , None) \
+                        for c in self.comp_sub.data]
+
+        self.laser = self.laser_sub.data
 
         # while len(self.field.poles) < 3:
         #     self.set_velocities(0, 0.2)
@@ -65,7 +70,7 @@ class LocaliserNode:
         # rospy.loginfo("outer poles found, stop turning")
         # self.set_velocities(0, 0)
         while not rospy.is_shutdown():
-            cur_objects = copy.deepcopy(self.objects)
+            cur_objects = copy.deepcopy(self.comp_sub.data)
             cur_laser = copy.deepcopy(self.laser)
 
             if cur_objects is None:
