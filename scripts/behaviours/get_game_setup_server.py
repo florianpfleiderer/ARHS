@@ -43,9 +43,9 @@ class GetGameSetupServer:
         wait_for_start()
         
         #4 localise
-        localiser_util = LocaliserUtil()
-        self.dimensions = localiser_util.get_dimensions()
-        self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
+        #localiser_util = LocaliserUtil()
+        #self.dimensions = localiser_util.get_dimensions()
+        #self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
         
         #5 send team color
         team_color_util = TeamColorUtil()
