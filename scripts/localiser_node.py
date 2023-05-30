@@ -47,12 +47,9 @@ class LocaliserNode:
 
     def execute(self):
         '''Main loop of the localiser node.
-        '''
-        self.objects = [FieldObject(Color.from_string(c.color_name), \
-                                    c.type, TupleVector3.from_vector3(c.player_distance) , None) \
-                        for c in self.comp_sub.data]
         
-        self.laser = self.laser_sub.data
+        '''
+
         # while len(self.field.poles) < 3:
         #     self.set_velocities(0, 0.2)
         #     self.field.set_objects(self.objects)
@@ -60,11 +57,11 @@ class LocaliserNode:
         
         # rospy.loginfo("Objects found, stop turning")
         # self.set_velocities(0, 0)
-
+        
         # while not self.field.check_poles():
         #     self.set_velocities(0, 0.2)
         #     rospy.sleep(0.5)
-
+        
         # rospy.loginfo("outer poles found, stop turning")
         # self.set_velocities(0, 0)
         while not rospy.is_shutdown():
@@ -73,30 +70,46 @@ class LocaliserNode:
 
             if cur_objects is None:
                 rospy.logwarn("No objects")
+                self.set_velocities(0, 0.2)
                 return
-
+            else:
+                self.set_velocities(0, 0)
+            
             if not self.field.set_objects(cur_objects):
                 rospy.logwarn("Field Objects could not be set")
+                self.set_velocities(0, 0.2)
                 return
-            
-            self.field.change_coordinates(Coordinate.SPHERICAL)
+            else: self.set_velocities(0, 0)
 
             if not self.field.check_poles():
-                return
+                self.set_velocities(0, 0.2)
+            else: 
+                self.set_velocities(0, 0)
 
             pos = self.field.calculate_robot_position()
-            if pos is None:
-                rospy.logwarn("No position")
+            if(pos is None):
+                rospy.logwarn("No kinect position")
+                self.set_velocities(0, 0.2)
                 return
-
-            # TODO auto detect left or right
-            outer_pole: Pole = self.field.outer_pole(False)
+            
+            if self.field.length == None:
+                self.field.calc_dimensions()
+            
+            # auto detect left or right
+            outer_pole: Pole = self.field.outer_pole()
             mid_pole: Pole = self.field.poles[1]
 
             outer_pole.spherical_distance = self.field.pole_to_laser(outer_pole, cur_laser)
             mid_pole.spherical_distance = self.field.pole_to_laser(mid_pole, cur_laser)
 
             pos = get_position(mid_pole, outer_pole, None)
+
+            if(pos is None):
+                rospy.logwarn("No laser position")
+                self.set_velocities(0, 0.2)
+                return
+            
+            rospy.loginfo(f"field dimension: {self.field.length} {self.field.width}")
 
             point = Point(pos[0], pos[1], 0)
             quaternion = Quaternion(0, 0, 1, 0)

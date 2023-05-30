@@ -10,7 +10,6 @@ from math_utils.field_calculation_functions import cosine_theorem, get_position
 from math_utils.vector_utils import Coordinate
 from sensor_msgs.msg import LaserScan
 from globals.globals import *
-from referee_communication import referee_communication as ref_com
 
 class Field(object):
     '''Singleton class representing the field.
@@ -84,9 +83,9 @@ class Field(object):
         distance_2_3 = cosine_theorem(self.poles[1], self.poles[2])
         distance_1_3 = cosine_theorem(self.poles[0], self.poles[2])
 
-        length = (distance_1_2 * 10 + distance_1_3 * 4) / 2
-        width = length * (3/5)
-        ref_com.send_field_dimension(length, width)
+        #length = (distance_1_2 * 10 + distance_1_3 * 4) / 2
+        #width = length * (3/5)
+        #ref_com.send_field_dimension(length, width)
         
         self.set_field_objects_positions(distance_1_2, distance_2_3, distance_1_3)
 
