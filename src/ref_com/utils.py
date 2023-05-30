@@ -65,7 +65,7 @@ class LocaliserUtil:
             self.field.field_objects = deepcopy(self.field.field_component_sub.data)
             poles = self.field.get_objects_by_class('Pole')
             poles = [FieldObject.from_field_component(pole) for pole in poles]
-            dimensions = self.field.calculate_dimensions(*poles)
+            dimensions = self.field.calculate_dimensions(*poles[::-1])
             if not dimensions:
                 continue
             return dimensions   # w, l
