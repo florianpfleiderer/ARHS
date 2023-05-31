@@ -40,7 +40,7 @@ REPELLING_FORCE_THRESHOLD = 0.5
 
 TICK_RATE = 10 / 10
 
-NAMESPACE = "" if LAUNCH_MODE else "robot1/"
+NAMESPACE = "" if LAUNCH_MODE else "/robot1/"
 LASER_PATH = "front_laser/scan"
 DEPTH_PATH = "kinect/depth/image_raw" if SIMULATION_MODE else "kinect/depth_registered/image_raw"
 IMAGE_PATH = "kinect/rgb/image_raw"
@@ -49,6 +49,9 @@ ATTRACTION_FACTOR = 0.1
 REPULSION_FACTOR = 0.005
 TARGET_REACHED_R_THRESHOLD = 0.1
 TARGET_REACHED_THETA_THRESHOLD = 0.1
+
+# team name gets overriden with the chosen one of the list after initial referee communication
+TEAM_NAME = ["Wall-Es", "Terminators", "R2-D2s"]
 
 
 # Laser scan:
