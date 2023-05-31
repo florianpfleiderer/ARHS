@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 '''this node turns the robot and searches for the three outer most poles.'''
 
-from math import *
 import copy
+import rospy
+from math import *
 from typing import List
 
-import rospy
 
-from globals.tick import CallbackTicker
 from globals.globals import *
+from sensor_msgs.msg import LaserScan
+from player.msg import FieldComponent
+from globals.tick import CallbackTicker
+from field_components.field import Field
+from field_components.colors import Color
+import data_utils.topic_handlers as topics
+from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from math_utils.vector_utils import TupleVector3, Coordinate
 from math_utils.field_calculation_functions import get_position
-from player.msg import FieldComponents, FieldComponent
-from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-from field_components.field import Field
 from field_components.field_components import FieldObject, Pole
-from field_components.colors import Color
-from sensor_msgs.msg import LaserScan
-from data_utils.topic_handlers import *
 
 class LocaliserNode:
     '''This node turns the robot and searches for the three outer most poles.'''
@@ -26,10 +26,10 @@ class LocaliserNode:
         rospy.init_node("localiser_node")
         rospy.loginfo("Initialised LocaliserNode")
 
-        self.comp_sub = FieldComponentsSubscriber()
-        self.laser_sub = LaserSubscriber() # rospy.Subscriber("/robot1/front_laser/scan", LaserScan, self.laser_cb)
+        self.comp_sub = topics.FieldComponentsSubscriber()
+        self.laser_sub = topics.LaserSubscriber() # rospy.Subscriber("/robot1/front_laser/scan", LaserScan, self.laser_cb)
         self.position_pub = rospy.Publisher('player/position', Pose, queue_size=10)
-        self.velocity_pub = VelocityPublisher() # rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) 
+        self.velocity_pub = topics.VelocityPublisher() # rospy.Publisher("robot1/cmd_vel", Twist, queue_size=10) 
 
         self.field = Field()
         self.objects: List[FieldComponent] = None

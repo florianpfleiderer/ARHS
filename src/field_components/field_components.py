@@ -1,15 +1,19 @@
 #!/usr/bin/env python
 
-from globals.globals import *
-from player.msg import *
-from math_utils.vector_utils import *
-from typing import *
-from field_components.colors import Color
+import rospy
 import sys
 import cv2
-from visualization.screen_utils import *
+import copy
 import random
-from data_utils.topic_handlers import *
+from globals.globals import *
+from player.msg import FieldComponent
+from geometry_msgs.msg import Vector3
+from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
+from typing import List
+from field_components.colors import Color
+import visualization.screen_utils as sc 
+from visualization.screen_components import Screen
+from data_utils.topic_handlers import FieldComponentsSubscriber
 from itertools import combinations
 
 # Since the ratios of pole positions is known, any 3 adjacent poles along one line can be used to calculate the field dimensions.
@@ -106,37 +110,37 @@ class Robot(FieldObject):
 
     def draw_icon(self, image, rect):
         # body + wheels
-        cv2.ellipse(image, get_point_in_rect(rect, 0.35, 0.75), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
-        cv2.rectangle(image, get_point_in_rect(rect, 0.3, 0.35), get_point_in_rect(rect, 1, 0.85), (0, 0, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.8, 0.8), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.83, 0.8), scale_rect(rect, 0.06, 0.11), 0, 0, 360, (0, 200, 200), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.35, 0.75), sc.scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.3, 0.35), sc.get_point_in_rect(rect, 1, 0.85), (0, 0, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.8, 0.8), sc.scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.83, 0.8), sc.scale_rect(rect, 0.06, 0.11), 0, 0, 360, (0, 200, 200), -1)
 
         # head shadow
-        cv2.rectangle(image, get_point_in_rect(rect, 0.3, 0.4), get_point_in_rect(rect, 0.7, 0.55), (0, 0, 155), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.3, 0.4), sc.get_point_in_rect(rect, 0.7, 0.55), (0, 0, 155), -1)
 
         # platform + yellow dots
-        cv2.rectangle(image, get_point_in_rect(rect, 0.64, 0.34), get_point_in_rect(rect, 1.08, 0.42), (10, 10, 10), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.57, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.42, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.3, 0.45), scale_rect(rect, 0.04, 0.12), 0, -90, 90, (0, 100, 150), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.64, 0.34), sc.get_point_in_rect(rect, 1.08, 0.42), (10, 10, 10), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.57, 0.45), sc.scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.42, 0.45), sc.scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.3, 0.45), sc.scale_rect(rect, 0.04, 0.12), 0, -90, 90, (0, 100, 150), -1)
 
         # head
-        cv2.rectangle(image, get_point_in_rect(rect, 0.15, 0.13), get_point_in_rect(rect, 0.65, 0.5), (10, 10, 10), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.15, 0.13), sc.get_point_in_rect(rect, 0.65, 0.5), (10, 10, 10), -1)
 
         # left eye
-        cv2.ellipse(image, get_point_in_rect(rect, 0.4, 0.22), scale_rect(rect, 0.1, 0.18), 0, -60, 190, (255, 255, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.375, 0.1), scale_rect(rect, 0.08, 0.14), 0, -22, 158, (255, 255, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.35, 0.23), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 255), -1)
-        cv2.line(image, get_point_in_rect(rect, 0.25, 0.2), get_point_in_rect(rect, 0.5, 0), (10, 10, 10), 3)
-        cv2.line(image, get_point_in_rect(rect, 0.25, 0.18), get_point_in_rect(rect, 0.5, -0.03), (10, 10, 10), 3)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.4, 0.22), sc.scale_rect(rect, 0.1, 0.18), 0, -60, 190, (255, 255, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.375, 0.1), sc.scale_rect(rect, 0.08, 0.14), 0, -22, 158, (255, 255, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.35, 0.23), sc.scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 255), -1)
+        cv2.line(image, sc.get_point_in_rect(rect, 0.25, 0.2), sc.get_point_in_rect(rect, 0.5, 0), (10, 10, 10), 3)
+        cv2.line(image, sc.get_point_in_rect(rect, 0.25, 0.18), sc.get_point_in_rect(rect, 0.5, -0.03), (10, 10, 10), 3)
 
 
         # right eye
-        cv2.ellipse(image, get_point_in_rect(rect, 0.125, 0.18), scale_rect(rect, 0.1, 0.18), 0, 5, 250, (255, 255, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.15, 0.1), scale_rect(rect, 0.08, 0.14), 0, 35, 215, (255, 255, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.075, 0.19), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 255), -1)
-        cv2.line(image, get_point_in_rect(rect, 0.25, 0.2), get_point_in_rect(rect, 0.05, -0.05), (10, 10, 10), 3)
-        cv2.line(image, get_point_in_rect(rect, 0.25, 0.18), get_point_in_rect(rect, 0.05, -0.08), (10, 10, 10), 3)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.125, 0.18), sc.scale_rect(rect, 0.1, 0.18), 0, 5, 250, (255, 255, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.15, 0.1), sc.scale_rect(rect, 0.08, 0.14), 0, 35, 215, (255, 255, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.075, 0.19), sc.scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 255), -1)
+        cv2.line(image, sc.get_point_in_rect(rect, 0.25, 0.2), sc.get_point_in_rect(rect, 0.05, -0.05), (10, 10, 10), 3)
+        cv2.line(image, sc.get_point_in_rect(rect, 0.25, 0.18), sc.get_point_in_rect(rect, 0.05, -0.08), (10, 10, 10), 3)
 
 class Player(FieldObject):
     default_half_size = TupleVector3((0.3, 0.3, 0.3))
@@ -146,30 +150,30 @@ class Player(FieldObject):
 
     def draw_icon(self, image, rect):
         # body + wheels
-        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.75), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
-        cv2.rectangle(image, get_point_in_rect(rect, 0, 0.35), get_point_in_rect(rect, 0.7, 0.85), (0, 0, 255), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.2, 0.8), scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.17, 0.8), scale_rect(rect, 0.06, 0.11), 0, 0, 360, (0, 200, 200), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.65, 0.75), sc.scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0, 0.35), sc.get_point_in_rect(rect, 0.7, 0.85), (0, 0, 255), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.2, 0.8), sc.scale_rect(rect, 0.15, 0.2), 0, 0, 360, (10, 10, 10), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.17, 0.8), sc.scale_rect(rect, 0.06, 0.11), 0, 0, 360, (0, 200, 200), -1)
 
         # head shadow
-        cv2.rectangle(image, get_point_in_rect(rect, 0.3, 0.4), get_point_in_rect(rect, 0.7, 0.55), (0, 0, 155), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.3, 0.4), sc.get_point_in_rect(rect, 0.7, 0.55), (0, 0, 155), -1)
 
         # platform + yellow dots
-        cv2.rectangle(image, get_point_in_rect(rect, -0.08, 0.34), get_point_in_rect(rect, 0.36, 0.42), (10, 10, 10), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.43, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.58, 0.45), scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.7, 0.45), scale_rect(rect, 0.04, 0.12), 0, 90, 270, (0, 100, 150), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, -0.08, 0.34), sc.get_point_in_rect(rect, 0.36, 0.42), (10, 10, 10), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.43, 0.45), sc.scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.58, 0.45), sc.scale_rect(rect, 0.06, 0.12), 0, 0, 360, (0, 100, 150), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.7, 0.45), sc.scale_rect(rect, 0.04, 0.12), 0, 90, 270, (0, 100, 150), -1)
 
         # head
-        cv2.rectangle(image, get_point_in_rect(rect, 0.35, 0.13), get_point_in_rect(rect, 0.85, 0.5), (0, 0, 255), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.35, 0.13), sc.get_point_in_rect(rect, 0.85, 0.5), (0, 0, 255), -1)
 
         # right eye
-        cv2.ellipse(image, get_point_in_rect(rect, 0.6, 0.12), scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.13), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.6, 0.12), sc.scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.65, 0.13), sc.scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
 
         # left eye
-        cv2.ellipse(image, get_point_in_rect(rect, 0.875, 0.08), scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.925, 0.09), scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.875, 0.08), sc.scale_rect(rect, 0.1, 0.18), 0, 0, 360, (200, 200, 200), -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.925, 0.09), sc.scale_rect(rect, 0.05, 0.09), 0, 0, 360, (0, 0, 0), -1)
 
 class YellowPuck(FieldObject):
     color = Color.YELLOW
@@ -182,7 +186,7 @@ class YellowPuck(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
 
 class BluePuck(FieldObject):
     color = Color.BLUE
@@ -195,7 +199,7 @@ class BluePuck(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
 
 class YellowGoal(FieldObject):
     color = Color.YELLOW
@@ -207,7 +211,7 @@ class YellowGoal(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.rectangle(image, get_point_in_rect(rect, 0, 0), get_point_in_rect(rect, 1, 1), self.color.default(), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0, 0), sc.get_point_in_rect(rect, 1, 1), self.color.default(), -1)
 
 class BlueGoal(FieldObject):
     color = Color.BLUE
@@ -219,7 +223,7 @@ class BlueGoal(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.rectangle(image, get_point_in_rect(rect, 0, 0), get_point_in_rect(rect, 1, 1), self.color.default(), -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0, 0), sc.get_point_in_rect(rect, 1, 1), self.color.default(), -1)
 
 class Pole(FieldObject):
     color = Color.GREEN
@@ -232,7 +236,7 @@ class Pole(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.5, 0.5), round(w/2), self.color.default(), -1)
 
 class LaserPoint(FieldObject):
     color = Color.ORANGE
@@ -248,7 +252,7 @@ class GenericObject(FieldObject):
 
     def draw_icon(self, image, rect):
         x, y, w, h = rect
-        cv2.putText(image, "?", get_point_in_rect(rect, 0, 1), CV2_DEFAULT_FONT, 1, self.color.default(), CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
+        cv2.putText(image, "?", sc.get_point_in_rect(rect, 0, 1), CV2_DEFAULT_FONT, 1, self.color.default(), CV2_DEFAULT_THICKNESS, cv2.LINE_AA)
 
 class RisingEdge(FieldObject):
     color = Color.GREEN
@@ -280,18 +284,18 @@ class Fan(FieldObject):
         dark_red = (0, 0, 100)
         brown = (16, 21, 36)
         # shirt
-        cv2.rectangle(image, get_point_in_rect(rect, 0.33, 0.5), get_point_in_rect(rect, 0.66, 0.8), shirt, -1)
+        cv2.rectangle(image, sc.get_point_in_rect(rect, 0.33, 0.5), sc.get_point_in_rect(rect, 0.66, 0.8), shirt, -1)
         # head
-        cv2.circle(image, get_point_in_rect(rect, 0.5, 0.3), round(w * 0.3), skin, -1)
-        cv2.circle(image, get_point_in_rect(rect, 0.4, 0.25), round(w * 0.05), black, -1)
-        cv2.circle(image, get_point_in_rect(rect, 0.6, 0.25), round(w * 0.05), black, -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.5, 0.37), scale_rect(rect, 0.16, 0.125), 0, 0, 180, dark_red, -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.5, 0.3), round(w * 0.3), skin, -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.4, 0.25), round(w * 0.05), black, -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.6, 0.25), round(w * 0.05), black, -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.5, 0.37), sc.scale_rect(rect, 0.16, 0.125), 0, 0, 180, dark_red, -1)
         # hands
-        cv2.circle(image, get_point_in_rect(rect, 0.1, 0.35), round(w * 0.08), skin, -1)
-        cv2.circle(image, get_point_in_rect(rect, 0.9, 0.35), round(w * 0.08), skin, -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.1, 0.35), round(w * 0.08), skin, -1)
+        cv2.circle(image, sc.get_point_in_rect(rect, 0.9, 0.35), round(w * 0.08), skin, -1)
         # feet
-        cv2.ellipse(image, get_point_in_rect(rect, 0.35, 0.8), scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
-        cv2.ellipse(image, get_point_in_rect(rect, 0.65, 0.8), scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.35, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
+        cv2.ellipse(image, sc.get_point_in_rect(rect, 0.65, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
 
 class Field(FieldObject):
     def __init__(self):

@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
-from globals.globals import *
-from globals.tick import *
-from math_utils.math_function_utils import *
-from math_utils.vector_utils import *
-from data_utils.data_validation import *
-from enum import Enum
-import numpy as np
-import field_components.field_components as fc
-from field_components.colors import Color
-from visualization.screen_utils import *
-from typing import Tuple
 import time
+import numpy as np
+from typing import Tuple
+from globals.tick import *
+from globals.globals import *
+from testing.testing import test
+import visualization.imgops as imgops
+import math_utils.math_function_utils as mf
+import field_components.field_components as fc
+import math_utils.vector_utils as vec
+from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
+from field_components.colors import Color
+import visualization.screen_utils as scu
+from visualization.screen_utils import ProjectionType
 
 class Screen:
     def __init__(self, name, dimensions, FOV, projection, origin_offset, angle_offset):
@@ -21,7 +23,7 @@ class Screen:
         self.FOV: Tuple = FOV
         self.projection: ProjectionType = projection
         self.angle_offset: TupleRotator3 = angle_offset
-        self.image = empty_image(dimensions)
+        self.image = imgops.empty_image(dimensions)
 
     def get_local_distance(self, distance) -> TupleVector3:
         return distance - self.origin_offset - self.angle_offset
@@ -46,10 +48,10 @@ class Screen:
         elif issubclass(type(obj), fc.FieldObject):
             x_ang, y_ang, w_ang, h_ang = self.get_angles(obj)
 
-        x = round(screen_angle_to_pos(x_ang, self.dimensions[0], self.FOV[0], self.projection))
-        y = round(screen_angle_to_pos(y_ang, self.dimensions[1], self.FOV[1], self.projection))
-        w = round(screen_angle_to_pos(x_ang + w_ang, self.dimensions[0], self.FOV[0], self.projection)) - x
-        h = round(screen_angle_to_pos(y_ang + h_ang, self.dimensions[1], self.FOV[1], self.projection)) - y
+        x = round(scu.screen_angle_to_pos(x_ang, self.dimensions[0], self.FOV[0], self.projection))
+        y = round(scu.screen_angle_to_pos(y_ang, self.dimensions[1], self.FOV[1], self.projection))
+        w = round(scu.screen_angle_to_pos(x_ang + w_ang, self.dimensions[0], self.FOV[0], self.projection)) - x
+        h = round(scu.screen_angle_to_pos(y_ang + h_ang, self.dimensions[1], self.FOV[1], self.projection)) - y
         return x, y, abs(w), abs(h)
     
     def get_angles(self, obj):
@@ -66,10 +68,10 @@ class Screen:
         '''
         if type(obj) is tuple:
             x, y, w, h = obj
-            x_ang = screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
-            y_ang = screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection)
-            w_ang = screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection) - x_ang
-            h_ang = screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
+            x_ang = scu.screen_pos_to_angle(x, self.dimensions[0], self.FOV[0], self.projection)
+            y_ang = scu.screen_pos_to_angle(y, self.dimensions[1], self.FOV[1], self.projection)
+            w_ang = scu.screen_pos_to_angle(x + w, self.dimensions[0], self.FOV[0], self.projection) - x_ang
+            h_ang = scu.screen_pos_to_angle(y + h, self.dimensions[1], self.FOV[1], self.projection) - y_ang
 
         elif issubclass(type(obj), fc.FieldObject):
             corner_br = self.get_local_distance(obj.distance - obj.half_size).convert(Coordinate.SPHERICAL)
@@ -87,8 +89,8 @@ class Screen:
                        (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)]
             corners = [self.get_local_distance(obj.distance + obj.half_size * offset).convert(Coordinate.SPHERICAL) for offset in offsets]
             
-            corner_positions = [[screen_angle_to_pos(-c[2], self.dimensions[0], self.FOV[0], self.projection),
-                                 screen_angle_to_pos(c[1] - 90, self.dimensions[1], self.FOV[1], self.projection)] for c in corners]
+            corner_positions = [[scu.screen_angle_to_pos(-c[2], self.dimensions[0], self.FOV[0], self.projection),
+                                 scu.screen_angle_to_pos(c[1] - 90, self.dimensions[1], self.FOV[1], self.projection)] for c in corners]
 
             return corner_positions
     
@@ -131,9 +133,9 @@ class Screen:
 
     def is_in_sight(self, rect):
         x, y, w, h = rect
-        if not check_range(x, 0, self.dimensions[0]):
+        if not mf.check_range(x, 0, self.dimensions[0]):
             return False
-        if not check_range(y , 0, self.dimensions[1]):
+        if not mf.check_range(y , 0, self.dimensions[1]):
             return False
 
         return True
@@ -220,7 +222,6 @@ class FieldScreen(Screen):
 class ImageViewer:
     def __init__(self, name):
         self.name = name
-        self.v = Validator()
         self.window = cv2.namedWindow(self.name)
 
     def show(self, image):
@@ -284,8 +285,8 @@ def kinect_screen_test():
     assert sc.get_rect(sc.get_angles(rect)) == rect
 
     angle = (1, 90, 0)
-    print(cartesian_to_spherical(spherical_to_cartesian(angle)))
-    assert cartesian_to_spherical(spherical_to_cartesian(angle)) == angle
+    print(vec.cartesian_to_spherical(vec.spherical_to_cartesian(angle)))
+    assert vec.cartesian_to_spherical(vec.spherical_to_cartesian(angle)) == angle
 
     print("--")
     fo = sc.create_field_object((100, 100, 100, 100), 1, fc.Robot)
@@ -367,7 +368,7 @@ def field_screen_test():
     offset_angle = 0
 
     while True:
-        sc.image = empty_image(sc.dimensions, (50, 50, 50))
+        sc.image = imgops.empty_image(sc.dimensions, (50, 50, 50))
         sc.draw_object(fo, False, False, True, False, False)
         sc.draw_object(fan1, False, False, True, False, False)
         sc.draw_object(player, False, False, True, False, False)
@@ -410,7 +411,7 @@ def rotation_test():
         sc.origin_offset = TupleVector3((x.get_value(True), y.get_value(True), z.get_value(True)))
         print(sc.angle_offset)
         print(sc.origin_offset)
-        sc.image = empty_image(sc.dimensions, (50, 50, 50))
+        sc.image = imgops.empty_image(sc.dimensions, (50, 50, 50))
         sc.draw_object(fo, False, False, True, True)
         sc.draw_object(fo2, False, False, True, True)
         sc.show_image()

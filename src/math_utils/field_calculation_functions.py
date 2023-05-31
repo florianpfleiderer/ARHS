@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
+import cv2
+import time
 import rospy
+import random
 
 from math import sqrt
-from math_utils.math_function_utils import cosd, sind, asind
+from testing.testing import *
+from itertools import combinations
+import visualization.imgops as imgops
 import field_components.field_components as fc
 from typing import NamedTuple, Tuple, List, Any
-from math_utils.vector_utils import *
-import random
-import cv2
-from visualization.imgops import *
-from itertools import combinations
-import time
-from testing.testing import *
+from math_utils.math_function_utils import cosd, sind, asind
+from visualization.screen_components import TrackbarParameter
+from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
 
 class PointCloud:
     def __init__(self, points: List[TupleVector3], origin=None):
@@ -433,7 +434,7 @@ def test_cloud_offset(base, compare_slice_count, printout = False, offset_calcul
         random_intensity = random_intensity_trackbar.get_value(True)
 
     if printout:
-        img = empty_image((500, 500))
+        img = imgops.empty_image((500, 500))
 
     random_rotator = TupleRotator3.random_xy(10) * random_intensity
     random_offset = TupleVector3.random_xy() * random_intensity
@@ -499,7 +500,7 @@ def test_matching_function():
         result = matching_clouds(base, compare, 2*random_deviation.get_value(True))
         print(result)
 
-        img = empty_image((400, 400))
+        img = imgops.empty_image((400, 400))
         draw_vector_cloud(img, base, (0, 255, 0))
         draw_vector_cloud(img, compare, (255, 0, 0))
         cv2.putText(img, str(random_deviation.get_value(True)) + (" ok" if result else " nok"), (0, 390), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 255, 255))
@@ -541,7 +542,7 @@ def test_triangle_functions(printout=False):
     
     if printout:
         print(tri_result)
-        img = empty_image((400, 400))
+        img = imgops.empty_image((400, 400))
         draw_vector_cloud(img, tri_base.points(), (0, 255, 0))
         draw_vector_cloud(img, tri_compare.points(), (255, 0, 0))
         draw_vector_cloud(img, tri_result.points(), (0, 0, 255))

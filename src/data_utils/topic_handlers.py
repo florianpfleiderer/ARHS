@@ -3,12 +3,13 @@
 import os
 import rospy
 import copy
-from cv_bridge import CvBridge, CvBridgeError
-from data_utils.data_validation import *
-from visualization.screen_components import *
-from sensor_msgs.msg import Image, LaserScan
+import cv2
 import time
-from visualization.imgops import *
+from globals.globals import *
+from player.msg import FieldComponent, FieldComponents
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image, LaserScan
+import visualization.imgops as imgops
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 
@@ -110,7 +111,7 @@ if __name__ == "__main__":
             cv2.imshow("image", img_sub.copy_data())
 
         if laser_sub.is_valid():
-            cv2.imshow("laser", laser_scan_to_image(laser_sub.copy_data()))
+            cv2.imshow("laser", imgops.laser_scan_to_image(laser_sub.copy_data()))
 
         cv2.waitKey(10)
         time.sleep(0.5)

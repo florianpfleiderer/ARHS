@@ -5,11 +5,9 @@ import random
 import rospy
 import smach
 from smach_ros import SimpleActionState, IntrospectionServer
-from player.msg import FindDestinationAction, MoveToDestinationAction, FindDestinationGoal,\
-      GetGameSetupAction, ReleasePuckAction
+from player.msg import FindDestinationAction, MoveToDestinationAction, FindDestinationGoal, GetGameSetupAction, ReleasePuckAction
 from geometry_msgs.msg import Vector3
-from globals.tick import CallbackTicker
-from data_utils.topic_handlers import FieldComponentsSubscriber, FieldComponentsPublisher
+from data_utils.topic_handlers import FieldComponentsPublisher
 from field_components.field_components import FieldComponent
 
 

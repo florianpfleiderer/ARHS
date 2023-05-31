@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
-from field_components.field_components import List, TupleVector3
-from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
-from typing import List
-from itertools import combinations, permutations
-from testing.testing import *
-from field_components.field_components import *
-import random
-import numpy as np
 import cv2
+import math
+import numpy as np
+from testing.testing import *
+from typing import List, Tuple
+from itertools import combinations
+import math_utils.math_function_utils as mf
+from visualization.imgops import empty_image
+import field_components.field_components as fc
+from math_utils.vector_utils import TupleVector3, TupleRotator3
+from field_components.field_components import List, TupleVector3
 
 class PointCloud:
     def __init__(self, points: np.ndarray, local_points=False, origin=np.array([0, 0, 0]), average_origin=False):
@@ -85,7 +87,7 @@ class PointCloud:
                 base_edge = base_edge_pts[1] - base_edge_pts[0]
                 norms = np.linalg.norm(compare_tri.edges, axis=1)
                 base_norm = np.linalg.norm(base_edge)
-                edges_relative_difference = np.vectorize(lambda x, y: relative_difference(x, y))(norms, base_norm)
+                edges_relative_difference = np.vectorize(lambda x, y: mf.relative_difference(x, y))(norms, base_norm)
                 find_similar_edge_indices = np.where(edges_relative_difference <= tolerance)[0]
                 if len(find_similar_edge_indices) == 0:
                     continue
@@ -93,7 +95,7 @@ class PointCloud:
                 matching_compare_edge_index = find_similar_edge_indices[0]
                 compare_edge = compare_tri.edges[matching_compare_edge_index]
 
-                offset_phi = atan2d(compare_edge[1], compare_edge[0]) - atan2d(base_edge[1], base_edge[0]) 
+                offset_phi = mf.atan2d(compare_edge[1], compare_edge[0]) - mf.atan2d(base_edge[1], base_edge[0]) 
                 while offset_phi > 180:
                     offset_phi -= 360
                 while offset_phi < -180:
@@ -191,9 +193,9 @@ class Triangle(PointCloud):
         a = C - B
         b = A - C
         c = B - A
-        alpha = np_angle(b, -c)
-        beta = np_angle(a, -c)
-        gamma = np_angle(a, -b)
+        alpha = mf.np_angle(b, -c)
+        beta = mf.np_angle(a, -c)
+        gamma = mf.np_angle(a, -b)
         self.angles = np.array([alpha, beta, gamma])
         try:
             assert round(np.sum(self.angles), 5) == 180, "Angles do not add up to 180"
@@ -202,13 +204,13 @@ class Triangle(PointCloud):
             draw_vector(img, a, color=(0, 0, 255))
             draw_vector(img, b, color=(0, 255, 0))
             draw_vector(img, c, color=(255, 0, 0))
-            cv2.putText(img, f"{np_angle(b, -c)}, {np_angle(a, -c)}, {np_angle(a, -b)}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
+            cv2.putText(img, f"{mf.np_angle(b, -c)}, {mf.np_angle(a, -c)}, {mf.np_angle(a, -b)}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
             cv2.imshow("tri angs", img)
             cv2.waitKey(100)
             pass
     
         self.edges = np.vstack([a, b, c])
-        self.area = 0.5 * np_area(a, b)
+        self.area = 0.5 * mf.np_area(a, b)
 
     def rotate(self, rotation: np.ndarray):
         ca, cb, cc = np.cos(rotation * math.pi / 180)
@@ -221,7 +223,7 @@ class Triangle(PointCloud):
 
     def matches(self, other_triangle: 'Triangle', tolerance=0.05):
         # check whether areas match
-        if relative_difference(self.area, other_triangle.area) > tolerance:
+        if mf.relative_difference(self.area, other_triangle.area) > tolerance:
             return False
         
         # check whether all angles match
@@ -229,7 +231,7 @@ class Triangle(PointCloud):
                       other_triangle.angles[[1, 2, 0]],
                       other_triangle.angles[[2, 0, 1]]]
         for perm in angs_other:
-            errors = np.vectorize(lambda ang1, ang2: relative_difference(ang1, ang2))(self.angles, perm)
+            errors = np.vectorize(lambda ang1, ang2: mf.relative_difference(ang1, ang2))(self.angles, perm)
             if np.sum(errors) / 3 <= tolerance:
                 break
         else:
@@ -241,7 +243,7 @@ class Triangle(PointCloud):
                            other_triangle.edges[[1, 2, 0]],
                            other_triangle.edges[[2, 0, 1]]]
             for perm in edges_other:
-                errors = np.vectorize(lambda edge1, edge2: relative_difference(np_length(edge1), np_length(edge2)))(self.edges, perm)
+                errors = np.vectorize(lambda edge1, edge2: mf.relative_difference(mf.np_length(edge1), mf.np_length(edge2)))(self.edges, perm)
                 if np.sum(errors) / 3 <= tolerance:
                     break
             else:
@@ -251,9 +253,9 @@ class Triangle(PointCloud):
     
     def angle_xy(self, other_triangle: 'Triangle'):
         if self.matches(other_triangle):
-            max_dist = max(self.edges, key=lambda e: np_length(e))
-            max_other = max(other_triangle.edges, key=lambda e: np_length(e))
-            return np_angle_xy(max_dist, max_other)
+            max_dist = max(self.edges, key=lambda e: mf.np_length(e))
+            max_other = max(other_triangle.edges, key=lambda e: mf.np_length(e))
+            return mf.np_angle_xy(max_dist, max_other)
         else:
             return False
     
@@ -408,8 +410,8 @@ def test_point_cloud(base: PointCloud, compare_slice_size, tolerance=0.05, itera
         cv2.imshow("test", img)
         cv2.waitKey(50)
 
-    assert relative_difference(rotation[0], random_rotation[0]) < tolerance, "rotation off by " + str(rotation[0] - random_rotation[0])
-    assert relative_difference(offset.length(), random_offset.length()) < tolerance, "offset off by " + str((offset - random_offset).length())
+    assert mf.relative_difference(rotation[0], random_rotation[0]) < tolerance, "rotation off by " + str(rotation[0] - random_rotation[0])
+    assert mf.relative_difference(offset.length(), random_offset.length()) < tolerance, "offset off by " + str((offset - random_offset).length())
 
 
 def test_random_point_cloud(printout=False):
@@ -417,8 +419,8 @@ def test_random_point_cloud(printout=False):
     test_point_cloud(pc, 7, printout=printout)
 
 def test_generated_poles(printout=False):
-    fc = Field()
-    poles = fc.generate_poles(5, 3)
+    f = fc.Field()
+    poles = f.generate_poles(5, 3)
     pole_pc = PointCloud.from_tuple_vectors([pole.distance for pole in poles])
 
     if printout:
@@ -428,8 +430,8 @@ def test_generated_poles(printout=False):
         cv2.waitKey(10)
 
 def test_poles_offset(printout=False):
-    fc = Field()
-    poles = fc.generate_poles(5, 3)
+    f = fc.Field()
+    poles = f.generate_poles(5, 3)
     pole_pc = PointCloud.from_tuple_vectors([pole.distance for pole in poles])
 
     test_point_cloud(pole_pc, 6, printout=printout)

@@ -16,25 +16,22 @@ feedback:
 
 import time
 import rospy
-from player.msg import MoveToDestinationAction, MoveToDestinationGoal,\
-     MoveToDestinationResult
+from typing import List
 from geometry_msgs.msg import Twist
-from math_utils.vector_utils import Vector3
 from actionlib import SimpleActionServer
+from math_utils.vector_utils import Vector3
 from globals.globals import TARGET_REACHED_R_THRESHOLD
 from field_components.field_components import FieldObject
-from typing import List
-from data_utils.topic_handlers import FieldComponentsSubscriber, TargetComponentPublisher,\
-    VelocityPublisher
 from field_components.velocity_calculator import VelocityCalculator
+from player.msg import MoveToDestinationAction, MoveToDestinationGoal, MoveToDestinationResult
+from data_utils.topic_handlers import FieldComponentsSubscriber, TargetComponentPublisher, VelocityPublisher
 
 class MoveToDestinationServer:
     '''this simple action server moves to a component given as the goal.
 
     '''
     def __init__(self):
-        self.server = SimpleActionServer("move_to_destination", MoveToDestinationAction,\
-                                         self.execute, False)
+        self.server = SimpleActionServer("move_to_destination", MoveToDestinationAction, self.execute, False)
         self.server.start()
 
         self.vel_pub = VelocityPublisher()

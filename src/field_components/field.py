@@ -4,13 +4,13 @@ import rospy
 from typing import List, Tuple
 from math import pi
 
-from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, FieldObject
-from field_components.colors import Color
-from math_utils.field_calculation_functions import cosine_theorem, get_position
-from math_utils.vector_utils import Coordinate
-from sensor_msgs.msg import LaserScan
 from globals.globals import *
+from sensor_msgs.msg import LaserScan
+from field_components.colors import Color
+from math_utils.vector_utils import Coordinate
 from referee_communication import referee_communication as ref_com
+from math_utils.field_calculation_functions import cosine_theorem, get_position
+from field_components.field_components import Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, FieldObject
 
 class Field(object):
     '''Singleton class representing the field.

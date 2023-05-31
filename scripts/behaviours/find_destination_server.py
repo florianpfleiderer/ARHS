@@ -18,11 +18,9 @@ feedback:
 import random
 import time
 import rospy
-from player.msg import FindDestinationAction, FindDestinationGoal,\
-    FindDestinationResult
 from actionlib import SimpleActionServer
-# from geometry_msgs.msg import Vector3
 from data_utils.topic_handlers import FieldComponentsSubscriber
+from player.msg import FindDestinationAction, FindDestinationGoal, FindDestinationResult
 
 class FindDestinationServer:
     '''this simple action server subscribes to field_component msg and returns

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import time
 import rospy
-from player.msg import GetGameSetupAction, GetGameSetupResult
 from actionlib import SimpleActionServer
+from player.msg import GetGameSetupAction, GetGameSetupResult
 
 
 class GetGameSetupServer:

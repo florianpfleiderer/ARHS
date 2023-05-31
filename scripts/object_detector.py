@@ -9,15 +9,15 @@ from typing import List
 
 from player.msg import FieldComponent, FieldComponents
 
-from field_components.field_components import *
-from visualization.screen_components import *
+from field_components.field_components import FieldObject, Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Field
+from visualization.screen_components import Screen, TrackbarParameter, TestImage
 import visualization.imgops as imgops
 from globals.globals import *
-from math_utils.math_function_utils import *
-from data_utils.topic_handlers import *
-from list_utils.filtering import *
+import math_utils.math_function_utils as mf
+import data_utils.topic_handlers as topics
 from globals.tick import *
-from data_utils.laser_scan_utils import *
+import data_utils.laser_scan_utils as laser
+from data_utils.laser_scan_utils import LaserScanHandler
 from geometry_msgs.msg import Vector3
 
 
@@ -81,8 +81,8 @@ class KinectDetector(FieldDetector):
 
         self.testmode = testmode
         
-        self.rgb_sub = RGBSubscriber()
-        self.depth_sub = DepthSubscriber()
+        self.rgb_sub = topics.RGBSubscriber()
+        self.depth_sub = topics.DepthSubscriber()
 
         self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
         self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
@@ -96,7 +96,7 @@ class KinectDetector(FieldDetector):
         # self.lens_correction_quart = TrackbarParameter(0.6, "quart", "top_view", 0, 100, 0.01)
         self.lens_correction_ang = TrackbarParameter(0, "ang", "top_view", 0, 100, 0.01)
 
-        img = empty_image(KINECT_DIMENSIONS)
+        img = imgops.empty_image(KINECT_DIMENSIONS)
         self.add_test_parameters(TestImage("depth_masked_image", img),
                                  TestImage("edges", img))
     
@@ -126,25 +126,19 @@ class KinectDetector(FieldDetector):
         
         return contours
 
-    def detect_field_objects(self, base_class):
+    def detect_field_objects(self, base_class: FieldObject):
         rgb_image = self.rgb_sub.copy_data()
         depth_image = self.depth_sub.copy_data()
 
         self.detected_objects.clear()
         self.screen.image = rgb_image
         contours = self.detect_contours(base_class, rgb_image, depth_image)
-            
         if contours is None:
             return False
 
         rects = [cv2.boundingRect(c) for c in contours]
-
-        def filter_cb(rect):
-            x, y, w, h = rect
-            result = check_range(w*h, *base_class.area_detect_range)
-            result &= check_range(w/h, *base_class.ratio_detect_range)
-            return result
-        rects = filter_list(rects, filter_cb)     
+        rects = [rect for rect in rects if mf.check_range(rect[2] * rect[3], *base_class.area_detect_range) and \
+                                           mf.check_range(rect[2] / rect[3], *base_class.ratio_detect_range)]     
         
 
         field_objects = []
@@ -161,7 +155,7 @@ class KinectDetector(FieldDetector):
             edge_dist = (abs(cx/image_w - 1/2) + abs(cy/image_h - 1/2))
             r *= 1 + 0.14 * (edge_dist) ** 2 + 0.53 * (edge_dist) ** 4
 
-            if check_range(r, *KINECT_RANGE):
+            if mf.check_range(r, *KINECT_RANGE):
                 fo = self.screen.create_field_object(rect, r, base_class)
                 field_objects.append(fo)
 
@@ -176,8 +170,8 @@ class LaserScanDetector(FieldDetector):
     def __init__(self, testmode):
         super().__init__(self.detect_objects, Screen.LaserScreen("laser image"))
 
-        self.laser_sub = LaserSubscriber()
-        self.rgb_sub = RGBSubscriber()
+        self.laser_sub = topics.LaserSubscriber()
+        self.rgb_sub = topics.RGBSubscriber()
         self.laser_handler = LaserScanHandler(self.laser_sub.copy_data())
 
         self.testmode = testmode
@@ -191,13 +185,11 @@ class LaserScanDetector(FieldDetector):
         return self.laser_sub.is_valid()    
     
     def detect_contours(self, laser_scan_handler: LaserScanHandler):
-        edges = detect_edges(laser_scan_handler)
-        draw_edges(self.laser_handler, edges, self.screen)
-        object_ranges = detect_contours(laser_scan_handler, edges)
+        edges = laser.detect_edges(laser_scan_handler)
+        laser.draw_edges(self.laser_handler, edges, self.screen)
+        object_ranges = laser.detect_contours(laser_scan_handler, edges)
 
-        def filter_cb(element: LaserContour):
-            return abs(element.end_angle - element.start_angle) < 10
-        object_contours = filter_list(object_ranges, filter_cb)
+        object_contours = [cont for cont in object_ranges if abs(cont.end_angle - cont.start_angle) < 10]
 
         return object_contours
        
@@ -208,7 +200,7 @@ class LaserScanDetector(FieldDetector):
         self.laser_screen_rgb.image = rgb_image
 
         laser_ranges = self.laser_handler.get_ranges()
-        laser_ranges = range_denoise(laser_ranges, 5)
+        laser_ranges = laser.range_denoise(laser_ranges, 5)
 
         laser_image = imgops.laser_scan_to_image(laser_scan, self.screen.dimensions)
         self.screen.image = laser_image
@@ -218,7 +210,7 @@ class LaserScanDetector(FieldDetector):
         object_ranges = self.detect_contours(self.laser_handler)
 
         for contour in object_ranges:
-            fo = object_from_contour(contour, self.laser_handler, self.screen)
+            fo = laser.object_from_contour(contour, self.laser_handler, self.screen)
             if fo is not None:
                 self.add_result(fo)
 
@@ -239,8 +231,8 @@ if __name__ == '__main__':
     laser_det = LaserScanDetector(testmode)
     top_screen = Screen.BirdEyeScreen("top_view")
 
-    field_components_pub = FieldComponentsPublisher()
-    target_sub = TargetComponentSubscriber()
+    field_components_pub = topics.FieldComponentsPublisher()
+    target_sub = topics.TargetComponentSubscriber()
 
     objects: List[FieldObject] = []
 
@@ -252,10 +244,10 @@ if __name__ == '__main__':
     def init_detection_cycle():
         objects.clear()
 
-        top_screen.image = empty_image(top_screen.dimensions)
-        field_screen.image = empty_image(field_screen.dimensions, (50, 50, 50))
-        draw_fov_bird_eye(KINECT_FOV, top_screen)
-        draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
+        top_screen.image = imgops.empty_image(top_screen.dimensions)
+        field_screen.image = imgops.empty_image(field_screen.dimensions, (50, 50, 50))
+        imgops.draw_fov_bird_eye(KINECT_FOV, top_screen)
+        imgops.draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
     def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():   

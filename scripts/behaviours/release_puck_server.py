@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 import time
 import rospy
-from player.msg import ReleasePuckAction, ReleasePuckResult
 from actionlib import SimpleActionServer
+from player.msg import ReleasePuckAction, ReleasePuckResult
 
 class GetGameSetupServer:
     def __init__(self):
-        self.server = SimpleActionServer("release_puck", ReleasePuckAction,\
-                                         self.execute, False)
+        self.server = SimpleActionServer("release_puck", ReleasePuckAction, self.execute, False)
         self.server.start()
 
     def check_preempt(self):

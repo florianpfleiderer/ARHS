@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 import math
-from geometry_msgs.msg import Vector3
-from player.msg import *
-from math_utils.math_function_utils import *
-from enum import Enum
-from testing.testing import *
 import random
 import numpy as np
+from enum import Enum
+from geometry_msgs.msg import Vector3
+import math_utils.math_function_utils as mf
+from testing.testing import *
 
 class Coordinate(Enum):
     CARTESIAN = 0
@@ -40,7 +39,7 @@ class TupleVector3:
         if type(value) is TupleVector3:
             len = value.length()
         elif type(value) is tuple:
-            len = math.sqrt(np.sum(np.power(value, np.array((2, 2, 2)))))
+            len = np.linalg.norm(np.array(value) ** 2)
         elif type(value) is int or type(value) is float:
             len = value
         return len
@@ -66,22 +65,21 @@ class TupleVector3:
 
     def length_xy(self):
         '''Returns the length of the vector in the xy plane'''
-        return math.sqrt(np.sum(np.power(self.tuple[0:2], 2)))
-    
-    def distance(self, vector):
+        return np.linalg.norm(np.array(self.tuple[0:2]))   
+    def distance(self, vector: 'TupleVector3'):
         '''Returns the distance between the vector and the given vector'''
         return (self - vector).length()
     
-    def distance_xy(self, vector):
+    def distance_xy(self, vector: 'TupleVector3'):
         '''Returns the distance between the vector and the given vector in the xy plane'''
         return (self - vector).length_xy()
 
-    def angle(self, vector):
+    def angle(self, vector: 'TupleVector3'):
         '''Returns the angle between the vector and the given vector'''
         l = self.length() * vector.length()
-        return acosd(self.dot(vector) / l) if l != 0 else 0
+        return mf.acosd(self.dot(vector) / l) if l != 0 else 0
     
-    def angle_xy(self, vector):
+    def angle_xy(self, vector: 'TupleVector3'):
         '''Returns the angle between the vector and the given vector in the xy plane'''
         a1 = self.convert(Coordinate.CYLINDRICAL)[1]
         a2 = vector.convert(Coordinate.CYLINDRICAL)[1]
@@ -178,8 +176,7 @@ class TupleVector3:
         '''Element-wise safe division.
         Value can be TupleVector3, tuple or int/float.'''
         tup = self.__get_tup(value)
-        safediv = np.frompyfunc(safe_div, 2, 1)
-        vec = TupleVector3(safediv(self.tuple, tup))
+        vec = TupleVector3(np.vectorize(lambda x, y: mf.safe_div(x, y))(self.tuple, tup))
         vec.coordinates = self.coordinates
         return vec
     
@@ -188,8 +185,7 @@ class TupleVector3:
         Value can be TupleVector3, tuple or int/float.
         Sets the coordinate value to 0 if the divisor is 0.'''
         tup = self.__get_tup(value)
-        safediv = np.frompyfunc(safe_div, 2, 1)
-        vec = TupleVector3(safediv(tup, self.tuple))
+        vec = TupleVector3(np.vectorize(lambda x, y: mf.safe_div(x, y))(tup, self.tuple))
         vec.coordinates = self.coordinates
         return vec    
 
@@ -340,16 +336,14 @@ class TupleRotator3:
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.'''
         tup = self.__get_tup(value)
-        safediv = np.frompyfunc(safe_div, 2, 1)
-        return TupleRotator3(safediv(self.tuple, tup))
+        return TupleRotator3(np.vectorize(lambda x, y: mf.safe_div(x, y))(self.tuple, tup))
 
     def __rtruediv__(self, value):
         '''Element-wise division.
         Value can be TupleRotator3, tuple or int/float.
         Sets coordinate value to 0 if the divisor is 0.'''
         tup = self.__get_tup(value)
-        safediv = np.frompyfunc(safe_div, 2, 1)
-        return TupleRotator3(safediv(tup, self.tuple))
+        return TupleRotator3(np.vectorize(lambda x, y: mf.safe_div(x, y))(tup, self.tuple))
 
 
     def __neg__(self):
@@ -391,21 +385,21 @@ def convert_vector(vector, from_coordinates, to_coordinates):
 
 def cylindrical_to_cartesian(polar_vector):
     r, theta, z = polar_vector
-    return (r * cosd(theta), r * sind(theta), z)
+    return (r * mf.cosd(theta), r * mf.sind(theta), z)
 
 def cartesian_to_cylindrical(cartesian_vector):
     x, y, z = cartesian_vector
-    return (math.sqrt(x ** 2 + y ** 2), atan2d(y, x), z)
+    return (math.sqrt(x ** 2 + y ** 2), mf.atan2d(y, x), z)
 
 def spherical_to_cartesian(spherical_vector):
     r, theta, phi = spherical_vector
-    return (r * sind(theta) * cosd(phi), r * sind(theta) * sind(phi), r * cosd(theta))
+    return (r * mf.sind(theta) * mf.cosd(phi), r * mf.sind(theta) * mf.sind(phi), r * mf.cosd(theta))
 
 def cartesian_to_spherical(cartesian_vector):
     x, y, z = cartesian_vector
     r = math.sqrt(x ** 2 + y ** 2 + z ** 2)
-    theta = 0 if r == 0 else acosd(z / r)
-    phi = atan2d(y, x)
+    theta = 0 if r == 0 else mf.acosd(z / r)
+    phi = mf.atan2d(y, x)
     return (r, theta, phi)
 
 # def sum_vectors(*vectors):

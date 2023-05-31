@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
+import copy
 import rospy
 import random
 import actionlib
-import copy
-
-from control_architectures.msg import RandomDriveAction, RandomDriveFeedback, RandomDriveResult
-from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
+from control_architectures.msg import RandomDriveAction, RandomDriveFeedback, RandomDriveResult
 
 class RandomDriveServer:
 

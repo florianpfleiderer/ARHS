@@ -3,9 +3,9 @@
 import rospy
 from globals.globals import *
 
+from geometry_msgs.msg import Point
 from std_msgs.msg import Bool, Empty 
 from referee.srv import TeamReady, SendColor, SendDimensions
-from geometry_msgs.msg import Point
 
 def wait_for_game():
     rospy.loginfo('Waiting for game to start...')

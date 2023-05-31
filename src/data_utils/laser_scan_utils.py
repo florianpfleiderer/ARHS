@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
-from math import *
+import rospy
+import cv2
+import math
 from globals.globals import *
-from visualization.screen_components import *
-from field_components.field_components import *
 from sensor_msgs.msg import LaserScan
+import visualization.imgops as imgops
 from typing import NamedTuple, List, Tuple
-from data_utils.topic_handlers import LaserSubscriber
-from visualization.imgops import *
+import math_utils.math_function_utils as mf
+from visualization.screen_components import Screen
+from field_components.field_components import LaserPoint, GenericObject, RisingEdge, FallingEdge
 
 class LaserEdge(NamedTuple):
     index: int
@@ -44,14 +46,14 @@ class LaserScanHandler:
 
     def draw_laser_points(self, laser_screen: Screen, *screens: Screen):
         for i, r in enumerate(self.laser_scan.ranges):
-            if check_range(r, *LASER_RANGE):
+            if mf.check_range(r, *LASER_RANGE):
                 x_ang = - self.laser_angle(i)
                 y_ang = 0
                 fo = laser_screen.create_field_object(laser_screen.get_rect((x_ang, y_ang, 0, 0)), r, LaserPoint)
                 laser_screen.draw_object(fo, False)
 
                 for screen in screens:
-                    if check_range(x_ang, - screen.FOV[0] / 2, screen.FOV[0] / 2):
+                    if mf.check_range(x_ang, - screen.FOV[0] / 2, screen.FOV[0] / 2):
                         screen.draw_object(fo, False, True, False, False, False)
 
     def update(self, laser_scan: LaserScan):
@@ -175,10 +177,10 @@ def object_from_contour(contour: LaserContour, laser_scan: LaserScanHandler, scr
 
     laser_height = LASER_OFFSET[2]
     y_ang_center = 0
-    y_ang_min = y_ang_center - atand(0.3 / d)
-    y_ang_max = y_ang_center + atand(laser_height / d)
+    y_ang_min = y_ang_center - mf.atand(0.3 / d)
+    y_ang_max = y_ang_center + mf.atand(laser_height / d)
 
-    if check_range(d, *LASER_RANGE):
+    if mf.check_range(d, *LASER_RANGE):
         rect = screen.get_rect((x_ang, y_ang_min, w_ang, y_ang_max - y_ang_min)) 
         return screen.create_field_object(rect, d, object_type)
 
@@ -202,7 +204,7 @@ def test_detection():
     contours = detect_contours(ls_handler, edges)
     objects = [object_from_contour(contour) for contour in contours]
 
-    laser_screen.image = laser_scan_to_image(laser_scan, laser_screen.dimensions)
+    laser_screen.image = imgops.laser_scan_to_image(laser_scan, laser_screen.dimensions)
     for o in objects:
         laser_screen.draw_object(o)
 
