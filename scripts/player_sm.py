@@ -26,6 +26,17 @@ class LocomotionSM():
 
 
         with self.sm:
+
+            @smach.cb_interface(outcomes=["goal_reached", "puck_reached"])
+            def move_to_dest_cb(userdata, status, result):
+                rospy.loginfo("move to destination result: {}".format(result))
+                if result.target_type_reached == "YellowGoal" or result.target_type_reached == "BlueGoal":
+                    return "goal_reached"
+                elif result.target_type_reached == "YellowPuck" or result.target_type_reached == "BluePuck":
+                    return "puck_reached"
+                else:
+                    return "aborted"
+            
             smach.StateMachine.add("GET_GAME_SETUP",
                         SimpleActionState("get_game_setup",
                                           GetGameSetupAction,
@@ -48,16 +59,16 @@ class LocomotionSM():
                         SimpleActionState("move_to_destination",
                                           MoveToDestinationAction,
                                           goal_slots=["target_component"],
-                                          result_slots=['target_color']),
-                        transitions={"succeeded": "RELEASE_PUCK",
-                                     "preempted": "FIND_DESTINATION",
+                                          result_cb=move_to_dest_cb),
+                        transitions={"goal_reached": "RELEASE_PUCK",
+                                     "puck_reached": "FIND_DESTINATION",
                                      "aborted": "MOVE_TO_DESTINATION"},
-                        remapping={"target_color": "target_color"})
+                        remapping={"target_type_reached": "target_color"})
             
             smach.StateMachine.add("RELEASE_PUCK",
                         SimpleActionState("release_puck",
                                           ReleasePuckAction,
-                                          goal_slots=["target_color"],
+                                          goal_slots=["target_type"],
                                           result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION",
                                      "preempted": "RELEASE_PUCK",
