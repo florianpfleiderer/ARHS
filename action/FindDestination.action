@@ -1,4 +1,4 @@
-FieldComponent target
+string target_color
 ---
 FieldComponent target_component
 ---

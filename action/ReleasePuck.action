@@ -1,4 +1,5 @@
+string target_color
 ---
-FieldComponent target_component
+string target_color
 ---
 string message
