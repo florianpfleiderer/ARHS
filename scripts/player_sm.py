@@ -26,9 +26,7 @@ class LocomotionSM():
                         SimpleActionState("get_game_setup",
                                           GetGameSetupAction,
                                           result_slots=["target_component"]),
-                        transitions={"succeeded": "FIND_DESTINATION",
-                                     "preempted": "GET_GAME_SETUP",
-                                     "aborted": "GET_GAME_SETUP"},
+                        transitions={"succeeded": "FIND_DESTINATION"},
                         remapping={"target_component": "target"})
             
             smach.StateMachine.add("FIND_DESTINATION",
