@@ -66,16 +66,7 @@ class FieldComponentsSubscriber(SubscriberWrapper):
 
 class TargetComponentSubscriber(SubscriberWrapper):
     def __init__(self):
-        super().__init__("/player/target_component", FieldComponent)
-        
-class ShutdownSubscriber(SubscriberWrapper):
-    def __init__(self):
-        super().__init__("/gameControl", Bool)
-    
-    def callback_func(self, msg):
-        if not msg:
-            os.system('cmd /c "rosnode kill --all"')
-            
+        super().__init__("/player/target_component", FieldComponent)            
 
 class FieldComponentsPublisher(rospy.Publisher):
     def __init__(self):
@@ -111,8 +102,6 @@ if __name__ == "__main__":
         cv2.imshow("raw", CvBridge().imgmsg_to_cv2(msg, "bgr8"))
 
     raw_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, img_cb, queue_size=500)
-
-    shutdown_sub = ShutdownSubscriber()
     
     while not rospy.is_shutdown():
         #if img_sub.is_valid():

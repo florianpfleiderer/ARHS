@@ -5,5 +5,6 @@
     <include file="$(find player)/launch/object_detector.launch"/>
     <node name="player_sm" pkg="player" type="player_sm.py" />
     <node pkg="smach_viewer" name="smach_viewer" type="smach_viewer.py"/>
+    <node name="node_terminator" pkg="player" type="node_terminator.py" />
   </group>
 </launch>

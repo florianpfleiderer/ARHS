@@ -3,7 +3,7 @@ from math import pi
 from cv2 import FONT_HERSHEY_SIMPLEX
 
 SIMULATION_MODE = True
-LAUNCH_MODE = False
+LAUNCH_MODE = True
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)
@@ -38,7 +38,7 @@ TARGET_SIZE = 0.2
 REPELLING_FORCE_SIZE = 0.1
 REPELLING_FORCE_THRESHOLD = 0.5
 
-TICK_RATE = 10 / 10
+TICK_RATE = 10
 
 NAMESPACE = "" if LAUNCH_MODE else "/robot1/"
 LASER_PATH = "front_laser/scan"

@@ -300,7 +300,7 @@ class Fan(FieldObject):
 
 class Field(FieldObject):
     def __init__(self):
-        super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
+        super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleVector3((0, 0, 0)))
         self.field_component_sub = FieldComponentsSubscriber()
         self.field_objects: List[FieldObject] = []
         self.angle_offset: TupleRotator3 = TupleRotator3()

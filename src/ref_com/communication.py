@@ -10,9 +10,8 @@ from geometry_msgs.msg import Point
 def wait_for_referee():
     rospy.logwarn('Waiting for referee to be ready...')
     rospy.wait_for_message('/waitForTeams', Empty)
-
-def wait_for_start():
-    rospy.logwarn('Waiting for game to start...')
+    
+def check_game_status():
     return rospy.wait_for_message('/gameControl', Bool)
 
 def send_names(*names):
@@ -36,10 +35,10 @@ def send_field_dimension(name, width, length):
     send_dimension_srv = rospy.ServiceProxy('/SendDimensions', SendDimensions)
     
     dimensions = Point()
-    dimensions.x = length
-    dimensions.y = width
+    dimensions.x = width
+    dimensions.y = length
     dimensions.z = 0
     rospy.logwarn(f'calculated dimensions={dimensions}')
     result = send_dimension_srv(name, dimensions)
     rospy.logwarn(f'{result.correctDimensions=}')
-    return result.correctDimensions
+    return result.correctDimensions.x, result.correctDimensions.y

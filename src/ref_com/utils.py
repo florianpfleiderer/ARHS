@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from data_utils.topic_handlers import FieldComponentsSubscriber
+from data_utils.topic_handlers import FieldComponentsSubscriber, VelocityPublisher
 from geometry_msgs.msg import Twist
 from typing import List
 from copy import deepcopy
@@ -10,6 +10,14 @@ from math_utils.vector_utils import TupleVector3
 from player.msg import FieldComponent
 from geometry_msgs.msg import Twist
 from field_components.field_components import Field, FieldObject
+
+def rotate(speed):
+    velocity_pub = VelocityPublisher()
+    msg = Twist()
+    msg.linear.x = 0
+    msg.angular.z = speed
+    velocity_pub.publish(msg)
+
 
 class TeamColorUtil:
     def __init__(self):
@@ -33,12 +41,14 @@ class TeamColorUtil:
         return dist / len(components)
     
     def determine_color(self):
+        rotate(0.5)
         while not rospy.is_shutdown():
             components = deepcopy(self.components_sub.data)
             if components is None:
                 continue
             self._filter_pucks(components)
             if len(self.yellow_pucks) > 0 and len(self.blue_pucks) > 0:
+                rotate(0)
                 break
         if self._average_distance(self.yellow_pucks) > self._average_distance(self.blue_pucks):
             self.teamcolor =  'blue'
@@ -59,16 +69,15 @@ class LocaliserUtil:
         self.field = Field()
 
     def get_dimensions(self):
+        rotate(0.2)
         while not rospy.is_shutdown():
-            if self.field.field_component_sub.data is None:
-                continue
-            self.field.field_objects = deepcopy(self.field.field_component_sub.data)
-            poles = self.field.get_objects_by_class('Pole')
-            poles = [FieldObject.from_field_component(pole) for pole in poles]
-            dimensions = self.field.calculate_dimensions(*poles[::-1])
-            if not dimensions:
-                continue
-            return dimensions   # w, l
+            ok = self.field.update()
+            w = self.field.half_size[0] * 2
+            l = self.field.half_size[1] * 2
+            if w != 0 and l != 0:
+                rotate(0)
+                return w, l
+            
             
         
 if __name__ == "__main__":

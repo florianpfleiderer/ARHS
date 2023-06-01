@@ -29,9 +29,9 @@ class LocomotionSM():
             smach.StateMachine.add("GET_GAME_SETUP",
                         SimpleActionState("get_game_setup",
                                           GetGameSetupAction,
-                                          result_slots=["target_component"]),
+                                          result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION"},
-                        remapping={"target_component": "target"})
+                        remapping={"target_type": "target"})
             
             smach.StateMachine.add("FIND_DESTINATION",
                         SimpleActionState("find_destination",
@@ -83,11 +83,7 @@ class TestPublisher:
             
 
 if __name__ == "__main__":
-    rospy.init_node("player_sm")
-    
-    # ref_com.send_name()
-    # ref_com.wait_for_game()
-    
+    rospy.init_node("player_sm")    
     
     loc_sm = LocomotionSM()    
     sis = IntrospectionServer("player_state_machine", loc_sm.sm, "/SM_ROOT")
