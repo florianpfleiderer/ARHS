@@ -6,7 +6,7 @@ from actionlib import SimpleActionServer
 from globals.globals import *
 from ref_com.communication import *
 from ref_com.utils import TeamColorUtil, LocaliserUtil
-from data_utils.topic_handlers import VelocityPublisher
+from data_utils.topic_handlers import VelocityPublisher, FieldDimensionsPublisher
 from geometry_msgs.msg import Twist
 
 
@@ -20,6 +20,7 @@ class GetGameSetupServer:
         self.color = None
         self.dimensions = None
         self.velocity_pub = VelocityPublisher()
+        self.fielddimensions_pub = FieldDimensionsPublisher()
         
     def set_velocities(self, linear, angular):
         """Use this to set linear and angular velocities
@@ -38,41 +39,39 @@ class GetGameSetupServer:
         return False
     
     def execute(self, goal):
-        result = GetGameSetupResult()
         wait_for_referee()
         self.teamname = send_names('RoBros', 'Los RosBros', 'Terminators')
         if SIMULATION_MODE:
             opponent_name = 'Bösewicht'
             send_names(opponent_name)
-        wait_for_start()
+        
+        if check_game_status() is True:
+            pass
         
         #4 localise
         localiser_util = LocaliserUtil()
-        self.set_velocities(0, 0.5)
         self.dimensions = localiser_util.get_dimensions()
-        self.set_velocities(0, 0)
-        self.dimensions = send_field_dimension(self.teamname, self.dimensions[0][1], self.dimensions[0][0])
+        self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
+        self.fielddimensions_pub.publish(self.dimensions[0], self.dimensions[1])
         
         #5 send team color
         team_color_util = TeamColorUtil()
-        self.set_velocities(0, 0.5)
         self.color = team_color_util.determine_color()
-        self.set_velocities(0, 0)
         self.color = send_color(self.teamname, self.color)
-        
-        team_color_util.get_first_target()
         
         #5.5 send opponent color
         if SIMULATION_MODE:
             opponent_color = "yellow" if self.color == "blue" else "blue"
             send_color(opponent_name, opponent_color)
         
-        target = team_color_util.get_first_target()
-        result.target_component = target
-        rospy.loginfo(f"target acquired: {target}")
+        
+        result = GetGameSetupResult()
+        result.target_type = team_color_util.get_first_target().type
+        rospy.logwarn(f'{result.target_type=}')
         self.server.set_succeeded(result)
 
 if __name__ == "__main__":
+    print('test')
     rospy.init_node("get_game_setup_server")
     server = GetGameSetupServer()
     rospy.spin()
