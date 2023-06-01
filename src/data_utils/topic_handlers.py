@@ -5,14 +5,9 @@ import rospy
 import copy
 import cv2
 import time
-from globals.globals import *
-from player.msg import FieldComponent, FieldComponents, FieldDimensions
 from cv_bridge import CvBridge, CvBridgeError
-#from data_utils.data_validation import *
-#from visualization.screen_components import *
 from sensor_msgs.msg import Image, LaserScan
 import time
-#from visualization.imgops import *
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from globals.globals import *
