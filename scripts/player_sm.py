@@ -14,6 +14,10 @@ from field_components.field_components import FieldComponent
 class LocomotionSM():
     '''This state machine moves the robot to a destination and then finds a new destination.
 
+    userdata:
+        target_component: FieldComponent
+        target_color: string
+
     '''
     def __init__(self):
         self.sm = smach.StateMachine(outcomes=["succeeded", "preempted", "aborted"])
@@ -33,7 +37,7 @@ class LocomotionSM():
                         SimpleActionState("find_destination",
                                           FindDestinationAction,
                                           goal=FindDestinationGoal(),
-                                          goal_slots=["target"],
+                                          goal_slots=["target_color"],
                                           result_slots=["target_component"]),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
                                      "preempted": "FIND_DESTINATION",
@@ -44,19 +48,21 @@ class LocomotionSM():
                         SimpleActionState("move_to_destination",
                                           MoveToDestinationAction,
                                           goal_slots=["target_component"],
-                                          result_slots=['target_reached','target_lost']),
+                                          result_slots=['target_color']),
                         transitions={"succeeded": "RELEASE_PUCK",
                                      "preempted": "FIND_DESTINATION",
-                                     "aborted": "MOVE_TO_DESTINATION"})
+                                     "aborted": "MOVE_TO_DESTINATION"}
+                        remapping={"target_color": "target_color",)
             
             smach.StateMachine.add("RELEASE_PUCK",
                         SimpleActionState("release_puck",
                                           ReleasePuckAction,
-                                          result_slots=["target_component"]),
+                                          goal_slots=["target_color"],
+                                          result_slots=["target_color"]),
                         transitions={"succeeded": "FIND_DESTINATION",
                                      "preempted": "RELEASE_PUCK",
                                      "aborted": "FIND_DESTINATION"},
-                        remapping={"target_component": "target_component"})
+                        remapping={"target_color": "target_color"})
 
     def execute(self):
         '''execute the state machine'''
