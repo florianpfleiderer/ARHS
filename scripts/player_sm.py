@@ -37,7 +37,7 @@ class LocomotionSM():
                         SimpleActionState("find_destination",
                                           FindDestinationAction,
                                           goal=FindDestinationGoal(),
-                                          goal_slots=["target_color"],
+                                          goal_slots=["target_type"],
                                           result_slots=["target_component"]),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
                                      "preempted": "FIND_DESTINATION",
@@ -62,7 +62,7 @@ class LocomotionSM():
                         transitions={"succeeded": "FIND_DESTINATION",
                                      "preempted": "RELEASE_PUCK",
                                      "aborted": "FIND_DESTINATION"},
-                        remapping={"target_color": "target_color"})
+                        remapping={"target_type": "target_type"})
 
     def execute(self):
         '''execute the state machine'''
