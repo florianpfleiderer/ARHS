@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-import sys
 
-import rospy
+import sys
 import copy
+import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 

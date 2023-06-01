@@ -1,50 +1,89 @@
 #!/usr/bin/env python
+'''MoveToDestination state
 
+This State receives a FieldComponent as a goal and returns if goal is reached.
+
+goals:
+    FieldComponent - the component to move to
+
+outcomes:
+    target_reached - if the target is reached
+    target_lost - if the target is lost
+
+feedback:
+    string - current state of the state machine
+'''
+
+import time
 import rospy
-from player.msg import *
+from typing import List
 from geometry_msgs.msg import Twist
-from math_utils.vector_utils import *
 from actionlib import SimpleActionServer
-from globals.globals import *
+from math_utils.vector_utils import Vector3
+from globals.globals import TARGET_REACHED_R_THRESHOLD
+from field_components.field_components import FieldObject
+from field_components.velocity_calculator import VelocityCalculator
+from player.msg import MoveToDestinationAction, MoveToDestinationGoal, MoveToDestinationResult
+from data_utils.topic_handlers import FieldComponentsSubscriber, TargetComponentPublisher, VelocityPublisher
 
 class MoveToDestinationServer:
+    '''this simple action server moves to a component given as the goal.
+
+    '''
     def __init__(self):
         self.server = SimpleActionServer("move_to_destination", MoveToDestinationAction, self.execute, False)
         self.server.start()
 
-        self.vel_pub = rospy.Publisher("robot1/cmd_vel", Twist, queue_size=500)
+        self.vel_pub = VelocityPublisher()
+        self.field_component_sub = FieldComponentsSubscriber()
+        self.target_pub = TargetComponentPublisher()
 
-    def execute(self, goal):
-        rospy.loginfo("executing state MOVE_TO_DESTINATION")
+        self.vel_calc = VelocityCalculator()
 
-        attracting = (0, 0)
-        repelling = (0, 0)
-
-        for i, component in enumerate(goal.field_components):
-            pos = tup2_from_polarvector2(component.position)
-            if i == goal.destination_index:
-                attracting += pos
-
-            else:
-                repelling += pos
-
-        if attracting < (TARGET_REACHED_R_THRESHOLD, TARGET_REACHED_THETA_THRESHOLD):
-            self.vel_pub.publish(Twist())
-            self.server.set_succeeded()
+    def check_preempt(self):
+        '''check if the action has been preempted'''
+        if self.server.is_preempt_requested():
+            rospy.loginfo("preempted")
+            self.server.set_preempted()
             return True
-
-        result_force = ATTRACTION_FACTOR * attracting - REPULSION_FACTOR * repelling
-        out_velocity = Twist()
-        out_velocity.linear.x = result_force[0]
-        out_velocity.angular.z = result_force[1]
-
-        self.vel_pub.publish(out_velocity)
-
-        self.server.set_succeeded()
-
         return False
-    
+
+    def execute(self, goal: MoveToDestinationGoal):
+        '''execute the state MOVE_TO_DESTINATION'''
+        rospy.loginfo("executing state MOVE_TO_DESTINATION")
+        
+        result = MoveToDestinationResult('target_type_reached')
+
+        target_component = goal.target_component
+
+        if target_component is None or target_component.type == "":
+            rospy.logwarn("Empty target for move to destination server!")
+            self.server.set_aborted(result)
+            return
+
+        # target_object: FieldObject = FieldObject.from_field_component(target_component)
+
+        # while target_object.distance.length() > TARGET_REACHED_R_THRESHOLD:
+        #     field_components = self.field_component_sub.data
+        #     self.target_pub.publish(target_component)
+
+        #     if field_components is None or field_components == []:
+        #         rospy.logwarn("Empty field components for move to destination server!")
+        #         self.server.set_aborted(result)
+        #         return
+
+        #     field_objects: List[FieldObject] = ([FieldObject.from_field_component(fc) 
+        #                                          for fc in field_components])
+        #     out_velocity = self.vel_calc.get_input_velocity(field_objects, target_object)
+        #     self.vel_pub.publish(out_velocity)
+
+        #     rospy.loginfo(f"target: {target_object} distance: {target_object.distance.length()}")
+        #     time.sleep(0.5)
+        result.target_type_reached = target_component.type
+        time.sleep(2)
+        self.server.set_succeeded(result)
+
 if __name__ == "__main__":
-    rospy.init_node("move_to_destination")
+    rospy.init_node("move_to_destination_server")
     server = MoveToDestinationServer()
     rospy.spin()

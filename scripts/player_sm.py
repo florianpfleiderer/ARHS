@@ -1,63 +1,112 @@
 #!/usr/bin/env python
-
+'''Locomotion state machine
+'''
+import random
 import rospy
-from actionlib import SimpleActionServer
-from player.msg import *
 import smach
 from smach_ros import SimpleActionState, IntrospectionServer
+from player.msg import FindDestinationAction, MoveToDestinationAction, FindDestinationGoal, GetGameSetupAction, ReleasePuckAction
+from geometry_msgs.msg import Vector3
+from data_utils.topic_handlers import FieldComponentsPublisher
+from field_components.field_components import FieldComponent
 
 
-class LocomotionSM:
+class LocomotionSM():
+    '''This state machine moves the robot to a destination and then finds a new destination.
+
+    userdata:
+        target_component: FieldComponent
+        target_color: string
+
+    '''
     def __init__(self):
         self.sm = smach.StateMachine(outcomes=["succeeded", "preempted", "aborted"])
+        self.sm.userdata.target_component = FieldComponent()
+        
+
 
         with self.sm:
-            self.sm.add("FIND_DESTINATION",
+
+            @smach.cb_interface(outcomes=["goal_reached", "puck_reached"])
+            def move_to_dest_cb(userdata, status, result):
+                rospy.loginfo("move to destination result: {}".format(result))
+                if result.target_type_reached == "YellowGoal" or result.target_type_reached == "BlueGoal":
+                    return "goal_reached"
+                elif result.target_type_reached == "YellowPuck" or result.target_type_reached == "BluePuck":
+                    return "puck_reached"
+                else:
+                    return "aborted"
+            
+            smach.StateMachine.add("GET_GAME_SETUP",
+                        SimpleActionState("get_game_setup",
+                                          GetGameSetupAction,
+                                          result_slots=["target_type"]),
+                        transitions={"succeeded": "FIND_DESTINATION"},
+                        remapping={"target_type": "target_type"})
+            
+            smach.StateMachine.add("FIND_DESTINATION",
                         SimpleActionState("find_destination",
                                           FindDestinationAction,
-                                          goal_cb=self.find_destination_goal_cb),
+                                          goal=FindDestinationGoal(),
+                                          goal_slots=["target_type"],
+                                          result_slots=["target_component"]),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
-                                     "preempted": "FIND_DESTINATION",
+                                     # "preempted": "FIND_DESTINATION",
                                      "aborted": "FIND_DESTINATION"},
-                        remapping={"field_components": "field_components"})
-              
-            self.sm.add("MOVE_TO_DESTINATION",
+                        remapping={"target_component": "target_component"})
+
+            smach.StateMachine.add("MOVE_TO_DESTINATION",
                         SimpleActionState("move_to_destination",
                                           MoveToDestinationAction,
-                                          goal_cb=self.move_to_destination_goal_cb),
+                                          goal_slots=["target_component"],
+                                          result_cb=move_to_dest_cb),
+                        transitions={"goal_reached": "RELEASE_PUCK",
+                                     "puck_reached": "FIND_DESTINATION",
+                                     "aborted": "MOVE_TO_DESTINATION"},
+                        remapping={"target_type_reached": "target_color"})
+            
+            smach.StateMachine.add("RELEASE_PUCK",
+                        SimpleActionState("release_puck",
+                                          ReleasePuckAction,
+                                          goal_slots=["target_type"],
+                                          result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION",
-                                     "preempted": "FIND_DESTINATION",
+                                     # "preempted": "RELEASE_PUCK",
                                      "aborted": "FIND_DESTINATION"},
-                        remapping={"field_components": "field_components",
-                                   "destination_index": "destination_index"})
+                        remapping={"target_type": "target_type"})
 
-        self.field_components_sub = rospy.Subscriber("player/field_components", FieldComponents, self.field_components_cb)
-        self.field_components = []
-
-    def field_components_cb(self, msg):
-        self.field_components = msg.field_components
-
-    def find_destination_goal_cb(self, userdata, goal):
-        goal.field_components = self.field_components
-        return goal
-    
-    def move_to_destination_goal_cb(self, userdata, goal):
-        goal.field_components = self.field_components
-        goal.destination_index = userdata.destination_index
-        return goal
-    
     def execute(self):
+        '''execute the state machine'''
         return self.sm.execute()
 
+class TestPublisher:
+    def __init__(self):
+        self.pub = FieldComponentsPublisher
+        self.fcs = []
+        for i in range(5):
+            val = random.random() * 100
+            vec = Vector3(val, val, val)
+            self.fcs.append(FieldComponent("MAGENTA", "GenericObject", vec, vec))
+
+    def run(self):
+        self.pub.publish(self.fcs)
+        print("published")
+            
 
 if __name__ == "__main__":
-    rospy.init_node("player_sm")
-    sm = LocomotionSM()    
-    sis = IntrospectionServer("player_state_machine", sm.sm, "/SM_ROOT")
+    rospy.init_node("player_sm")    
+    
+    loc_sm = LocomotionSM()    
+    sis = IntrospectionServer("player_state_machine", loc_sm.sm, "/SM_ROOT")
     sis.start()
 
     rospy.loginfo("started player state machine")
-    outcome = sm.execute()
+
+    # tp = TestPublisher()
+    # ticker = CallbackTicker(TICK_RATE, tp.run)
+    # ticker.start_thread()
+    
+    outcome = loc_sm.execute()
 
     rospy.spin()
     sis.stop()

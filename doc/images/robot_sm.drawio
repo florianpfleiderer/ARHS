@@ -1,0 +1,308 @@
+<mxfile host="app.diagrams.net" modified="2023-05-24T12:54:47.873Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0" etag="nEJNg-LeCioeKeImsIPV" version="21.3.3" type="github">
+  <diagram id="HgVTTP0pYIYPx_LaOazx" name="Seite-1">
+    <mxGraphModel dx="-115" dy="610" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-2" value="Root" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1270" y="350" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-3" value="isVerified" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;verticalAlign=middle;labelPosition=center;verticalLabelPosition=middle;align=center;" parent="1" source="oMmEVApQNl-2cXcbZhK9-4" target="oMmEVApQNl-2cXcbZhK9-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-4" value="GetGameSetup" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1459" y="340" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-5" value="&lt;div&gt;puck_found&lt;/div&gt;" style="orthogonalLoop=1;jettySize=auto;html=1;verticalAlign=middle;horizontal=1;labelPosition=center;verticalLabelPosition=middle;align=center;rounded=0;" parent="1" source="oMmEVApQNl-2cXcbZhK9-6" target="oMmEVApQNl-2cXcbZhK9-16" edge="1">
+          <mxGeometry x="-0.0769" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-6" value="FindPuck" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1659" y="340" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-8" value="puckReleased" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="oMmEVApQNl-2cXcbZhK9-10" target="oMmEVApQNl-2cXcbZhK9-6" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1677" y="352" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-9" value="obstacleDetectedBehind" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="oMmEVApQNl-2cXcbZhK9-10" target="oMmEVApQNl-2cXcbZhK9-12" edge="1">
+          <mxGeometry x="0.3829" y="12" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1529" y="180" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-10" value="ReleasePuck" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1549" y="190" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-11" value="success" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="oMmEVApQNl-2cXcbZhK9-12" target="oMmEVApQNl-2cXcbZhK9-10" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1664" y="210" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1609" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-12" value="opt: AvoidObstacleBehind" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1489" y="40" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-13" value="obstacle_detected" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;curved=1;exitX=1;exitY=0;exitDx=0;exitDy=0;" parent="1" source="oMmEVApQNl-2cXcbZhK9-16" edge="1">
+          <mxGeometry x="-0.313" y="-24" relative="1" as="geometry">
+            <mxPoint x="2142.3235291877727" y="225.1334842835072" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2059" y="270" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-14" value="puck_attached" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="oMmEVApQNl-2cXcbZhK9-16" target="s_LG2WAlYeivpb68vOg7-10" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1989" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-15" value="&lt;div&gt;destination_lost&lt;/div&gt;(e.g. puck lost on the way to goal)" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" parent="1" source="oMmEVApQNl-2cXcbZhK9-16" target="oMmEVApQNl-2cXcbZhK9-6" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1849" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-16" value="AttachPuck" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1921" y="340" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-19" value="&lt;div&gt;success&lt;/div&gt;" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" target="oMmEVApQNl-2cXcbZhK9-16" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2170.0263340389897" y="237.94733192202057" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="2089" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="oMmEVApQNl-2cXcbZhK9-20" value="AvoidObstacleFront" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="2120" y="160" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-10" value="FindGoal" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1921" y="190" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-11" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-10" target="oMmEVApQNl-2cXcbZhK9-6" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1739" y="400" as="sourcePoint" />
+            <mxPoint x="1789" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-12" value="puck_lost" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-11" vertex="1" connectable="0">
+          <mxGeometry x="-0.2302" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-13" value="MoveToGoal" style="ellipse;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="1779" y="80" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-14" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-10" target="s_LG2WAlYeivpb68vOg7-13" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1739" y="400" as="sourcePoint" />
+            <mxPoint x="1789" y="350" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1921" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-15" value="&lt;div&gt;goal_found&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-14" vertex="1" connectable="0">
+          <mxGeometry x="-0.2208" y="-2" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-16" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-13" target="oMmEVApQNl-2cXcbZhK9-6" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1739" y="400" as="sourcePoint" />
+            <mxPoint x="1789" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-17" value="&lt;div&gt;puck_lost&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-16" vertex="1" connectable="0">
+          <mxGeometry x="-0.1065" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-19" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-13" target="oMmEVApQNl-2cXcbZhK9-10" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1739" y="350" as="sourcePoint" />
+            <mxPoint x="1732.8688524590166" y="125.24590163934431" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-20" value="&lt;div&gt;goal_reached&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-19" vertex="1" connectable="0">
+          <mxGeometry x="-0.4061" y="3" relative="1" as="geometry">
+            <mxPoint x="-43" y="22" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-21" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-13" target="s_LG2WAlYeivpb68vOg7-10" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1739" y="350" as="sourcePoint" />
+            <mxPoint x="1789" y="300" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1881" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-22" value="&lt;div&gt;goal_lost&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-21" vertex="1" connectable="0">
+          <mxGeometry x="0.0944" y="-3" relative="1" as="geometry">
+            <mxPoint x="-16" y="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-23" value="" style="curved=1;endArrow=classic;html=1;rounded=0;" parent="1" source="s_LG2WAlYeivpb68vOg7-13" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="2029" y="120" as="sourcePoint" />
+            <mxPoint x="2149.704167694933" y="169.77243668841015" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1979" y="80" />
+              <mxPoint x="2059" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-24" value="obstacle_detected" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-23" vertex="1" connectable="0">
+          <mxGeometry x="0.1638" y="-3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-25" value="" style="curved=1;endArrow=classic;html=1;rounded=0;" parent="1" target="s_LG2WAlYeivpb68vOg7-13" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="2134.522436929969" y="183.23767290152887" as="sourcePoint" />
+            <mxPoint x="2049" y="120" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2059" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-26" value="&lt;div&gt;succes&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="s_LG2WAlYeivpb68vOg7-25" vertex="1" connectable="0">
+          <mxGeometry x="-0.1049" y="-1" relative="1" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-27" value="&lt;h1&gt;FindPuck / Goal&lt;br&gt;&lt;/h1&gt;&lt;p&gt;This ActionServer should turn the Robot circular until a puck/goal is found.&lt;/p&gt;&lt;p&gt;Find Goal has the puck in sight.&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1200" y="600" width="190" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-29" value="&lt;h1&gt;AttachPuck&lt;/h1&gt;&lt;p&gt;Drive to Puck.&lt;/p&gt;&lt;p&gt;Do we need Avoid Obstacle Server or is the Algorithm good enough?&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1438" y="600" width="190" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s_LG2WAlYeivpb68vOg7-30" value="&lt;h1&gt;MoveToGoal&lt;/h1&gt;&lt;p&gt;Drive up to the Goal.&lt;/p&gt;&lt;p&gt;You hace an obstacle(the puck) in sight at all times.&lt;/p&gt;&lt;p&gt;Algorithm? Same as AttachPuck&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="1640" y="600" width="190" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="4W2lGPJqmnJ4D_VzhBgx-2" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" source="oMmEVApQNl-2cXcbZhK9-2" target="oMmEVApQNl-2cXcbZhK9-4" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1640" y="340" as="sourcePoint" />
+            <mxPoint x="1690" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-1" value="Root" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1170" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-2" value="isVerified" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;verticalAlign=middle;labelPosition=center;verticalLabelPosition=middle;align=center;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-3" target="rhSCZuL7jFzKV7fkUFn_-5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-3" value="GetGameSetup" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1439" y="1160" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-4" value="&lt;div&gt;dest_found&lt;/div&gt;&lt;div&gt;puck/goal?&lt;br&gt;&lt;/div&gt;" style="orthogonalLoop=1;jettySize=auto;html=1;verticalAlign=middle;horizontal=1;labelPosition=center;verticalLabelPosition=middle;align=center;rounded=0;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-5" target="rhSCZuL7jFzKV7fkUFn_-14" parent="1">
+          <mxGeometry x="-0.0769" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-5" value="FindDestination" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1639" y="1160" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-6" value="puckReleased" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-8" target="rhSCZuL7jFzKV7fkUFn_-5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1657" y="1172" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-7" value="obstacleDetectedBehind" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-8" target="rhSCZuL7jFzKV7fkUFn_-10" parent="1">
+          <mxGeometry x="0.3829" y="12" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1509" y="1000" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-8" value="ReleasePuck" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1639" y="950" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-9" value="success" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-10" target="rhSCZuL7jFzKV7fkUFn_-8" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1644" y="1030" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1589" y="970" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-10" value="opt: AvoidObstacleBehind" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1469" y="860" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-11" value="obstacle_detected" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;curved=1;exitX=1;exitY=0;exitDx=0;exitDy=0;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-14" parent="1" target="rhSCZuL7jFzKV7fkUFn_-16">
+          <mxGeometry x="-0.313" y="-24" relative="1" as="geometry">
+            <mxPoint x="2122.3235291877727" y="1045.1334842835072" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2039" y="1090" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-12" value="dest_reached" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-14" target="rhSCZuL7jFzKV7fkUFn_-40" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1961" y="1030" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-13" value="&lt;div&gt;dest_lost&lt;/div&gt;&lt;div&gt;-&amp;gt;send target again&lt;br&gt;&lt;/div&gt;" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-14" target="rhSCZuL7jFzKV7fkUFn_-5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1829" y="1250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-14" value="MoveToDestination" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1899" y="1160" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-15" value="&lt;div&gt;success&lt;/div&gt;" style="edgeStyle=none;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" target="rhSCZuL7jFzKV7fkUFn_-14" parent="1" source="rhSCZuL7jFzKV7fkUFn_-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2150.0263340389897" y="1057.9473319220206" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="2069" y="1220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-16" value="&lt;div&gt;opt:&lt;/div&gt;&lt;div&gt;AvoidObstacleFront&lt;/div&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2070" y="1040" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-18" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-40" target="rhSCZuL7jFzKV7fkUFn_-5" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1918.5735931288073" y="1018.2842712474617" as="sourcePoint" />
+            <mxPoint x="1769" y="1170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-19" value="&lt;div&gt;no, dest was puck&lt;br&gt;&lt;/div&gt;&lt;div&gt;next_goal-&amp;gt;goal&lt;br&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="rhSCZuL7jFzKV7fkUFn_-18">
+          <mxGeometry x="-0.2302" y="2" relative="1" as="geometry">
+            <mxPoint x="-9" y="6" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-33" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" source="rhSCZuL7jFzKV7fkUFn_-1" target="rhSCZuL7jFzKV7fkUFn_-3" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1620" y="1160" as="sourcePoint" />
+            <mxPoint x="1670" y="1110" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-34" value="&lt;h1&gt;Version 2&lt;br&gt;&lt;/h1&gt;&lt;p&gt;Find/MoveTo Destination&lt;/p&gt;&lt;p&gt;In den ActionMessages Goals übergeben&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="880" width="190" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-40" value="isGoal?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1899" y="950" width="121" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rhSCZuL7jFzKV7fkUFn_-42" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1" source="rhSCZuL7jFzKV7fkUFn_-40" target="rhSCZuL7jFzKV7fkUFn_-8">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1620" y="1180" as="sourcePoint" />
+            <mxPoint x="1670" y="1130" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

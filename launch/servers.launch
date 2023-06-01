@@ -1,0 +1,10 @@
+<launch>
+  <group>
+    <node name="get_game_setup_server" pkg="player" type="get_game_setup_server.py" />
+    <node name="find_destination_server" pkg="player" type="find_destination_server.py" />
+    <node name="move_to_destination_server" pkg="player" type="move_to_destination_server.py" />
+    <node name='release_puck_server' pkg='player' type='release_puck_server.py' />
+    <!-- node name="find_destination_client" pkg="player" type="find_destination_client.py" /-->
+    <!-- node name="move_to_destination_client" pkg="player" type="move_to_destination_client.py" /-->
+  </group>
+</launch>

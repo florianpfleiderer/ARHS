@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
+import copy
 import rospy
 import actionlib
-import copy
-
-from control_architectures.msg import AvoidObstacleAction, AvoidObstacleFeedback, AvoidObstacleResult
-from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
+from control_architectures.msg import AvoidObstacleAction, AvoidObstacleFeedback, AvoidObstacleResult
 
 class AvoidObstacleServer:
 

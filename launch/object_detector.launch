@@ -1,0 +1,3 @@
+<launch>
+  <node name="object_detector" pkg="player" type="object_detector.py" />
+</launch>

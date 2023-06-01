@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-from enum import Enum
 import cv2
+import random
+from enum import Enum
 from globals.globals import *
 
 # color_min, color_max
@@ -31,15 +32,16 @@ class Color(Enum):
     ORANGE = SIM_ORANGE if SIMULATION_MODE else REAL_ORANGE
 
     MAGENTA = ((255, 0, 255), (140, 50, 50), (160, 255, 255))
+    RANDOM = ((random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), (0, 0, 0), (180, 255, 255))
 
-    def __init__(self, default, min, max):
-        self.default = default
+    def __init__(self, default, min=(0, 0, 0), max=(180, 255, 255)):
+        self.default_bgr = default
         self.min = min
         self.max = max
 
     def default(self):
-        return self.default
-    
+        return self.default_bgr
+
     def min_hsv(self):
         return self.min
 
@@ -63,7 +65,7 @@ class Color(Enum):
 
     def __str__(self) -> str:
         return self.name.upper()
-    
+
     @classmethod
     def from_string(cls, color_name):
         return Color._member_map_[color_name]
