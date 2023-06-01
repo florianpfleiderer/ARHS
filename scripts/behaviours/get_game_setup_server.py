@@ -46,17 +46,23 @@ class GetGameSetupServer:
             send_names(opponent_name)
         
         if check_game_status() is True:
-            pass
+            rospy.logwarn('Game start registred.')
+        else:
+            rospy.logwarn('Game ended bevore robot was ready :(')
         
         #4 localise
         localiser_util = LocaliserUtil()
+        self.set_velocities(0, 0.2)
         self.dimensions = localiser_util.get_dimensions()
+        self.set_velocities(0, 0)
         self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
         self.fielddimensions_pub.publish(self.dimensions[0], self.dimensions[1])
         
         #5 send team color
         team_color_util = TeamColorUtil()
+        self.set_velocities(0, 0.5)
         self.color = team_color_util.determine_color()
+        self.set_velocities(0, 0)
         self.color = send_color(self.teamname, self.color)
         
         #5.5 send opponent color

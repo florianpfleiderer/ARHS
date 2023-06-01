@@ -12,7 +12,7 @@ def wait_for_referee():
     rospy.wait_for_message('/waitForTeams', Empty)
     
 def check_game_status():
-    return rospy.wait_for_message('/gameControl', Bool)
+    return rospy.wait_for_message('/gameControl', Bool).data
 
 def send_names(*names):
     rospy.wait_for_service('/TeamReady')

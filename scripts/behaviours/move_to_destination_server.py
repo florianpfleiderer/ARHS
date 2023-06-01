@@ -52,7 +52,7 @@ class MoveToDestinationServer:
         '''execute the state MOVE_TO_DESTINATION'''
         rospy.loginfo("executing state MOVE_TO_DESTINATION")
 
-        result = MoveToDestinationResult('target_reached', 'target_lost')
+        result = MoveToDestinationResult('color_here')
 
         target_component = goal.target_component
 

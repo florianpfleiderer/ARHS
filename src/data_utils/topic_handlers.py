@@ -11,7 +11,7 @@ import time
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from globals.globals import *
-from player.msg import FieldComponents, FieldComponent
+from player.msg import FieldComponents, FieldComponent, FieldDimensions
 
 class SubscriberWrapper:
     def __init__(self, topic, data_class):

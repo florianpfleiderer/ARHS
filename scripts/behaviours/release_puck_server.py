@@ -42,7 +42,7 @@ class ReleasePuckServer:
 
     def execute(self, goal: ReleasePuckGoal):
         rospy.loginfo("executing state RELEASE_PUCK")
-        result = ReleasePuckResult()
+        result = ReleasePuckResult('target_type_here')
 
         laser_data = self.laser_sub.copy_data()
 
