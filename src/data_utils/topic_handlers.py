@@ -6,7 +6,7 @@ import copy
 import cv2
 import time
 from globals.globals import *
-from player.msg import FieldComponent, FieldComponents
+from player.msg import FieldComponent, FieldComponents, FieldDimensions
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, LaserScan
 import visualization.imgops as imgops
@@ -80,6 +80,14 @@ class ShutdownSubscriber(SubscriberWrapper):
 class FieldComponentsPublisher(rospy.Publisher):
     def __init__(self):
         super().__init__("/player/field_components", FieldComponents, queue_size=50)
+
+class FieldDimensionsSubscriber(SubscriberWrapper):
+    def __init__(self):
+        super().__init__("/player/field_dimensions", FieldDimensions)
+
+class FieldDimensionsPublisher(rospy.Publisher):
+    def __init__(self):
+        super().__init__("/player/field_dimensions", FieldDimensions, queue_size=10)
 
 class TargetComponentPublisher(rospy.Publisher):
     def __init__(self):

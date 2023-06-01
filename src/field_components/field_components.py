@@ -9,6 +9,7 @@ from globals.globals import *
 from player.msg import FieldComponent
 from geometry_msgs.msg import Vector3
 from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
+from math_utils.pointcloud import PointCloud
 from typing import List
 from field_components.colors import Color
 import visualization.screen_utils as sc 
@@ -341,6 +342,11 @@ class Field(FieldObject):
 
         return None, None
 
+    def set_field_dimensions(self, w, h):
+        self.half_size = TupleVector3((w/2, h/2, 0))
+        self.initialized = True
+        self.field_objects = self.generate_poles(*self.half_size.tuple[:2])
+
     def update_field_dimensions(self, detected_field_objects):        
         from math_utils.field_calculation_functions import get_vector_cloud_offset_2D_max    
 
@@ -413,7 +419,7 @@ class Field(FieldObject):
         
     def update(self):
         if self.field_component_sub.data is None:
-            return
+            return False
         
         detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
 
@@ -428,7 +434,9 @@ class Field(FieldObject):
             player = Player(-self.distance, (0.3, 0.3, 0.3))
             self.update_field_objects([player, *detected_field_objects])
 
-        print(f"total: {len(self.field_objects)} field objects")    
+        print(f"total: {len(self.field_objects)} field objects")  
+
+        return True  
 
     def draw(self, screen: Screen, draw_text=False, draw_center=False, draw_icon=True, draw_rect=False, draw_cube=False):
         for fo in self.field_objects:
