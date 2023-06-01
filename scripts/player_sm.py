@@ -58,7 +58,7 @@ class LocomotionSM():
                         SimpleActionState("release_puck",
                                           ReleasePuckAction,
                                           goal_slots=["target_color"],
-                                          result_slots=["target_color"]),
+                                          result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION",
                                      "preempted": "RELEASE_PUCK",
                                      "aborted": "FIND_DESTINATION"},
