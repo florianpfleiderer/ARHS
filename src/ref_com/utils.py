@@ -41,14 +41,12 @@ class TeamColorUtil:
         return dist / len(components)
     
     def determine_color(self):
-        rotate(0.5)
         while not rospy.is_shutdown():
             components = deepcopy(self.components_sub.data)
             if components is None:
                 continue
             self._filter_pucks(components)
             if len(self.yellow_pucks) > 0 and len(self.blue_pucks) > 0:
-                rotate(0)
                 break
         if self._average_distance(self.yellow_pucks) > self._average_distance(self.blue_pucks):
             self.teamcolor =  'blue'
@@ -69,13 +67,11 @@ class LocaliserUtil:
         self.field = Field()
 
     def get_dimensions(self):
-        rotate(0.2)
         while not rospy.is_shutdown():
             ok = self.field.update()
             w = self.field.half_size[0] * 2
             l = self.field.half_size[1] * 2
             if w != 0 and l != 0:
-                rotate(0)
                 return w, l
             
             

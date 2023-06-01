@@ -51,8 +51,8 @@ class MoveToDestinationServer:
     def execute(self, goal: MoveToDestinationGoal):
         '''execute the state MOVE_TO_DESTINATION'''
         rospy.loginfo("executing state MOVE_TO_DESTINATION")
-
-        result = MoveToDestinationResult()
+        
+        result = MoveToDestinationResult('target_type_reached')
 
         target_component = goal.target_component
 

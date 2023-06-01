@@ -42,7 +42,7 @@ class LocomotionSM():
                                           GetGameSetupAction,
                                           result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION"},
-                        remapping={"target_type": "target"})
+                        remapping={"target_type": "target_type"})
             
             smach.StateMachine.add("FIND_DESTINATION",
                         SimpleActionState("find_destination",

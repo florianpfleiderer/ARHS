@@ -20,8 +20,13 @@ if __name__ == '__main__':
     rospy.init_node("node_terminator")
     rospy.loginfo("Initialised node_terminator")
     rospy.loginfo("Waiting for destruction...")
-    if check_game_status() is False:
-        rospy.logwarn("KILLING ALL NODES")
-        set_velocities(0, 0)
-        rospy.sleep(1)
-        subprocess.call("rosnode kill --all", shell=True)
+    while not rospy.is_shutdown():
+        result = check_game_status()
+        rospy.logwarn(result)
+        if result is False:
+            rospy.logwarn("KILLING ALL NODES")
+            set_velocities(0, 0)
+            rospy.sleep(1)
+            rospy.logwarn("...maybe ;)")
+            #subprocess.call("rosnode kill --all", shell=True)
+    
