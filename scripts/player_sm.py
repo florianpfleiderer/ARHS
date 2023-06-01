@@ -51,7 +51,7 @@ class LocomotionSM():
                                           goal_slots=["target_type"],
                                           result_slots=["target_component"]),
                         transitions={"succeeded": "MOVE_TO_DESTINATION",
-                                     "preempted": "FIND_DESTINATION",
+                                     # "preempted": "FIND_DESTINATION",
                                      "aborted": "FIND_DESTINATION"},
                         remapping={"target_component": "target_component"})
 
@@ -71,7 +71,7 @@ class LocomotionSM():
                                           goal_slots=["target_type"],
                                           result_slots=["target_type"]),
                         transitions={"succeeded": "FIND_DESTINATION",
-                                     "preempted": "RELEASE_PUCK",
+                                     # "preempted": "RELEASE_PUCK",
                                      "aborted": "FIND_DESTINATION"},
                         remapping={"target_type": "target_type"})
 
