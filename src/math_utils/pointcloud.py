@@ -10,7 +10,6 @@ import math_utils.math_function_utils as mf
 from visualization.imgops import empty_image
 import field_components.field_components as fc
 from math_utils.vector_utils import TupleVector3, TupleRotator3
-from field_components.field_components import List, TupleVector3
 
 class PointCloud:
     def __init__(self, points: np.ndarray, local_points=False, origin=np.array([0, 0, 0]), average_origin=False):

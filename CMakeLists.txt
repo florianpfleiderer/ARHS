@@ -61,6 +61,7 @@ add_message_files(
   # PolarVector2.msg
   FieldComponent.msg
   FieldComponents.msg
+  FieldDimensions.msg
   # Destination.msg
   # ScreenPosition.msg
   # PolarVector3.msg

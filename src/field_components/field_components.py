@@ -5,17 +5,20 @@ import sys
 import cv2
 import copy
 import random
+import numpy as np
 from globals.globals import *
+from globals.tick import *
 from player.msg import FieldComponent
 from geometry_msgs.msg import Vector3
 from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
 from math_utils.pointcloud import PointCloud
-from typing import List
+from typing import List, Dict
 from field_components.colors import Color
 import visualization.screen_utils as sc 
 from visualization.screen_components import Screen
-from data_utils.topic_handlers import FieldComponentsSubscriber
+from data_utils.topic_handlers import FieldComponentsSubscriber, FieldDimensionsSubscriber
 from itertools import combinations
+
 
 # Since the ratios of pole positions is known, any 3 adjacent poles along one line can be used to calculate the field dimensions.
 # Assuming ordering of the poles from right to left (ordered by increasing angle), we can create a lookup table
@@ -70,7 +73,6 @@ class FieldObject:
         self.type = type
         self.distance: TupleVector3 = distance
         self.half_size: TupleVector3 = half_size
-        self.position: TupleVector3 = None
         self.area_detect_range = (None, None)
         self.ratio_detect_range = (None, None)
 
@@ -298,16 +300,47 @@ class Fan(FieldObject):
         cv2.ellipse(image, sc.get_point_in_rect(rect, 0.35, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
         cv2.ellipse(image, sc.get_point_in_rect(rect, 0.65, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
 
+class FieldIterator:
+    def __init__(self, field_objects: List[FieldObject], type=None):
+        self.type = type
+        self.field_objects = field_objects
+        self.index = 0
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.index >= len(self.field_objects):
+            raise StopIteration
+        else:
+            self.index += 1
+            if self.type is not None:
+                while self.index < len(self.field_objects) and self.field_objects[self.index].type != self.type:
+                    self.index += 1
+            return self.field_objects[self.index - 1]
+
 class Field(FieldObject):
+    '''The Field class is a special type of FieldObject that stores other FieldObjects with absolute positions.
+    The meaning of its member variables is slightly different that that of the regular FieldObject class.
+
+    Attributes:
+        field_objects: Dictionary that maps type names to Lists of FieldObjects
+            The origin of the field, i.e. the position of Pole A is (0, 0).
+        distance: Vector3 that stores the absolute position of the field (origin - player position)
+        half_size: Vector3 that stores the half size of the field (x = w/2, y = h/2)
+        angle_offset: Rotator3 that stores the angle offset of the field (player rotation)
+    '''
     def __init__(self):
         super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
         self.field_component_sub = FieldComponentsSubscriber()
+        self.field_dimensions_sub = FieldDimensionsSubscriber()
         self.field_objects: List[FieldObject] = []
         self.angle_offset: TupleRotator3 = TupleRotator3()
         self.initialized = False
 
-    def get_objects_by_class(self, class_name):
-        return [o for o in self.field_objects if o.type == class_name]
+    # def get_objects_by_class(self, class_name):
+    #     return [o for o in self.field_objects if o.type == class_name]
+
 
     def calculate_dimensions(self, *poles):
         if len(poles) < 3:
@@ -344,37 +377,32 @@ class Field(FieldObject):
 
     def set_field_dimensions(self, w, h):
         self.half_size = TupleVector3((w/2, h/2, 0))
-        self.initialized = True
-        self.field_objects = self.generate_poles(*self.half_size.tuple[:2])
 
-    def update_field_dimensions(self, detected_field_objects):        
-        from math_utils.field_calculation_functions import get_vector_cloud_offset_2D_max    
+    def update_field_dimensions(self):    
+        if self.field_dimensions_sub.data is not None:
+            w, h = self.field_dimensions_sub.data.w, self.field_dimensions_sub.data.h
 
-        detected_poles = [fo for fo in detected_field_objects if fo.type == "Pole"]
-        
-        print(f"detected {len(detected_poles)} poles")
-        detected_poles.sort(key=lambda pole: pole.distance.convert(Coordinate.CYLINDRICAL)[1])
-        
-        w, h = self.calculate_dimensions(*detected_poles)
-        
-        if w is None:
-            return False
-        
-        if self.half_size == (0, 0, 0):
-            self.half_size = TupleVector3((w/2, h/2, 0))
+        elif self.field_component_sub.data is not None:
+            detected_poles = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data if fc.type == "Pole"]
+            detected_poles.sort(key=lambda pole: pole.distance.convert(Coordinate.CYLINDRICAL)[1])
+            
+            w, h = self.calculate_dimensions(*detected_poles)
+            
+            if w is None:
+                return False
         else:
-            self.half_size[0] = (self.half_size[0] + w/2) / 2
-            self.half_size[1] = (self.half_size[1] + h/2) / 2
-
+            return False  
+        
+        self.set_field_dimensions(w, h)
+        self.field_objects["Pole"] = self.generate_poles(w, h)
         rospy.loginfo(f"Field dimensions: {self.half_size[0]*2} x {self.half_size[1]*2}")
         return True
 
-    def calculate_field_offset(self, detected_field_objects):
-        from math_utils.field_calculation_functions import get_vector_cloud_offset_2D_max
-        base = [fo.distance + self.distance + self.angle_offset for fo in self.field_objects]
-        compare = [fo.distance * (1, 1, 0) for fo in detected_field_objects]
+    def update_field_offset(self, detected_field_objects):
+        base = PointCloud(np.vstack([(fo.distance + self.distance + self.angle_offset).tuple for fo in FieldIterator(self.field_objects, "Pole")]))
+        compare = PointCloud(np.vstack([fo.distance.tuple * (1, 1, 0) for fo in detected_field_objects]))
 
-        origin_offset, angle_offset = get_vector_cloud_offset_2D_max(base, compare, 0.2, 3)
+        origin_offset, angle_offset = compare.get_twist(base)
 
         if origin_offset is None:
             return False
@@ -418,19 +446,12 @@ class Field(FieldObject):
         print(f"updated {update_counter} field objects, added {new_counter} new field objects")
         
     def update(self):
-        if self.field_component_sub.data is None:
-            return False
-        
-        detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
+        self.update_field_dimensions()
 
-        if not self.initialized:
-            if self.update_field_dimensions(detected_field_objects):
-                self.initialized = True
-                self.field_objects = self.generate_poles(*self.half_size.tuple[:2])
-        else:
-            self.calculate_field_offset(detected_field_objects)
+        if self.field_component_sub.data is not None:
+            detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
+            self.update_field_offset(detected_field_objects)
 
-        if self.initialized:
             player = Player(-self.distance, (0.3, 0.3, 0.3))
             self.update_field_objects([player, *detected_field_objects])
 
@@ -458,4 +479,3 @@ class Field(FieldObject):
         poles = [Pole(dist, TupleVector3((0.05, 0.05, 0))) for dist in distances]
 
         return poles
-
