@@ -6,6 +6,7 @@ from player.msg import ReleasePuckAction, ReleasePuckGoal, ReleasePuckResult
 from data_utils.topic_handlers import LaserSubscriber, VelocityPublisher
 from geometry_msgs.msg import Twist
 from globals.globals import BACKUP_THRESHOLD
+from field_components.field_components import YellowPuck, BluePuck
 
 class ReleasePuckServer:
     '''This server is responsible for the RELEASE_PUCK state.
@@ -50,11 +51,11 @@ class ReleasePuckServer:
                 self.set_velocities(-0.5, 0)
             else:
                 self.set_velocities(0, 0)
-                result.target_color = goal.target_color
+                result.target_type = BluePuck().type if goal.target_color == "blue" else YellowPuck().type
                 self.server.set_succeeded(result)
 
         time.sleep(1)
-        result.target_color = None
+        result.target_type = None
         self.server.set_aborted(result)
 
 if __name__ == "__main__":
