@@ -51,8 +51,8 @@ class LocomotionSM():
                                           result_slots=['target_color']),
                         transitions={"succeeded": "RELEASE_PUCK",
                                      "preempted": "FIND_DESTINATION",
-                                     "aborted": "MOVE_TO_DESTINATION"}
-                        remapping={"target_color": "target_color",)
+                                     "aborted": "MOVE_TO_DESTINATION"},
+                        remapping={"target_color": "target_color"})
             
             smach.StateMachine.add("RELEASE_PUCK",
                         SimpleActionState("release_puck",
