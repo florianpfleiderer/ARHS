@@ -51,7 +51,7 @@ class ReleasePuckServer:
                 self.set_velocities(-0.5, 0)
             else:
                 self.set_velocities(0, 0)
-                result.target_type = BluePuck().type if goal.target_color == "blue" else YellowPuck().type
+                result.target_type = BluePuck(None, None).type if goal.target_color == "blue" else YellowPuck(None, None).type
                 self.server.set_succeeded(result)
 
         time.sleep(1)
