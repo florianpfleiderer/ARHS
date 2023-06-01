@@ -1,5 +1,5 @@
 FieldComponent target_component
 ---
-string target_color
+string target_type_reached
 ---
 string message
