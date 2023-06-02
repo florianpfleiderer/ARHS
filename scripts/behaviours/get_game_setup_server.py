@@ -52,9 +52,7 @@ class GetGameSetupServer:
         
         #4 localise
         localiser_util = LocaliserUtil()
-        self.set_velocities(0, 0.2)
         self.dimensions = localiser_util.get_dimensions()
-        self.set_velocities(0, 0)
         self.dimensions = send_field_dimension(self.teamname, self.dimensions[0], self.dimensions[1])
         self.fielddimensions_pub.publish(self.dimensions[0], self.dimensions[1])
         
