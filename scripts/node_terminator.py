@@ -9,7 +9,7 @@ import subprocess
 
 class NodeTerminator:
     def __init__(self):
-        self.velocity_pub =rospy.Publisher("/robot1/cmd_vel", Twist, queue_size=1000)
+        self.velocity_pub =rospy.Publisher("cmd_vel", Twist, queue_size=1000)
         rospy.loginfo("Initialised node_terminator")
         rospy.loginfo("Waiting for destruction...")
         
