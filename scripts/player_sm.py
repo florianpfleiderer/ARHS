@@ -29,7 +29,7 @@ class LocomotionSM():
 
             @smach.cb_interface(outcomes=["goal_reached", "puck_reached"])
             def move_to_dest_cb(userdata, status, result):
-                rospy.loginfo("move to destination result: {}".format(result))
+                rospy.loginfo(f'move to dest result = {result}')
                 if result.target_type_reached == "YellowGoal" or result.target_type_reached == "BlueGoal":
                     return "goal_reached"
                 elif result.target_type_reached == "YellowPuck" or result.target_type_reached == "BluePuck":
