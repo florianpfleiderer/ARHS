@@ -361,9 +361,10 @@ if __name__ == '__main__':
                             combine_detection,
                             # kinect_warp_correction,
                             # lambda: draw_target(top_screen),
-                            lambda: show_screens(*screens),
+                            #lambda: show_screens(*screens),
                             # lambda: show_screens(top_screen),
-                            lambda: show_screens(top_screen, field_screen, kinect_det.screen)
+                            #lambda: show_screens(top_screen, field_screen, kinect_det.screen)
+                            lambda: show_screens(kinect_det.screen)
                             )
 
     imgticker = CVTicker(TICK_RATE)

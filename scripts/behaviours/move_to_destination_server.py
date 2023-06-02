@@ -80,7 +80,8 @@ class MoveToDestinationServer:
         #     rospy.loginfo(f"target: {target_object} distance: {target_object.distance.length()}")
         #     time.sleep(0.5)
         result.target_type_reached = target_component.type
-        time.sleep(2)
+        rospy.logwarn(f'{result.target_type_reached=}')
+        time.sleep(1)
         self.server.set_succeeded(result)
 
 if __name__ == "__main__":

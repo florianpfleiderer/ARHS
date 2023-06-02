@@ -3,30 +3,34 @@
 import rospy
 
 from ref_com.communication import check_game_status
-from data_utils.topic_handlers import VelocityPublisher
 from geometry_msgs.msg import Twist
 
 import subprocess
 
-def set_velocities(linear, angular):
-    velocity_pub = VelocityPublisher()
-    msg = Twist()
-    msg.linear.x = linear
-    msg.angular.z = angular
-    velocity_pub.publish(msg)
+class NodeTerminator:
+    def __init__(self):
+        self.velocity_pub =rospy.Publisher("cmd_vel", Twist, queue_size=1000)
+        rospy.loginfo("Initialised node_terminator")
+        rospy.loginfo("Waiting for destruction...")
+        
+    def set_velocities(self, linear, angular):
+            """Use this to set linear and angular velocities
+            """
+            msg = Twist()
+            msg.linear.x = linear
+            msg.angular.z = angular
+            self.velocity_pub.publish(msg)
 
 
 if __name__ == '__main__':
     rospy.init_node("node_terminator")
-    rospy.loginfo("Initialised node_terminator")
-    rospy.loginfo("Waiting for destruction...")
+    nt = NodeTerminator()
     while not rospy.is_shutdown():
-        result = check_game_status()
-        rospy.logwarn(result)
-        if result is False:
+        if check_game_status() is False:
             rospy.logwarn("KILLING ALL NODES")
-            set_velocities(0, 0)
+            nt.set_velocities(0, 0)
             rospy.sleep(1)
             rospy.logwarn("...maybe ;)")
             #subprocess.call("rosnode kill --all", shell=True)
+    rospy.spin()
     

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from data_utils.topic_handlers import FieldComponentsSubscriber, VelocityPublisher
+from data_utils.topic_handlers import FieldComponentsSubscriber
 from geometry_msgs.msg import Twist
 from typing import List
 from copy import deepcopy
@@ -9,15 +9,7 @@ from globals.globals import *
 from math_utils.vector_utils import TupleVector3
 from player.msg import FieldComponent
 from geometry_msgs.msg import Twist
-from field_components.field_components import Field, FieldObject
-
-def rotate(speed):
-    velocity_pub = VelocityPublisher()
-    msg = Twist()
-    msg.linear.x = 0
-    msg.angular.z = speed
-    velocity_pub.publish(msg)
-
+from field_components.field_components import Field
 
 class TeamColorUtil:
     def __init__(self):
@@ -65,13 +57,43 @@ class TeamColorUtil:
 class LocaliserUtil:      
     def __init__(self):
         self.field = Field()
+        self.velocity_pub = rospy.Publisher("cmd_vel", Twist, queue_size=1000)
+        self.components_sub = FieldComponentsSubscriber()
+        self.components: List[FieldComponent] = None
 
+    def rotate(self, speed):
+            """Use this to set linear and angular velocities
+            """
+            msg = Twist()
+            msg.linear.x = 0
+            msg.angular.z = speed
+            self.velocity_pub.publish(msg)
+    
+    def remove_generic_objects(self):
+        filtered_components = []
+        for component in self.components:
+            if component.type != 'GenericObject':
+                filtered_components.append(component)
+        self.components = filtered_components
+                
+    
     def get_dimensions(self):
+        self.rotate(-0.2)
+        while self.components is None:
+            self.components = deepcopy(self.components_sub.data)
+        while not rospy.is_shutdown():
+            self.components = deepcopy(self.components_sub.data)
+            self.remove_generic_objects()
+            if len(self.components) == 0:
+                break
+            
+        self.rotate(0.2)
         while not rospy.is_shutdown():
             ok = self.field.update()
             w = self.field.half_size[0] * 2
             l = self.field.half_size[1] * 2
             if w != 0 and l != 0:
+                self.rotate(0)
                 return w, l
             
             
