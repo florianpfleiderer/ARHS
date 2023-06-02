@@ -46,16 +46,25 @@ class ReleasePuckServer:
 
         laser_data = self.laser_sub.copy_data()
 
-        while laser_data:
-            if laser_data[len(laser_data) / 2] < BACKUP_THRESHOLD:
-                self.set_velocities(-0.5, 0)
-            else:
-                self.set_velocities(0, 0)
-                result.target_type = goal.target_type
-                self.server.set_succeeded(result)
+        if True:
+            result.target_type = goal.target_type
+            time.sleep(1)
+            rospy.logwarn(f'{result.target_type=}')
+            self.server.set_succeeded(result)
+
+        # while laser_data:
+        #     if laser_data[len(laser_data) / 2] < BACKUP_THRESHOLD:
+        #         self.set_velocities(-0.5, 0)
+        #     else:
+        #         self.set_velocities(0, 0)
+        #         result.target_type = goal.target_type
+        #         time.sleep(1)
+        #         rospy.logwarn('Puck released')
+        #         self.server.set_succeeded(result)
 
         time.sleep(1)
         result.target_type = None
+        rospy.logwarn('No puck released')
         self.server.set_aborted(result)
 
 if __name__ == "__main__":
