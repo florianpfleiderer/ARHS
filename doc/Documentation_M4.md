@@ -9,9 +9,9 @@ Florian Pfleiderer 11771070</br>
 
 ## Milestone 4: Puck manipulation, scoring, and referee communication
 ### General Overview
-After Milestone 3, we discussed, that having everything working in nodes, and every node subscribing to their own topics is slowing down our process and making it difficult for us to follow our principle of decupled, object orientated code, which is easy to maintain. 
+After Milestone 3, we discussed, that having everything working in nodes, and every node subscribing to their own topics is slowing down our process and making it difficult for us to follow our principle of decoupled, object orientated code, which is easy to maintain. 
 
-So the first step was to implement smach again. These states should then be used to implement their functionality, but in contrast to our prevous solution, the states work together to form a working system.
+So the first step was to implement smach again. These states should then be used to implement their functionality, but in contrast to our previous solution, the states work together to form a working system.
 We then decided for a Field Class, that inherits from FieldObject, to store all of our Data and Locations. 
 This Class would provide as "gateway" between our working logic and all the scanners (Kinect / Laser).
 
@@ -23,15 +23,15 @@ To achieve this, the goal message for FIND_DESTINATION is a string target_type, 
 This is decided by the states GET_GAME_SETUP, RELEASE_PUCK, MOVE_TO_DESTINATION in their result statements.
 #### *GetGameSetup*
 This State is the starting point of our state machine. It handles the referee communication:
-- detecting and sending our field color is done by evaluating the poles closest to the robo at the start
-- calculatig the field dimensions is done through the field class, which itself does these calculations when initialised
+- detecting and sending our field color is done by evaluating the poles closest to the robot at the start
+- calculating the field dimensions is done through the field class, which itself does these calculations when initialised
 
 result: 
 - string target_type 
     - type of object the next server has to find
 
 transition:
-- succeded: FIND_DESTINATION
+- succeeded: FIND_DESTINATION
 
 #### *FindDestination*
 This State gets as a Goal the target to look for. The planned method is for the field class to have indices for every object on the field and this server supplies the next state with an index of the object to drive to. 
@@ -48,7 +48,7 @@ result:
     - the index of the target_component
 
 transition:
-- succeded: MOVE_TO_DESTINATION
+- succeeded: MOVE_TO_DESTINATION
 - aborted: FIND_DESTINATION
 
 #### *MoveToDestination*
@@ -85,13 +85,14 @@ When implementing the State Machine, we did not now which data is passed best as
 The last approach is to pass the index of the target in the objects array of the field class, and making sure, that the field class is consistent all the way through our state machine.
 
 **Issue2** <br>
-Poles Ratios: The Ration between the Distances between the outer-most three poles and the very next set of three poles is 0.6 and 0.7 respectivly, so with some inaccuracy in the laser_scan, the poles can easily be falsely detceted and this can - for example - result in a much smaller field if the inner poles are detected as if they are the outer most ones. We have not really found a way through this issue.
+Poles Ratios: The Ration between the Distances between the outer-most three poles and the very next set of three poles is 0.6 and 0.7 respectively, so with some inaccuracy in the laser_scan, the poles can easily be falsely detected and this can - for example - result in a much smaller field if the inner poles are detected as if they are the outer most ones. We have not really found a way through this issue.
 
 **Issue3** <br>
 The object detection algorithm still lags a lot, especially when turning. This will be evaluated through timing different functions and detecting the bottlenecks of the code. For timing functions, the perf_counter() from the time module will be used.
 
 **Issue4** <br>
 Implementing two different outcomes for the move_to_destination_server. This varies depending if the target was a puck or goal. The Algorithm for driving there does not change, as you go as close to the puck until you touch it, which would be the middle of the goal, where you can easily drop the puck.
+For this, a result_cb callback was implemented to reach the possible outcomes.
 
 ### Contributions
 - Heinrich Fuhrmann
