@@ -47,7 +47,7 @@ class ReleasePuckServer:
         laser_data = self.laser_sub.copy_data()
 
         while laser_data:
-            if laser_data[len.laser_data / 2] < BACKUP_THRESHOLD:
+            if laser_data[len(laser_data) / 2] < BACKUP_THRESHOLD:
                 self.set_velocities(-0.5, 0)
             else:
                 self.set_velocities(0, 0)

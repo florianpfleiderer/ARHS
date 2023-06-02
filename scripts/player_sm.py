@@ -62,7 +62,7 @@ class LocomotionSM():
                                           result_cb=move_to_dest_cb),
                         transitions={"goal_reached": "RELEASE_PUCK",
                                      "puck_reached": "FIND_DESTINATION",
-                                     "aborted": "MOVE_TO_DESTINATION"},
+                                     "aborted": "FIND_DESTINATION"},
                         remapping={"target_type_reached": "target_type"})
             
             smach.StateMachine.add("RELEASE_PUCK",
