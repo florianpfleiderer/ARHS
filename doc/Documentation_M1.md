@@ -1,4 +1,4 @@
-# Robohockey Documentation
+# Robohockey Documentation M1
 Author: Heinrich Fuhrmann 11940304
 
 ## Milestone 1: Movement and Navigation
