@@ -34,7 +34,7 @@ class FindDestinationServer:
                                          self.execute, False)
         self.server.start()
         self.field = Field()
-        self.field_component_list = Field.get_objects_by_class('YellowPuck')
+        self.field_component_list = [Field.get_objects_by_class(type) for type in ['YellowPuck', 'BluePuck', 'YellowGoal', 'BlueGoal']]
 
     def check_preempt(self):
         '''check if the action has been preempted'''
