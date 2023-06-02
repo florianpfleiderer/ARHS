@@ -19,7 +19,7 @@ import random
 import time
 import rospy
 from actionlib import SimpleActionServer
-from data_utils.topic_handlers import FieldComponentsSubscriber
+from field_components.field_components import Field
 from player.msg import FindDestinationAction, FindDestinationGoal, FindDestinationResult
 
 class FindDestinationServer:
@@ -33,7 +33,8 @@ class FindDestinationServer:
         self.server = SimpleActionServer("find_destination", FindDestinationAction,\
                                          self.execute, False)
         self.server.start()
-        self.field_component_sub = FieldComponentsSubscriber()
+        self.field = Field()
+        self.field_component_list = Field.get_objects_by_class('YellowPuck')
 
     def check_preempt(self):
         '''check if the action has been preempted'''
@@ -48,7 +49,7 @@ class FindDestinationServer:
         rospy.loginfo("executing state FIND_DESTINATION")
         result = FindDestinationResult()
 
-        field_components = self.field_component_sub.data
+        field_components = self.field_component_list.data
         if field_components is None or len(field_components) == 0:
             rospy.logwarn("Empty field components for find destination!")
             self.server.set_aborted(result)
