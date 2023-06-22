@@ -5,20 +5,21 @@ import sys
 import cv2
 import copy
 import random
+import time
 import numpy as np
 from globals.globals import *
 from globals.tick import *
 from player.msg import FieldComponent
 from geometry_msgs.msg import Vector3
 from math_utils.vector_utils import TupleVector3, TupleRotator3, Coordinate
-from math_utils.pointcloud import PointCloud
-from typing import List, Dict
+from typing import List, Dict, NamedTuple, Any, Tuple
 from field_components.colors import Color
-import visualization.screen_utils as sc 
-from visualization.screen_components import Screen
+import visualization.screen_utils as sc
+import visualization.imgops as imgops
 from data_utils.topic_handlers import FieldComponentsSubscriber, FieldDimensionsSubscriber
 from itertools import combinations
-
+from math_utils.pointcloud import PointCloud
+import math_utils.pointcloud as pc
 
 # Since the ratios of pole positions is known, any 3 adjacent poles along one line can be used to calculate the field dimensions.
 # Assuming ordering of the poles from right to left (ordered by increasing angle), we can create a lookup table
@@ -87,7 +88,7 @@ class FieldObject:
     def get_field_component(self):
         player_dist = Vector3(*self.distance.tuple)
         half_size = Vector3(*self.half_size.tuple)
-        return FieldComponent(self.color.name, self.type, player_dist, half_size)
+        return FieldComponent(self.color.__str__(), self.type, player_dist, half_size)
 
     @classmethod
     def from_field_component(cls, field_component: FieldComponent):
@@ -101,6 +102,10 @@ class FieldObject:
     def __str__(self) -> str:
         value = self.distance.convert()
         return f"{self.color.name} {self.type} {value[0]:.2f}m {value[2]:.1f}d"
+    
+    @classmethod
+    def default(cls):
+        return cls(TupleVector3(), cls.default_half_size)
 
 class Robot(FieldObject):
     color = Color.RED
@@ -208,6 +213,7 @@ class YellowGoal(FieldObject):
     color = Color.YELLOW
     area_detect_range = (AREA_MIN, None)
     ratio_detect_range = (1.5, 10) # (1.5, None)?
+    default_half_size = TupleVector3((0.25, 0.5, 0))
 
     def __init__(self, distance, half_size):
         super().__init__(Color.YELLOW, "YellowGoal", distance, half_size)
@@ -220,6 +226,7 @@ class BlueGoal(FieldObject):
     color = Color.BLUE
     area_detect_range = (AREA_MIN, None)
     ratio_detect_range = (1.5, 10) # (1.5, None)?
+    default_half_size = TupleVector3((0.25, 0.5, 0))
 
     def __init__(self, distance, half_size):
         super().__init__(Color.BLUE, "BlueGoal", distance, half_size)
@@ -300,24 +307,76 @@ class Fan(FieldObject):
         cv2.ellipse(image, sc.get_point_in_rect(rect, 0.35, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
         cv2.ellipse(image, sc.get_point_in_rect(rect, 0.65, 0.8), sc.scale_rect(rect, 0.1, 0.07), 0, 0, 360, brown, -1)
 
-class FieldIterator:
-    def __init__(self, field_objects: List[FieldObject], type=None):
-        self.type = type
-        self.field_objects = field_objects
-        self.index = 0
+class TypeSlot:
+    def __init__(self, index: int, type: str, item: Any=None):
+        self.index: int = index
+        self.type: str = type
+        self.item: Any = item
+
+class TypeList:
+    def __init__(self, *types: Tuple[str, int]):
+        self.slots = []
+        index = 0
+        for t in types:
+            for i in range(t[1]):
+                self.slots.append(TypeSlot(index, t[0], None))
+                index += 1
+
+        self.current_index = 0
+    
+    def __getitem__(self, key):
+        if type(key) is int:
+            return self.slots[key].item
+        
+        elif type(key) is str:
+            return [i.item for i in self.slots if i.type == key and i.item is not None]
+        
+    def __setitem__(self, key, values):
+        if type(key) is int:
+            if type(values) is not list:
+                values = [values]
+            
+            for i in range(len(values)):
+                self.slots[key + i].item = values[i]
+        
+        elif type(key) is str:
+            index = 0
+            for slot in self.slots:
+                if slot.type == key and slot.item is None:
+                    slot.item = values[index]
+                    index += 1
+        
+        
+    def add_item(self, type, item):
+        for i in self.slots:
+            if i.type == type and i.item is None:
+                i.item = item
+                return i.index
+        return None
+
+    def __len__(self):
+        return len([slot for slot in self.slots if slot.item is not None])
+
+    def items(self):
+        self.current_index = 0
+        while self.current_index < len(self.slots):
+            if self.slots[self.current_index].item is not None:
+                yield self.slots[self.current_index].item
+            self.current_index += 1
 
     def __iter__(self):
+        self.current_index = 0
         return self
     
     def __next__(self):
-        if self.index >= len(self.field_objects):
-            raise StopIteration
-        else:
-            self.index += 1
-            if self.type is not None:
-                while self.index < len(self.field_objects) and self.field_objects[self.index].type != self.type:
-                    self.index += 1
-            return self.field_objects[self.index - 1]
+        while self.current_index < len(self.slots) and self.slots[self.current_index].item is None:
+            self.current_index += 1
+
+        self.current_index += 1
+        if self.current_index <= len(self.slots):
+            return self.slots[self.current_index - 1]
+        raise StopIteration
+        
 
 class Field(FieldObject):
     '''The Field class is a special type of FieldObject that stores other FieldObjects with absolute positions.
@@ -334,7 +393,16 @@ class Field(FieldObject):
         super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
         self.field_component_sub = FieldComponentsSubscriber()
         self.field_dimensions_sub = FieldDimensionsSubscriber()
-        self.field_objects: List[FieldObject] = []
+
+        self.field_objects: TypeList = TypeList(("Player", 1),
+                                                ("Robot", 1),
+                                                ("YellowPuck", 3),
+                                                ("BluePuck", 3),
+                                                ("YellowGoal", 1),
+                                                ("BlueGoal", 1),
+                                                ("Pole", 14),
+                                                ("GenericObject", 32))
+
         self.angle_offset: TupleRotator3 = TupleRotator3()
         self.initialized = False
 
@@ -399,10 +467,19 @@ class Field(FieldObject):
         return True
 
     def update_field_offset(self, detected_field_objects):
-        base = PointCloud(np.vstack([(fo.distance + self.distance + self.angle_offset).tuple for fo in FieldIterator(self.field_objects, "Pole")]))
+        base = PointCloud(np.vstack([self.get_relative_field_distance(fo.distance).tuple for fo in self.field_objects.items()]))
         compare = PointCloud(np.vstack([fo.distance.tuple * (1, 1, 0) for fo in detected_field_objects]))
 
+        img = imgops.empty_image((500, 500))
+        base.draw(img, (0, 255, 0), 10)
+        compare.draw(img, (255, 0, 0), 10)
+
         origin_offset, angle_offset = compare.get_twist(base)
+        pc.draw_vector(img, origin_offset.tuple, self.distance.tuple, color=(0, 0, 255), scale=10)
+        cv2.imshow("update", img)
+        cv2.waitKey(50)
+
+        print("found offset: ", origin_offset, angle_offset)
 
         if origin_offset is None:
             return False
@@ -411,36 +488,41 @@ class Field(FieldObject):
         self.angle_offset += angle_offset
         return True
 
+    def get_abs_field_distance(self, relative_distance: TupleVector3):
+        return relative_distance + self.angle_offset + self.distance
+    
+    def get_relative_field_distance(self, abs_distance: TupleVector3):
+        return abs_distance - self.distance - self.angle_offset
+
     def get_abs_field_object(self, fo: FieldObject):
-        local_fo = copy.copy(fo)
-        local_fo.distance = local_fo.distance - self.angle_offset - self.distance
-        return local_fo
+        fo_copy = copy.copy(fo)
+        fo_copy.distance = self.get_abs_field_distance(fo_copy.distance)
+        return fo_copy
     
     def get_player_relative_field_object(self, fo: FieldObject):
         fo_copy = copy.copy(fo)
-        fo_copy.distance = fo_copy.distance + self.distance + self.angle_offset
+        fo_copy.distance = self.get_relative_field_distance(fo_copy.distance)
         return fo_copy
 
     def update_field_objects(self, detected_objects: List[FieldObject]):
         update_counter = 0
         new_counter = 0
 
-        detected_local = list(map(lambda fo: self.get_abs_field_object(fo), detected_objects))
-        for fo in detected_local:
-            for i in range(len(self.field_objects)):
-                self_obj = self.field_objects[i]
-                if fo.distance.distance_xy(self_obj.distance) < 0.15:
-                    if type(self_obj) == GenericObject:
-                        self.field_objects.pop(i)
-                        self.field_objects.insert(i, fo)
+        detected_local = [self.get_abs_field_object(fo) for fo in detected_objects]
+        for compare_fo in detected_local:
+            for slot in self.field_objects:
+                self_fo = slot.item
+                if self_fo.distance.distance_xy(compare_fo.distance) < 0.15:
+                    if type(self_fo) == GenericObject:
+                        slot.item = compare_fo
 
-                    elif type(self_obj) != Pole:
-                        self_obj.distance = (fo.distance + self_obj.distance) / 2
+                    elif type(self_fo) != Pole:
+                        self_fo.distance = (compare_fo.distance + self_fo.distance) / 2
 
                     update_counter += 1
                     break
             else:
-                self.field_objects.append(fo)
+                self.field_objects.add_item(compare_fo.type, compare_fo)
                 new_counter += 1
 
         print(f"updated {update_counter} field objects, added {new_counter} new field objects")
@@ -448,19 +530,26 @@ class Field(FieldObject):
     def update(self):
         self.update_field_dimensions()
 
-        if self.field_component_sub.data is not None:
-            detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
-            self.update_field_offset(detected_field_objects)
+        if self.field_component_sub.data is None:
+            rospy.logwarn("No FieldComponents detected!")
+            return False
 
-            player = Player(-self.distance, (0.3, 0.3, 0.3))
-            self.update_field_objects([player, *detected_field_objects])
+        if len(self.field_objects) == 0:
+            rospy.logwarn("FieldObjects could not be determined!")
+            return False
+
+        detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
+        self.update_field_offset(detected_field_objects)
+
+        player = Player(self.distance, (0.3, 0.3, 0.3))
+        self.update_field_objects([player, *detected_field_objects])
 
         print(f"total: {len(self.field_objects)} field objects")  
 
         return True  
 
-    def draw(self, screen: Screen, draw_text=False, draw_center=False, draw_icon=True, draw_rect=False, draw_cube=False):
-        for fo in self.field_objects:
+    def draw(self, screen, draw_text=False, draw_center=False, draw_icon=True, draw_rect=False, draw_cube=False):
+        for fo in self.field_objects.items():
             fo_rel = self.get_player_relative_field_object(fo)
             screen.draw_object(fo_rel, draw_text, draw_center, draw_icon, draw_rect, draw_cube)
         cv2.putText(screen.image, f"{self.half_size[0]*2:.2f} x {self.half_size[1]*2:.2f}", (0, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255))
@@ -479,3 +568,28 @@ class Field(FieldObject):
         poles = [Pole(dist, TupleVector3((0.05, 0.05, 0))) for dist in distances]
 
         return poles
+
+
+def test_field():
+    field = Field()
+    field.half_size = TupleVector3((5, 3, 0))
+    field.distance = TupleVector3((1, 1, 0))
+    field.angle_offset = TupleRotator3((10, 0, 0))
+
+    pole = Pole(TupleVector3((1, 2, 0)), Pole.default_half_size)
+    field.field_objects.add_item("Pole", pole)
+
+    img = imgops.empty_image((500, 500))
+    drel = field.get_relative_field_distance(pole.distance)
+    pc.draw_vector(img, drel.tuple, color=(255, 0, 0))
+    pc.draw_vector(img, pole.distance.tuple, color=(0, 255, 0))
+    print(drel)
+    print(field.get_abs_field_distance(field.get_relative_field_distance(pole.distance)))
+
+
+    cv2.imshow("offset test", img)
+    cv2.waitKey(50)
+    time.sleep(100)
+
+if __name__ == "__main__":
+    test_field()

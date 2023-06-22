@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import cv2
 import time
+import rospy
 from typing import List
-from field_components.field_components import FieldObject, Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Field
 from visualization.screen_components import Screen, TrackbarParameter, TestImage
+from field_components.field_components import FieldObject, Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Field
 import visualization.imgops as imgops
 from globals.globals import *
 import math_utils.math_function_utils as mf
@@ -12,6 +13,7 @@ from globals.tick import *
 import data_utils.laser_scan_utils as laser
 from data_utils.laser_scan_utils import LaserScanHandler
 from data_utils.topic_handlers import FieldComponentsPublisher
+from testing.testing import *
 
 
 CLASSES = {'pole': Pole,
@@ -77,17 +79,17 @@ class KinectDetector(FieldDetector):
         self.rgb_sub = topics.RGBSubscriber()
         self.depth_sub = topics.DepthSubscriber()
 
-        self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
-        self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
-        self.depth_offset = TrackbarParameter(KINECT_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01)
-        self.lateral_offset = TrackbarParameter(KINECT_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01)
-        self.height_offset = TrackbarParameter(KINECT_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01)
+        self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image") if testmode else CANNY_THRESHOLD_UPPER
+        self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image") if testmode else CANNY_THRESHOLD_LOWER
+        self.depth_offset = TrackbarParameter(KINECT_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01) if testmode else KINECT_OFFSET[0]
+        self.lateral_offset = TrackbarParameter(KINECT_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01) if testmode else KINECT_OFFSET[1]
+        self.height_offset = TrackbarParameter(KINECT_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01) if testmode else KINECT_OFFSET[2]
 
         # self.lens_correction_const = TrackbarParameter(0, "const", "top_view", -50, 50, 0.01)
         # self.lens_correction_lin = TrackbarParameter(0, "lin", "top_view", -50, 50, 0.01)
         # self.lens_correction_quad = TrackbarParameter(0.2, "quad", "top_view", 0, 100, 0.01)
         # self.lens_correction_quart = TrackbarParameter(0.6, "quart", "top_view", 0, 100, 0.01)
-        self.lens_correction_ang = TrackbarParameter(0, "ang", "top_view", 0, 100, 0.01)
+        self.lens_correction_ang = TrackbarParameter(0, "ang", "top_view", 0, 100, 0.01) if testmode else 0
 
         img = imgops.empty_image(KINECT_DIMENSIONS)
         self.add_test_parameters(TestImage("depth_masked_image", img),
@@ -102,7 +104,10 @@ class KinectDetector(FieldDetector):
         depth_masked_image = imgops.convert_gray2bgr(imgops.apply_mask(color_mask, depth_image))
         depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING, False)
         
-        edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
+        if self.testmode:
+            edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
+        else:
+            edges = imgops.edges(depth_masked_image, self.thresh_lower, self.thresh_upper)
         edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
         
         self.test_parameters["depth_masked_image"].set_value(depth_masked_image)
@@ -238,8 +243,35 @@ def run_detection():
     field.update()
     field.draw(fsc, False, False, True, False, False)
 
+def stresstest_detection():
+    kin_det = KinectDetector(False)
+    laser_det = LaserScanDetector(False)
+    classes = list(CLASSES.values())
+
+    def run_kinect_detection():
+        for c in classes:
+            kin_det.detect(c)
+
+    def run_laser_detection():
+        laser_det.detect()
+
+    rate = rospy.Rate(1)
+    while not laser_det.is_valid_data():
+        rate.sleep(1)
+        print("waiting for valid laser data")
+    stress_test(run_laser_detection, 30)
+
+    while not kin_det.is_valid_data():
+        rate.sleep(1)
+        print("waiting for valid kinect data")
+    stress_test(run_kinect_detection, 30)
+
+
 if __name__ =="__main__":
-    tick = CallbackTicker(TICK_RATE,
-                          run_detection,
-                          lambda: cv2.waitKey(10))
-    run_detection()
+    rospy.init_node("object_detection_test")
+    stresstest_detection()
+
+    # tick = CallbackTicker(TICK_RATE,
+    #                       run_detection,
+    #                       lambda: cv2.waitKey(10))
+    # tick.start()

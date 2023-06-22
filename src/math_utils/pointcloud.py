@@ -3,13 +3,12 @@
 import cv2
 import math
 import numpy as np
-from testing.testing import *
 from typing import List, Tuple
 from itertools import combinations
 import math_utils.math_function_utils as mf
 from visualization.imgops import empty_image
-import field_components.field_components as fc
 from math_utils.vector_utils import TupleVector3, TupleRotator3
+from testing.testing import *
 
 class PointCloud:
     def __init__(self, points: np.ndarray, local_points=False, origin=np.array([0, 0, 0]), average_origin=False):
@@ -135,7 +134,7 @@ class PointCloud:
 
                 base_tri = Triangle(np.vstack([base_edge_pts[0], base_edge_pts[1], found_third_point]))
                 base_tri.offset(base_point_cloud.origin)
-                compare_origin = TupleVector3(compare_tri.origin) - offset_rotation
+                compare_origin = TupleVector3(compare_tri.origin) #- offset_rotation
                 offset = compare_origin - TupleVector3(base_tri.origin)
 
                 if DEBUG_DRAW:
@@ -183,18 +182,21 @@ def draw_text(image, text, point: np.ndarray, color: Tuple[float, float, float]=
     cv2.putText(image, text, (center[0] + int(point[0] * scale), center[1] - int(point[1] * scale)), cv2.FONT_HERSHEY_SIMPLEX, text_size, color)
 
 class Triangle(PointCloud):
-    '''Class that represents a triangle in 3D space. Points are oriented counterclockwise around the z axis.
+    '''Class that represents a triangle in 3D space.
     The origin of the triangle is always the average of the three corner points.'''
     def __init__(self, points: np.ndarray, local_points=False, origin=np.array((0, 0, 0)), average_origin=True):
-        assert len(points) == 3, "You must provide three points"
+        assert len(points) == 3, "You must provide exactly three points"
         super().__init__(points, local_points, origin, average_origin)
         A, B, C = self.points
         a = C - B
         b = A - C
         c = B - A
-        alpha = mf.np_angle(b, -c)
-        beta = mf.np_angle(a, -c)
-        gamma = mf.np_angle(a, -b)
+        try:
+            alpha = mf.np_angle(b, -c)
+            beta = mf.np_angle(a, -c)
+            gamma = mf.np_angle(a, -b)
+        except:
+            pass
         self.angles = np.array([alpha, beta, gamma])
         try:
             assert round(np.sum(self.angles), 5) == 180, "Angles do not add up to 180"
@@ -302,9 +304,9 @@ def test_simple_triangle(printout=False):
 def test_triangle(printout=False):
     tri = Triangle.random(3)
     points = tri.points_global()
-    tri1 = Triangle(points[[0, 1, 2]])
-    tri2 = Triangle(points[[1, 2, 0]])
-    tri3 = Triangle(points[[2, 0, 1]])
+    tri1 = Triangle(points.copy()[[0, 1, 2]])
+    tri2 = Triangle(points.copy()[[1, 2, 0]])
+    tri3 = Triangle(points.copy()[[2, 0, 1]])
 
     assert tri.matches(tri1)
     assert tri.matches(tri2)
@@ -384,7 +386,7 @@ def test_point_cloud(base: PointCloud, compare_slice_size, tolerance=0.05, itera
     random_error = TupleVector3.random_xy(random_deviation)
 
     compare.offset(random_offset.tuple)
-    compare.rotate(random_rotation.tuple, True)
+    compare.rotate(random_rotation.tuple)
     compare.points = compare.points + random_error.tuple
 
     if printout:
@@ -418,6 +420,7 @@ def test_random_point_cloud(printout=False):
     test_point_cloud(pc, 7, printout=printout)
 
 def test_generated_poles(printout=False):
+    import field_components.field_components as fc
     f = fc.Field()
     poles = f.generate_poles(5, 3)
     pole_pc = PointCloud.from_tuple_vectors([pole.distance for pole in poles])
@@ -429,6 +432,7 @@ def test_generated_poles(printout=False):
         cv2.waitKey(10)
 
 def test_poles_offset(printout=False):
+    import field_components.field_components as fc
     f = fc.Field()
     poles = f.generate_poles(5, 3)
     pole_pc = PointCloud.from_tuple_vectors([pole.distance for pole in poles])

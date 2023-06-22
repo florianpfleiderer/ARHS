@@ -2,20 +2,63 @@
 import rospy
 import sys
 from typing import List
+import random
 from globals.globals import *
 from globals.tick import *
-from field_components.field_components import Field, FieldObject
+from field_components.field_components import Field, FieldObject, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Player
 import data_utils.topic_handlers as topics
 from field_components.object_detection import KinectDetector, LaserScanDetector, CLASSES
 from visualization.screen_components import Screen
+from visualization.screen_utils import draw_fov_bird_eye
 import visualization.imgops as imgops
 from player.msg import FieldComponent, FieldComponents
 from geometry_msgs.msg import Vector3
+from math_utils.vector_utils import TupleVector3, TupleRotator3
 
-if __name__ == '__main__':
-    rospy.init_node("object_detector")
-    rospy.loginfo("Initialised ObjectDetector")
+def fake_detection():
+    pub = topics.FieldComponentsPublisher()
+    rate = rospy.Rate(0.2)
+    field = Field()
+    field.field_objects["Pole"] = field.generate_poles(5, 3)
+    field.field_objects["YellowPuck"] = [YellowPuck(TupleVector3((random.uniform(1.25, 2.5), random.uniform(0, 3), 0)), YellowPuck.default_half_size) for i in range(3)]
+    field.field_objects["BluePuck"] = [BluePuck(TupleVector3((random.uniform(2.5, 3.75), random.uniform(0, 3), 0)), BluePuck.default_half_size) for i in range(3)]
+    field.field_objects["YellowGoal"] = [YellowGoal(TupleVector3((0.75, 1.5, 0)), YellowGoal.default_half_size)]
+    field.field_objects["BlueGoal"] = [BlueGoal(TupleVector3((4.25, 1.5, 0)), BlueGoal.default_half_size)]
+    field.field_objects["Robot"] = [Robot(TupleVector3((random.uniform(3.75, 5), random.uniform(0, 3), 0)), Robot.default_half_size)]
+    field.field_objects["Player"] = [Player(TupleVector3((random.uniform(0, 1.25), random.uniform(0, 3), 0)), Player.default_half_size)]
+    field.angle_offset = TupleRotator3.random_xy(80)
+    field.distance = field.field_objects["Player"][0].distance
+    field_screen = Screen.FieldScreen("field", field)
 
+    print("field angle ", field.angle_offset)
+    print("field offset", field.distance)
+    
+    test_field = Field()
+    test_field_screen = Screen.FieldScreen("test field", test_field)
+
+    while not rospy.is_shutdown():
+        field_screen.image = imgops.empty_image(field_screen.dimensions, (50, 50, 50))
+        test_field_screen.image = imgops.empty_image(test_field_screen.dimensions, (50, 50, 50))
+
+        for fo in field.field_objects.items():
+            field_screen.draw_object(fo, False, False, False, False, True)
+            field_screen.draw_object(field.get_player_relative_field_object(fo), False, True, False, False, False)
+        field_screen.show_image()
+
+        pub.publish([field.get_player_relative_field_object(fo).get_field_component() for fo in field.field_objects.items()])
+        
+        test_field.update()
+        # test_field_screen.update()
+        test_field.draw(test_field_screen, draw_cube = True)
+
+        print("test field angle ", test_field.angle_offset)
+        print("test field offset", test_field.distance)
+
+        test_field_screen.show_image()
+        rate.sleep()
+        cv2.waitKey(50)
+
+def true_detection():
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else False
     rospy.loginfo("Testmode: " + str(testmode))
@@ -41,8 +84,8 @@ if __name__ == '__main__':
 
         top_screen.image = imgops.empty_image(top_screen.dimensions)
         field_screen.image = imgops.empty_image(field_screen.dimensions, (50, 50, 50))
-        imgops.draw_fov_bird_eye(KINECT_FOV, top_screen)
-        imgops.draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
+        draw_fov_bird_eye(KINECT_FOV, top_screen)
+        draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
     def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():   
@@ -156,9 +199,9 @@ if __name__ == '__main__':
                             combine_detection,
                             # kinect_warp_correction,
                             # lambda: draw_target(top_screen),
-                            lambda: show_screens(*screens),
+                            # lambda: show_screens(*screens),
                             # lambda: show_screens(top_screen),
-                            lambda: show_screens(top_screen, field_screen, kinect_det.screen)
+                            lambda: show_screens(top_screen, field_screen)
                             )
 
     imgticker = CVTicker(TICK_RATE)
@@ -166,3 +209,10 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         ticker.tick()
         imgticker.tick()
+
+
+if __name__ == '__main__':
+    rospy.init_node("object_detector")
+    rospy.loginfo("Initialised ObjectDetector")
+
+    fake_detection()
