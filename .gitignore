@@ -67,3 +67,6 @@ build
 devel
 .catkin_workspace
 ./src/CMakeLists.txt
+
+#doxygen
+doc/html
