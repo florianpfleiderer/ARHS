@@ -3,6 +3,7 @@
 import cv2
 import math
 import numpy as np
+from matplotlib import pyplot as plt
 from typing import List, Tuple
 from itertools import combinations
 import math_utils.math_function_utils as mf
@@ -137,7 +138,7 @@ class PointCloud:
                 
                 
                 # check here
-                compare_origin = TupleVector3(compare_tri.origin) #- offset_rotation
+                compare_origin = TupleVector3(compare_tri.origin) - offset_rotation
                 
                 # check here
                 offset = compare_origin - TupleVector3(base_tri.origin)
@@ -376,16 +377,30 @@ def test_identical_point_cloud(printout=False):
     assert offset_rotation.value_rounded(5) == (0, 0, 0)
 
 def test_twisted_pointcloud(printout=False):
-    pc = PointCloud(points=np.array([(2, 0, 0), (-2, 0, 0), (0, 1, 0), (0, -1, 0)]), origin=np.array((0, 0, 0)))
+    '''Tests the get_twist method on a pointcloud with origin at (0, 0, 0)
+    '''
+
+    pc = PointCloud(points=np.array([(2., 0., 0.), (-2., 0., 0.), (0., 1., 0.), (0., -1., 0.)]), origin=np.array((0., 0., 0.)))
     pc2 = pc.copy()
-    pc2.rotate(np.array((90, 0, 0)))
+    pc2.rotate(np.array((40, 0, 0)))
+    pc2.points = np.around(pc2.points, decimals=3)
     # pc2.points += 2
 
     offset, offset_rotation = pc.get_twist(pc2)
-    pc2.points = np.around(pc2.points, decimals=2)
+    offset = offset.value_rounded(3)
+    offset_rotation = offset_rotation.value_rounded(3)
     
+    print("pc:")
+    print(pc.points)
+    print("pc2:")
     print(pc2.points)
-    print(f'{offset[0]=}, {offset[1]=}, {offset[2]=}, {offset_rotation[0]=}, {offset_rotation[1]=}, {offset_rotation[2]=}')
+    print(f'{pc.origin=}')
+    print(f'{pc2.origin=}')
+    print(f'{offset=}, {offset_rotation=}')
+
+    plt.plot(pc.points[:, 0], pc.points[:, 1], 'o')
+    plt.plot(pc2.points[:, 0], pc2.points[:, 1], 'x')
+    plt.show()
 
 
 
