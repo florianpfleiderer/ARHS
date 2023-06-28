@@ -134,7 +134,12 @@ class PointCloud:
 
                 base_tri = Triangle(np.vstack([base_edge_pts[0], base_edge_pts[1], found_third_point]))
                 base_tri.offset(base_point_cloud.origin)
+                
+                
+                # check here
                 compare_origin = TupleVector3(compare_tri.origin) #- offset_rotation
+                
+                # check here
                 offset = compare_origin - TupleVector3(base_tri.origin)
 
                 if DEBUG_DRAW:
@@ -370,6 +375,21 @@ def test_identical_point_cloud(printout=False):
     assert offset.value_rounded(5) == (0, 0, 0)
     assert offset_rotation.value_rounded(5) == (0, 0, 0)
 
+def test_twisted_pointcloud(printout=False):
+    pc = PointCloud(points=np.array([(2, 0, 0), (-2, 0, 0), (0, 1, 0), (0, -1, 0)]), origin=np.array((0, 0, 0)))
+    pc2 = pc.copy()
+    pc2.rotate(np.array((90, 0, 0)))
+    # pc2.points += 2
+
+    offset, offset_rotation = pc.get_twist(pc2)
+    pc2.points = np.around(pc2.points, decimals=2)
+    
+    print(pc2.points)
+    print(f'{offset[0]=}, {offset[1]=}, {offset[2]=}, {offset_rotation[0]=}, {offset_rotation[1]=}, {offset_rotation[2]=}')
+
+
+
+
 def test_point_cloud(base: PointCloud, compare_slice_size, tolerance=0.05, iterations=0, printout=False):
     points: np.ndarray = base.points.copy()
     np.random.shuffle(points)
@@ -483,4 +503,6 @@ if __name__ == "__main__":
 
     # stress_test(lambda: PointCloud.random(20).get_triangles_idx(), 50)
 
-    full_stress_test()
+    # full_stress_test()
+    
+    test_twisted_pointcloud()
