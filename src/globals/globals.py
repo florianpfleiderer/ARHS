@@ -3,7 +3,7 @@ from math import pi
 from cv2 import FONT_HERSHEY_SIMPLEX
 
 SIMULATION_MODE = True
-LAUNCH_MODE = True
+LAUNCH_MODE = False
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)

@@ -73,15 +73,18 @@ class PointCloud:
         tris = tris[areas]
         return tris
 
-    def get_twist(self, base_point_cloud: 'PointCloud', tolerance=0.05, iterations=0):
+    def get_twist(self, base_point_cloud: 'PointCloud', tolerance=0.5, iterations=50):
         DEBUG_DRAW = False
 
+        t1 = time.perf_counter()
         compare_tris = self.get_triangles()
+        t2 = time.perf_counter()
+        print(f"get_triangles: {t2 - t1:.5f}s")
 
         for i, compare_tri in enumerate(compare_tris):
             if i + 1 > iterations > 0:
                 break
-
+            t1 = time.perf_counter()
             for base_edge_pts in combinations(base_point_cloud.points, 2):
                 base_edge = base_edge_pts[1] - base_edge_pts[0]
                 norms = np.linalg.norm(compare_tri.edges, axis=1)
@@ -151,7 +154,8 @@ class PointCloud:
                     cv2.imshow("tri", img)
                     cv2.waitKey(10)
                 return offset, offset_rotation
-
+            t2 = time.perf_counter()
+            print(f"triangle in for loop {i}: {t2 - t1}")
         return None, None
     
     def draw(self, img, color=(0, 255, 0), scale=20):
