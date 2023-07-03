@@ -5,6 +5,14 @@
 *.swo
 
 # Byte-compiled / optimized / DLL files
+src/data_utils/__pycache__/
+src/field_components/__pycache__/
+src/globals/__pycache__/
+src/list_utils/__pycache__/
+src/math_utils/__pycache__/
+src/ref_com/__pycache__/
+src/testing/__pycache__/
+src/visualization/__pycache__/
 __pycache__/
 *.pyc 
 *.pyo 
