@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import math
 import numpy as np
+import random
 
 def tand(x):
     return math.tan(x * math.pi / 180)

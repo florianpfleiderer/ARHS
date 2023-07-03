@@ -1,226 +1,64 @@
 #!/usr/bin/env python
 import rospy
-
-import cv2
-from math import *
 import sys
-import time
 from typing import List
-
-from player.msg import FieldComponent, FieldComponents
-
-from field_components.field_components import FieldObject, Pole, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Field
-from visualization.screen_components import Screen, TrackbarParameter, TestImage
-import visualization.imgops as imgops
+import random
 from globals.globals import *
-import math_utils.math_function_utils as mf
-import data_utils.topic_handlers as topics
 from globals.tick import *
-import data_utils.laser_scan_utils as laser
-from data_utils.laser_scan_utils import LaserScanHandler
+from field_components.field_components import Field, FieldObject, YellowPuck, BluePuck, YellowGoal, BlueGoal, Robot, Player
+import data_utils.topic_handlers as topics
+from field_components.object_detection import KinectDetector, LaserScanDetector, CLASSES
+from visualization.screen_components import Screen
+from visualization.screen_utils import draw_fov_bird_eye
+import visualization.imgops as imgops
+from player.msg import FieldComponent, FieldComponents
 from geometry_msgs.msg import Vector3
+from math_utils.vector_utils import TupleVector3, TupleRotator3
 
+def fake_detection():
+    pub = topics.FieldComponentsPublisher()
+    rate = rospy.Rate(0.2)
+    field = Field()
+    field.field_objects["Pole"] = field.generate_poles(5, 3)
+    field.field_objects["YellowPuck"] = [YellowPuck(TupleVector3((random.uniform(1.25, 2.5), random.uniform(0, 3), 0)), YellowPuck.default_half_size) for i in range(3)]
+    field.field_objects["BluePuck"] = [BluePuck(TupleVector3((random.uniform(2.5, 3.75), random.uniform(0, 3), 0)), BluePuck.default_half_size) for i in range(3)]
+    field.field_objects["YellowGoal"] = [YellowGoal(TupleVector3((0.75, 1.5, 0)), YellowGoal.default_half_size)]
+    field.field_objects["BlueGoal"] = [BlueGoal(TupleVector3((4.25, 1.5, 0)), BlueGoal.default_half_size)]
+    field.field_objects["Robot"] = [Robot(TupleVector3((random.uniform(3.75, 5), random.uniform(0, 3), 0)), Robot.default_half_size)]
+    field.field_objects["Player"] = [Player(TupleVector3((random.uniform(0, 1.25), random.uniform(0, 3), 0)), Player.default_half_size)]
+    field.angle_offset = TupleRotator3.random_xy(80)
+    field.distance = field.field_objects["Player"][0].distance
+    field_screen = Screen.FieldScreen("field", field)
 
-CLASSES = {'pole': Pole,
-           'yellowpuck': YellowPuck,
-           'bluepuck': BluePuck,
-           'yellowgoal': YellowGoal,
-           'bluegoal': BlueGoal,
-           'robot': Robot}
-
-class FieldDetector:
-    def __init__(self, detection_function, screen: Screen):
-        self.test_parameters = {}
-        self.detection_function = detection_function
-        self.avg_detection_time = 0
-        self.detection_counter = 0
-        self.counter_cap = 1000
-
-        self.interval_start = 0
-        self.printer_interval = 2
-
-        self.detected_objects: List[FieldObject] = []
-        self.screen: Screen = screen
-
-    def detect(self, *args):
-        self.detection_counter += 1
-
-        detect_start_time = time.perf_counter()
-        detection_result = self.detection_function(*args)
-        detect_duration = time.perf_counter() - detect_start_time
-
-        counter = min(self.counter_cap, self.detection_counter)
-        self.avg_detection_time = (self.avg_detection_time * (counter - 1) + detect_duration) / counter
-
-        if time.time() - self.interval_start >= self.printer_interval:
-            # print(f"detection call {self.detection_counter}, detected {len(self.detected_objects)} average time (last {self.counter_cap}) {self.avg_detection_time}")
-            self.interval_start = time.time()
-
-        return detection_result
-
-    def show_test_parameters(self):
-        for param in list(self.test_parameters.values()):
-            param.show()
-
-    def add_test_parameters(self, *params):
-        for param in params:
-            try:
-                name = param.name
-
-            except AttributeError:
-                name = str(type(param))
-
-            self.test_parameters[name] = param
-
-    def add_result(self, obj):
-        self.detected_objects.append(obj)
-
-class KinectDetector(FieldDetector):
-    def __init__(self, testmode): 
-        super().__init__(self.detect_field_objects, Screen.KinectScreen("kinect image"))    
-
-        self.testmode = testmode
-        
-        self.rgb_sub = topics.RGBSubscriber()
-        self.depth_sub = topics.DepthSubscriber()
-
-        self.thresh_upper = TrackbarParameter(CANNY_THRESHOLD_UPPER, "upper", "kinect image")
-        self.thresh_lower = TrackbarParameter(CANNY_THRESHOLD_LOWER, "lower", "kinect image")
-        self.depth_offset = TrackbarParameter(KINECT_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01)
-        self.lateral_offset = TrackbarParameter(KINECT_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01)
-        self.height_offset = TrackbarParameter(KINECT_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01)
-
-        # self.lens_correction_const = TrackbarParameter(0, "const", "top_view", -50, 50, 0.01)
-        # self.lens_correction_lin = TrackbarParameter(0, "lin", "top_view", -50, 50, 0.01)
-        # self.lens_correction_quad = TrackbarParameter(0.2, "quad", "top_view", 0, 100, 0.01)
-        # self.lens_correction_quart = TrackbarParameter(0.6, "quart", "top_view", 0, 100, 0.01)
-        self.lens_correction_ang = TrackbarParameter(0, "ang", "top_view", 0, 100, 0.01)
-
-        img = imgops.empty_image(KINECT_DIMENSIONS)
-        self.add_test_parameters(TestImage("depth_masked_image", img),
-                                 TestImage("edges", img))
+    print("field angle ", field.angle_offset)
+    print("field offset", field.distance)
     
-    def is_valid_data(self):
-        return self.rgb_sub.is_valid() and self.depth_sub.is_valid()
+    test_field = Field()
+    test_field_screen = Screen.FieldScreen("test field", test_field)
 
-    def detect_contours(self, base_class, rgb_image, depth_image):
-        color_mask = imgops.mask_color(rgb_image, base_class.color)
-        color_mask = imgops.denoise(color_mask, COLOR_MASK_SMOOTHING)
-        depth_masked_image = imgops.convert_gray2bgr(imgops.apply_mask(color_mask, depth_image))
-        depth_masked_image = imgops.denoise(depth_masked_image, COLOR_MASK_SMOOTHING, False)
+    while not rospy.is_shutdown():
+        field_screen.image = imgops.empty_image(field_screen.dimensions, (50, 50, 50))
+        test_field_screen.image = imgops.empty_image(test_field_screen.dimensions, (50, 50, 50))
+
+        for fo in field.field_objects.items():
+            field_screen.draw_object(fo, False, False, False, False, True)
+            field_screen.draw_object(field.get_player_relative_field_object(fo), False, True, False, False, False)
+        field_screen.show_image()
+
+        pub.publish([field.get_player_relative_field_object(fo).get_field_component() for fo in field.field_objects.items()])
         
-        edges = imgops.edges(depth_masked_image, self.thresh_lower.get_value(self.testmode), self.thresh_upper.get_value(self.testmode))
-        edges = imgops.denoise(edges, CANNY_SMOOTHING, False)
-        
-        self.test_parameters["depth_masked_image"].set_value(depth_masked_image)
-        self.test_parameters["edges"].set_value(edges)
-            
-        contours = imgops.get_contours(edges)
+        test_field.update()
+        # test_field_screen.update()
+        test_field.draw(test_field_screen, draw_cube = True)
 
-        if contours == ((), None):
-            return None
-        
-        contours = imgops.get_inner_contours(*contours)
-        #cv2.drawContours(rgb_image, contours, -1, Color.YELLOW.default, 1)
-           
-        
-        return contours
+        print("test field angle ", test_field.angle_offset)
+        print("test field offset", test_field.distance)
 
-    def detect_field_objects(self, base_class: FieldObject):
-        rgb_image = self.rgb_sub.copy_data()
-        depth_image = self.depth_sub.copy_data()
+        test_field_screen.show_image()
+        rate.sleep()
+        cv2.waitKey(50)
 
-        self.detected_objects.clear()
-        self.screen.image = rgb_image
-        contours = self.detect_contours(base_class, rgb_image, depth_image)
-        if contours is None:
-            return False
-
-        rects = [cv2.boundingRect(c) for c in contours]
-        rects = [rect for rect in rects if mf.check_range(rect[2] * rect[3], *base_class.area_detect_range) and \
-                                           mf.check_range(rect[2] / rect[3], *base_class.ratio_detect_range)]     
-        
-
-        field_objects = []
-
-        for rect in rects:
-            x, y, w, h = rect
-            image_w = depth_image.shape[1]    
-            image_h = depth_image.shape[0] 
-            cx = min(int(x + w/2), image_w)
-            cy = min(int(y + h/2), image_h)
-            r = depth_image[cy, cx] if SIMULATION_MODE else depth_image[cy, cx] / 1000
-
-            # correction for lens warp
-            edge_dist = (abs(cx/image_w - 1/2) + abs(cy/image_h - 1/2))
-            r *= 1 + 0.14 * (edge_dist) ** 2 + 0.53 * (edge_dist) ** 4
-
-            if mf.check_range(r, *KINECT_RANGE):
-                fo = self.screen.create_field_object(rect, r, base_class)
-                field_objects.append(fo)
-
-        if base_class in [YellowGoal, BlueGoal, Robot] and len(field_objects) > 1:
-            field_objects = [field_objects[0].merge(*field_objects[1:], return_type=base_class)]
-
-        self.detected_objects.extend(field_objects)
-        
-        return True
-    
-class LaserScanDetector(FieldDetector):
-    def __init__(self, testmode):
-        super().__init__(self.detect_objects, Screen.LaserScreen("laser image"))
-
-        self.laser_sub = topics.LaserSubscriber()
-        self.rgb_sub = topics.RGBSubscriber()
-        self.laser_handler = LaserScanHandler(self.laser_sub.copy_data())
-
-        self.testmode = testmode
-        self.depth_offset = TrackbarParameter(LASER_OFFSET[0], "laser depth offset", "laser rgb image", -50, 50, 0.01)
-        self.lateral_offset = TrackbarParameter(LASER_OFFSET[1], "laser lateral offset", "laser rgb image", -50, 50, 0.01)
-        self.height_offset = TrackbarParameter(LASER_OFFSET[2], "laser height offset", "laser rgb image", 0, 100, 0.01)
-
-        self.laser_screen_rgb = Screen.KinectScreen("laser rgb image")
-
-    def is_valid_data(self):
-        return self.laser_sub.is_valid()    
-    
-    def detect_contours(self, laser_scan_handler: LaserScanHandler):
-        edges = laser.detect_edges(laser_scan_handler)
-        laser.draw_edges(self.laser_handler, edges, self.screen)
-        object_ranges = laser.detect_contours(laser_scan_handler, edges)
-
-        object_contours = [cont for cont in object_ranges if abs(cont.end_angle - cont.start_angle) < 10]
-
-        return object_contours
-       
-    def detect_objects(self):
-        laser_scan = self.laser_sub.copy_data()
-        self.laser_handler.update(laser_scan)
-        rgb_image = self.rgb_sub.copy_data()
-        self.laser_screen_rgb.image = rgb_image
-
-        laser_ranges = self.laser_handler.get_ranges()
-        laser_ranges = laser.range_denoise(laser_ranges, 5)
-
-        laser_image = imgops.laser_scan_to_image(laser_scan, self.screen.dimensions)
-        self.screen.image = laser_image
-
-        self.detected_objects.clear()
-
-        object_ranges = self.detect_contours(self.laser_handler)
-
-        for contour in object_ranges:
-            fo = laser.object_from_contour(contour, self.laser_handler, self.screen)
-            if fo is not None:
-                self.add_result(fo)
-
-        return True
-
-
-if __name__ == '__main__':
-    rospy.init_node("object_detector")
-    rospy.loginfo("Initialised ObjectDetector")
-
+def true_detection():
     args = rospy.myargv(argv=sys.argv)
     testmode = args[1] if len(args) > 1 else False
     rospy.loginfo("Testmode: " + str(testmode))
@@ -246,8 +84,8 @@ if __name__ == '__main__':
 
         top_screen.image = imgops.empty_image(top_screen.dimensions)
         field_screen.image = imgops.empty_image(field_screen.dimensions, (50, 50, 50))
-        imgops.draw_fov_bird_eye(KINECT_FOV, top_screen)
-        imgops.draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
+        draw_fov_bird_eye(KINECT_FOV, top_screen)
+        draw_fov_bird_eye((SCAN_MAX_ANGLE * 2, 0), top_screen)
 
     def run_kinect_detection() -> List[FieldObject]:
         if kinect_det.is_valid_data():   
@@ -361,10 +199,9 @@ if __name__ == '__main__':
                             combine_detection,
                             # kinect_warp_correction,
                             # lambda: draw_target(top_screen),
-                            #lambda: show_screens(*screens),
+                            # lambda: show_screens(*screens),
                             # lambda: show_screens(top_screen),
-                            #lambda: show_screens(top_screen, field_screen, kinect_det.screen)
-                            lambda: show_screens(kinect_det.screen)
+                            lambda: show_screens(top_screen, field_screen)
                             )
 
     imgticker = CVTicker(TICK_RATE)
@@ -372,3 +209,10 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         ticker.tick()
         imgticker.tick()
+
+
+if __name__ == '__main__':
+    rospy.init_node("object_detector")
+    rospy.loginfo("Initialised ObjectDetector")
+
+    fake_detection()
