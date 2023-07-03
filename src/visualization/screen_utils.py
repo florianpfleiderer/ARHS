@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import cv2
 from enum import Enum
 from globals import globals
 import math_utils.math_function_utils as mf
@@ -27,6 +28,14 @@ def get_point_in_rect(rect, w_perc, h_perc):
 def scale_rect(rect, w_perc, h_perc):
     x, y, w, h = rect
     return (round(w * w_perc), round(h * h_perc))
+
+def draw_fov_bird_eye(FOV, bird_eye_screen):
+    dim = bird_eye_screen.dimensions
+    center = (round(dim[0] / 2), round(dim[1] / 2))
+    w = round(min(dim[1] / 2 * mf.tand(FOV[0]/2), center[0]))
+    h = round(min(dim[0] / 2 * mf.tand(90 - FOV[0]/2), center[1]))
+    cv2.line(bird_eye_screen.image, center, (center[0] - w, center[1] - h), (255, 0, 255))
+    cv2.line(bird_eye_screen.image, center, (center[0] + w, center[1] - h), (255, 0, 255))
 
 if __name__ == "__main__":
     dim = globals.KINECT_DIMENSIONS[1] # 640 / 480
