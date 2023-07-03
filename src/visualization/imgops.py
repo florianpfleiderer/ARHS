@@ -5,7 +5,6 @@ import numpy as np
 from globals.globals import *
 from sensor_msgs.msg import LaserScan
 import math_utils.math_function_utils as mf
-import visualization.screen_components as sc
 
 def empty_image(dimensions, color=(0, 0, 0)):
     image = np.zeros([dimensions[1], dimensions[0], 3], dtype=np.uint8)
@@ -87,32 +86,9 @@ def laser_scan_to_image(laser_scan: LaserScan, dimensions):
 
     return resize(image, dimensions)
 
-def draw_fov_bird_eye(FOV, bird_eye_screen: 'sc.Screen'):
-    dim = bird_eye_screen.dimensions
-    center = (round(dim[0] / 2), round(dim[1] / 2))
-    w = round(min(dim[1] / 2 * mf.tand(FOV[0]/2), center[0]))
-    h = round(min(dim[0] / 2 * mf.tand(90 - FOV[0]/2), center[1]))
-    cv2.line(bird_eye_screen.image, center, (center[0] - w, center[1] - h), (255, 0, 255))
-    cv2.line(bird_eye_screen.image, center, (center[0] + w, center[1] - h), (255, 0, 255))
-
 def resize(image, new_size):
     return cv2.resize(image, new_size)
 
 def scale(image, factor):
     return cv2.resize(image, (0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR if factor > 1 else cv2.INTER_AREA)
 
-
-if __name__ == "__main__":
-    img = empty_image((640, 480))
-    
-    s = sc.Screen.BirdEyeScreen("birdeye")
-
-
-    cv2.rectangle(img, (150, 150, 100, 100), (255, 255, 255))
-    cv2.imshow("image", img)
-
-    draw_fov_bird_eye((180, 90), s)
-    s.show_image()
-    
-    while True:
-        cv2.waitKey(10)
