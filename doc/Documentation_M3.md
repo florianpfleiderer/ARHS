@@ -1,4 +1,4 @@
-# Robohockey Documentation
+# Robohockey Documentation M3
 **Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>

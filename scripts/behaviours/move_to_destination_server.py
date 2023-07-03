@@ -51,8 +51,8 @@ class MoveToDestinationServer:
     def execute(self, goal: MoveToDestinationGoal):
         '''execute the state MOVE_TO_DESTINATION'''
         rospy.loginfo("executing state MOVE_TO_DESTINATION")
-
-        result = MoveToDestinationResult('target_reached', 'target_lost')
+        
+        result = MoveToDestinationResult('target_type_reached')
 
         target_component = goal.target_component
 
@@ -79,7 +79,9 @@ class MoveToDestinationServer:
 
         #     rospy.loginfo(f"target: {target_object} distance: {target_object.distance.length()}")
         #     time.sleep(0.5)
-        time.sleep(3)
+        result.target_type_reached = target_component.type
+        rospy.logwarn(f'{result.target_type_reached=}')
+        time.sleep(1)
         self.server.set_succeeded(result)
 
 if __name__ == "__main__":

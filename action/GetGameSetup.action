@@ -1,4 +1,4 @@
 ---
-FieldComponent target_component
+string target_type
 ---
 string feedback

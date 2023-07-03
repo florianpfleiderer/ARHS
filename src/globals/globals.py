@@ -3,7 +3,7 @@ from math import pi
 from cv2 import FONT_HERSHEY_SIMPLEX
 
 SIMULATION_MODE = True
-LAUNCH_MODE = False
+LAUNCH_MODE = True
 
 KINECT_FOV = (62.0, 48.6)
 KINECT_RANGE = (0.5, 5.0) #if SIMULATION_MODE else (500.0, 5000.0)
@@ -50,8 +50,8 @@ REPULSION_FACTOR = 0.005
 TARGET_REACHED_R_THRESHOLD = 0.1
 TARGET_REACHED_THETA_THRESHOLD = 0.1
 
-# team name gets overriden with the chosen one of the list after initial referee communication
-TEAM_NAME = ["Wall-Es", "Terminators", "R2-D2s"]
+# RELEASE_PUCK 
+BACKUP_THRESHOLD = 0.5
 
 
 # Laser scan:

@@ -1,4 +1,5 @@
+string target_type
 ---
-FieldComponent target_component
+string target_type
 ---
 string message

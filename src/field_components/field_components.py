@@ -390,7 +390,7 @@ class Field(FieldObject):
         angle_offset: Rotator3 that stores the angle offset of the field (player rotation)
     '''
     def __init__(self):
-        super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleRotator3((0, 0, 0)))
+        super().__init__(Color.GREEN, "Field", TupleVector3((0, 0, 0)), TupleVector3((0, 0, 0)))
         self.field_component_sub = FieldComponentsSubscriber()
         self.field_dimensions_sub = FieldDimensionsSubscriber()
 

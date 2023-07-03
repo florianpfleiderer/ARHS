@@ -1,4 +1,4 @@
-FieldComponent target
+string target_type
 ---
 FieldComponent target_component
 ---

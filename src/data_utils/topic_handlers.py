@@ -5,13 +5,13 @@ import rospy
 import copy
 import cv2
 import time
-from globals.globals import *
-from player.msg import FieldComponent, FieldComponents, FieldDimensions
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, LaserScan
-import visualization.imgops as imgops
+import time
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
+from globals.globals import *
+from player.msg import FieldComponents, FieldComponent, FieldDimensions
 
 class SubscriberWrapper:
     def __init__(self, topic, data_class):
@@ -66,16 +66,7 @@ class FieldComponentsSubscriber(SubscriberWrapper):
 
 class TargetComponentSubscriber(SubscriberWrapper):
     def __init__(self):
-        super().__init__("/player/target_component", FieldComponent)
-        
-class ShutdownSubscriber(SubscriberWrapper):
-    def __init__(self):
-        super().__init__("/gameControl", Bool)
-    
-    def callback_func(self, msg):
-        if not msg:
-            os.system('cmd /c "rosnode kill --all"')
-            
+        super().__init__("/player/target_component", FieldComponent)            
 
 class FieldComponentsPublisher(rospy.Publisher):
     def __init__(self):
@@ -111,15 +102,13 @@ if __name__ == "__main__":
         cv2.imshow("raw", CvBridge().imgmsg_to_cv2(msg, "bgr8"))
 
     raw_img_sub = rospy.Subscriber("robot1/kinect/rgb/image_raw", Image, img_cb, queue_size=500)
-
-    shutdown_sub = ShutdownSubscriber()
     
     while not rospy.is_shutdown():
-        if img_sub.is_valid():
-            cv2.imshow("image", img_sub.copy_data())
+        #if img_sub.is_valid():
+        #    cv2.imshow("image", img_sub.copy_data())
 
-        if laser_sub.is_valid():
-            cv2.imshow("laser", imgops.laser_scan_to_image(laser_sub.copy_data()))
+        #if laser_sub.is_valid():
+        #    cv2.imshow("laser", laser_scan_to_image(laser_sub.copy_data()))
 
         cv2.waitKey(10)
         time.sleep(0.5)
