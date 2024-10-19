@@ -1,4 +1,3 @@
-2023-florianpfleiderer created by GitHub Classroom
 # ROS Notes
 
 ## Installing and Configuring the Environment
