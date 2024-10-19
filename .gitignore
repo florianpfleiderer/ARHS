@@ -322,4 +322,6 @@ CATKIN_IGNORE
 .history
 .ionide
 
+.drawio
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,ros,cmake,git,python,c++,linux
