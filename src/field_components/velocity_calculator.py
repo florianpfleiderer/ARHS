@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-from math_utils.vector_utils import *
-from field_components.field_components import *
+import math
+import rospy
+from globals.globals import *
+from math_utils.vector_utils import TupleVector3, Coordinate
+import math_utils.math_function_utils as mf
+from field_components.field_components import FieldObject
 from typing import List
 from geometry_msgs.msg import Twist
 
@@ -22,7 +26,7 @@ class VelocityCalculator:
 
         result_force = (attracting * ATTRACTION_FACTOR).convert(Coordinate.CYLINDRICAL)# - repelling * REPULSION_FACTOR).convert(Coordinate.CYLINDRICAL)
         
-        out_linear = min(result_force[0] * cosd(result_force[1]), MAX_LINEAR_SPEED)
+        out_linear = min(result_force[0] * mf.cosd(result_force[1]), MAX_LINEAR_SPEED)
         out_angular = min(result_force[1], MAX_ANGULAR_SPEED)
         
         if result_force[0] - MAX_LINEAR_SPEED > 0.5:

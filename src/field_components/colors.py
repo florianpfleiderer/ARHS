@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from enum import Enum
 import cv2
-from globals.globals import *
 import random
+from enum import Enum
+from globals.globals import *
 
 # color_min, color_max
 # COLORS = {'green': ([65, 80, 50], [83, 255, 255]),

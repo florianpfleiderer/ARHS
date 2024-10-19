@@ -1,14 +1,9 @@
 #!/usr/bin/env python
 
-from globals import globals
-from math_utils.math_function_utils import *
+import cv2
 from enum import Enum
-import numpy as np
-
-def empty_image(dimensions, color=(0, 0, 0)):
-    image = np.zeros([dimensions[1], dimensions[0], 3], dtype=np.uint8)
-    image[:] = color
-    return image
+from globals import globals
+import math_utils.math_function_utils as mf
 
 class ProjectionType(Enum):
     PLANAR = 0
@@ -16,13 +11,13 @@ class ProjectionType(Enum):
 
 def screen_angle_to_pos(angle, image_dimension, FOV, projection_type):
     if projection_type == ProjectionType.PLANAR:
-        return round((1 + tand(angle) / tand(FOV / 2)) * image_dimension / 2)
+        return round((1 + mf.tand(angle) / mf.tand(FOV / 2)) * image_dimension / 2)
     elif projection_type == ProjectionType.SPHERICAL:
         return round((1 / 2 + angle / FOV) * image_dimension)
     
 def screen_pos_to_angle(pos, image_dimension, FOV, projection_type):
     if projection_type == ProjectionType.PLANAR:
-        return atand((2 * pos / image_dimension - 1) * tand(FOV / 2))
+        return mf.atand((2 * pos / image_dimension - 1) * mf.tand(FOV / 2))
     elif projection_type == ProjectionType.SPHERICAL:
         return (pos / image_dimension - 1 / 2) * FOV
 
@@ -33,6 +28,14 @@ def get_point_in_rect(rect, w_perc, h_perc):
 def scale_rect(rect, w_perc, h_perc):
     x, y, w, h = rect
     return (round(w * w_perc), round(h * h_perc))
+
+def draw_fov_bird_eye(FOV, bird_eye_screen):
+    dim = bird_eye_screen.dimensions
+    center = (round(dim[0] / 2), round(dim[1] / 2))
+    w = round(min(dim[1] / 2 * mf.tand(FOV[0]/2), center[0]))
+    h = round(min(dim[0] / 2 * mf.tand(90 - FOV[0]/2), center[1]))
+    cv2.line(bird_eye_screen.image, center, (center[0] - w, center[1] - h), (255, 0, 255))
+    cv2.line(bird_eye_screen.image, center, (center[0] + w, center[1] - h), (255, 0, 255))
 
 if __name__ == "__main__":
     dim = globals.KINECT_DIMENSIONS[1] # 640 / 480

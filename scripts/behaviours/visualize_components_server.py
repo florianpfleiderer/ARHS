@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import rospy
-from actionlib import SimpleActionServer
-from test_player.msg import VisualizeComponentsAction, VisualizeComponentsResult
-from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Vector3
+from actionlib import SimpleActionServer
+from visualization_msgs.msg import Marker
+from test_player.msg import VisualizeComponentsAction, VisualizeComponentsResult
 
 class VisualizeComponentsActionServer:
     def __init__(self):

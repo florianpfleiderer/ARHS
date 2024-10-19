@@ -1,5 +1,5 @@
 FieldComponent target_component
 ---
-bool target_reached
+string target_type_reached
 ---
 string message

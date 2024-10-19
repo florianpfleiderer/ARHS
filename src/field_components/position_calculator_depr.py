@@ -5,7 +5,7 @@ from geometry_msgs.msg import Twist
 from player.msg import PolarVector2
 import time
 import math
-from vector_utils import *
+import math_utils.vector_utils as vec
 
 class PositionCalculator:
     def __init__(self):
@@ -30,9 +30,9 @@ class PositionCalculator:
         delta_r = self.velocity.linear.x * delta_t
         delta_theta = self.velocity.angular.z * delta_t * 180 / math.pi
 
-        cartesian_delta = polar_to_cartesian(PolarVector2(delta_r, delta_theta))
-        cartesian_target = polar_to_cartesian(self.target_dist)
+        cartesian_delta = vec.polar_to_cartesian(PolarVector2(delta_r, delta_theta))
+        cartesian_target = vec.polar_to_cartesian(self.target_dist)
 
-        target_position = cartesian_to_polar(cartesian_distance(cartesian_delta, cartesian_target))
+        target_position = vec.cartesian_to_polar(vec.cartesian_distance(cartesian_delta, cartesian_target))
 
         return target_position
