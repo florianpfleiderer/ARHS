@@ -155,7 +155,7 @@ def true_detection():
                     laser_merged_indices.append(i)
                     result_obj.distance = laser_obj.distance
                     # result_obj = result_obj.merge(laser_obj, return_type=type(obj))
-                    print("merged")
+                    # print("merged")
 
             combined_objects.append(result_obj)
 
@@ -176,6 +176,8 @@ def true_detection():
         draw_objects(combined_objects, False, False, False, False, True, top_screen)
         draw_objects(combined_objects, False, False, False, False, True, field_screen)
         field.draw(field_screen)
+
+        print('############ END TICK CYCLE ############')
 
     def kinect_warp_correction():
         kinect_objects = run_kinect_detection()
@@ -215,4 +217,4 @@ if __name__ == '__main__':
     rospy.init_node("object_detector")
     rospy.loginfo("Initialised ObjectDetector")
 
-    fake_detection()
+    true_detection()

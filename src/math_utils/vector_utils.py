@@ -479,6 +479,15 @@ def test_rotator():
     test((v - r + r).value_rounded(5), v.value())
     test((v + r - r).value_rounded(5), v.value())
 
+def test_add_rotate():
+    v1 = TupleVector3((2,2,0))
+    v2 = TupleVector3((1,1,0))
+    r1 = TupleRotator3((90, 0, 0))
+
+    res = (v1 + v2) + r1
+    print(f'{res.value_rounded(2)=}')
+
 if __name__ == "__main__":
-    test_vector()
-    test_rotator()
+    # test_vector()
+    # test_rotator()
+    test_add_rotate()

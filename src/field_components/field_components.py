@@ -467,14 +467,23 @@ class Field(FieldObject):
         return True
 
     def update_field_offset(self, detected_field_objects):
+        t1 = time.perf_counter()
         base = PointCloud(np.vstack([self.get_relative_field_distance(fo.distance).tuple for fo in self.field_objects.items()]))
         compare = PointCloud(np.vstack([fo.distance.tuple * (1, 1, 0) for fo in detected_field_objects]))
+        t2 = time.perf_counter()
+        print(f'creating PointCloud: {t2-t1:.4f}')
 
         img = imgops.empty_image((500, 500))
-        base.draw(img, (0, 255, 0), 10)
-        compare.draw(img, (255, 0, 0), 10)
+        t1 = time.perf_counter()
+        base.draw(img, (0, 255, 0), 50)
+        compare.draw(img, (255, 0, 0), 50)
+        t2 = time.perf_counter()
+        print(f'drawing PointCloud: {t2-t1:.4f}')
 
-        origin_offset, angle_offset = compare.get_twist(base)
+        t1 = time.perf_counter()
+        origin_offset, angle_offset = base.get_twist(compare)
+        t2 = time.perf_counter()
+        print(f'get_twist: {t2-t1:.4f}')
         pc.draw_vector(img, origin_offset.tuple, self.distance.tuple, color=(0, 0, 255), scale=10)
         cv2.imshow("update", img)
         cv2.waitKey(50)
@@ -528,7 +537,10 @@ class Field(FieldObject):
         print(f"updated {update_counter} field objects, added {new_counter} new field objects")
         
     def update(self):
+        t1 = time.perf_counter()
         self.update_field_dimensions()
+        t2 = time.perf_counter()
+        print(f'update_field_dimensons: {t2-t1:.4f}s')
 
         if self.field_component_sub.data is None:
             rospy.logwarn("No FieldComponents detected!")
@@ -539,10 +551,16 @@ class Field(FieldObject):
             return False
 
         detected_field_objects = [FieldObject.from_field_component(fc) for fc in self.field_component_sub.data]
+        t1 = time.perf_counter()
         self.update_field_offset(detected_field_objects)
+        t2 = time.perf_counter()
+        print(f'update_field_offset: {t2-t1:.4f}s')
 
         player = Player(self.distance, (0.3, 0.3, 0.3))
+        t1 = time.perf_counter()
         self.update_field_objects([player, *detected_field_objects])
+        t2 = time.perf_counter()
+        print(f'update_field_objects: {t2-t1:.4f}s')
 
         print(f"total: {len(self.field_objects)} field objects")  
 
