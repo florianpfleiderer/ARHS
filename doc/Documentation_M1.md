@@ -1,8 +1,8 @@
 # Robohockey Documentation
-Author: Florian Pfleiderer 11771070</br>
+<!-- Author: Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-04-13
+2023-04-13 -->
 
 ## Milestone 1
 ### Step 1 - Simple Algorithm

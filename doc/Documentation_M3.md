@@ -1,11 +1,11 @@
 # Robohockey Documentation M3
-**Authors:**</br>
+<!-- **Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
 Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-05-12
+2023-05-12 -->
 
 ## Milestone 3: Field Dimension Detection and Localisation
 ### Localisation Algorithm
@@ -50,7 +50,7 @@ The Object Detection Algorithm based on Calibrated Colors did not work as in the
 **Issue5**
 Detecting the pole ratios when turning the robot. We did not have sufficient time to solve our issue with slow computing. The framerate still sometimes drops to values around 1fps, which sometimes makes the robot miss a pole completely and therefore not recognising the three searched poles. This party lies in the denoising of the RGB image before detection. The Problem here is that without denoising, the detection success rate drops significantly. Maybe we can find a different function or use a more efficient c++ function in a python wrapper.
 
-### Contributions
+<!-- ### Contributions
 - Heinrich Fuhrmann
     - vector calculations
     - State Machine implementation
@@ -59,4 +59,4 @@ Detecting the pole ratios when turning the robot. We did not have sufficient tim
     - implementation 
 - Florian Pfleiderer
     - documentation
-    - localisation algorithm and implementation
+    - localisation algorithm and implementation -->

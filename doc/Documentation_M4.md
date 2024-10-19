@@ -1,11 +1,11 @@
 # Robohockey Documentation M4
-**Authors:**</br>
+<!-- **Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
 Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-06-01
+2023-06-01 -->
 
 ## Milestone 4: Puck manipulation, scoring, and referee communication
 ### General Overview
@@ -94,7 +94,7 @@ The object detection algorithm still lags a lot, especially when turning. This w
 Implementing two different outcomes for the move_to_destination_server. This varies depending if the target was a puck or goal. The Algorithm for driving there does not change, as you go as close to the puck until you touch it, which would be the middle of the goal, where you can easily drop the puck.
 For this, a result_cb callback was implemented to reach the possible outcomes.
 
-### Contributions
+<!-- ### Contributions
 - Heinrich Fuhrmann
     - field class implementation
     - offset calculation and field update for position detection
@@ -105,5 +105,5 @@ For this, a result_cb callback was implemented to reach the possible outcomes.
 - Florian Pfleiderer
     - documentation
     - state machine implementation and transitions
-    - release puck, find destination, move to destination basic implementation
+    - release puck, find destination, move to destination basic implementation -->
 
