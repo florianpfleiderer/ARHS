@@ -323,5 +323,6 @@ CATKIN_IGNORE
 .ionide
 
 .drawio
+.pdf
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,ros,cmake,git,python,c++,linux
