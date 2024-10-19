@@ -1,57 +1,29 @@
 # Robohockey Documentation
-Author: Heinrich Fuhrmann 11940304
+Author: Florian Pfleiderer 11771070</br>
 
-## Milestone 1: Movement and Navigation
-Basic navigation of the robot is accomplished by using a *state machine* (SMACH) and the *repulsive field* method.
-The state machine is located in /scripts/player_simple_sm.py and can be launched by calling the /launch/player_simple_sm.launch file.
+**Version:** 
+2023-04-13
 
-Due to problems with creating a python package, all of the utility functions and modules were copied into the player_simple_sm.py file.
-
-### State Machine
-The state machine is written by using the SMACH module.
-It is quite simple at this stage:
-![Simple state machine](/2023-tokyo-town/doc/images/Robot_SM_M1.jpeg)
-
-The state machine subscribes to and/or publishes on the topics "player/target_dist", "robot1/cmd_vel" and "robot1/LaserScan".
-The namespaces will be modified at a later stage to assign the robot number dynamically.
-
-### Utility Classes
-    class VelocityCalculator
-
-Here lies the repulsive field logic.
-The class has a 
-    get_force(self, target_dist, multiplier=1, min_distance=-1, max_distance=-1)
-function that translates the given target_dist directly to a velocity input.
-
-the input for *r* is calculated by $r_{target}cos(\theta)$, hindering the robot to drive away from the target if $\theta$ is large, i.e. the target is far to the side.
-
-The target_dist should be given in polar coordinates (PolarVector2) with $\theta = 0$ meaning straight ahead. 
-A negative multiplier will cause the force to point in the other direction, for moving away from an obstacle.
-
-The laser scan is read directly from the topic and for each hit within range, the scan value is translated into a polar vector based on range and index.
-The multiplier for the obstacle repulsive force is negative and indirectly proportional to the distance.
-It is then added to the total input force for the robot.
-
-Constants for thresholds and multipliers are defined at the top of the module for easy access.
-
-Here is a diagram along with graphs for the repelling and attracting forces:
-![calculate velocity graphs](/2023-tokyo-town/doc/images/calculate_velocity.jpeg)
-
-    class PositionCalculator
-
-This class should update "player/target_dist" according to "robot1/cmd_vel" and the time that has passed since the last update.
-This odometric approach will probably be quite inaccurate in reality, so it should be replaced by an algorithm that uses the laser scan and the camera feed to locate itself within the playing field at a later stage.
-
-    vector_utils.py
-
-This module offers a few utility functions for vector calculations, and for converting between polar and cartesian coordinates.
-
-## Issues
-Most issues were faced while setting up ROS, SMACH and GitHub SSH.
-Importing custom python packages is not working yet.
-
-The idea of the design process was to keep functionalities separate.
-At first, PositionCalculator, VelocityCalculator and the state machine each were a node that subscribed to and published on the topics described above and had a separate tick.
-Mutual updating caused the modules to do calculations at an uncontrollable rate.
-
-In the end, the only node left is the state machine. It defines the system tick and PositionCalculator and VelocityCalculator are only called once each tick. The state machine is the only node that can publish to topics.
+## Milestone 1
+### Step 1 - Simple Algorithm
+After getting up to speed with the ROS System itself, my approach to the first Milestone was to first implement an algorithm
+using the LaserScan.ranges array to detect near obstacles.
+The first Problem that i encountered was that the low values were quite random, and i found out, that discarding values below
+range_min solved the issue.
+I then chose a range of about 70 degrees in front of the robot from which the smallest value would be calculated and used. 
+This made sure, that the robot is not reacting to obstacles on the side.
+### Step 2 - Control Architecture
+After having run the PlayerNode successfully, i wanted to implement the Smach Control Architecture.
+I looked at the smach_test files in Github and implemented something similar into my Repository.
+After the SM worked, i was unsure how to implement user data to calculate the needed stuff, but soon after i read about the SimpleActionServer, 
+i thought of implementing user data somewhere there and not in the state machine.
+i connected the server to the needed Topics, but on the rqt_graph i saw that the topics where standalone and not part of the /robot1 namespace.
+I inspected player_node and alle the launch files to come to the conclusion, that the simplest way to solve my problem was to start 
+the servers and smach test all from a single launchfile and set the namespace to robot1 in the beginning of the launchfile.
+This solved my issues.
+### Step 3 - refining the model
+For a better overview and readability of the code, i added the folder functios and refactored the original code in the Simple Action Server, 
+so it calls different functions instead of calculating everything inside the execute() method of the server. 
+After this i added docstrings containing a short definition of what the described class / method / function does.
+Letting the Robot drive aroudn for a few Minutes i realised, that i gets stuck in Corners switching bewteen avoid left and avoid right ations.
+To solve this i added a counter and if it exceeded a certain value, the robot will drive backwards and right for 5 seconds.
