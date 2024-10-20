@@ -1,11 +1,11 @@
 # Robohockey Documentation M2
-<!-- **Authors:**</br>
+**Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
 Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-04-28 -->
+2023-04-28
 
 ## Milestone 2: Field Component Detection
 
