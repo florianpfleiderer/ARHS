@@ -1,11 +1,11 @@
 # Robohockey Documentation M3
-<!-- **Authors:**</br>
+**Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
 Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-05-12 -->
+2023-05-12
 
 ## Milestone 3: Field Dimension Detection and Localisation
 ### Localisation Algorithm
