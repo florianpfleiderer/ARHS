@@ -1,11 +1,11 @@
 # Robohockey Documentation M4
-<!-- **Authors:**</br>
+**Authors:**</br>
 Heinrich Fuhrmann 11940304 </br>
 Thomas Schwabe 11918466</br>
 Florian Pfleiderer 11771070</br>
 
 **Version:** 
-2023-06-01 -->
+2023-06-01
 
 ## Milestone 4: Puck manipulation, scoring, and referee communication
 ### General Overview
