@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,ros,cmake,git,python,c++,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,ros,cmake,git,python,c++,linux
 
+### project files ###
+doc/
+
 ### C++ ###
 # Prerequisites
 *.d
