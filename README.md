@@ -8,8 +8,6 @@ Pull ROS Noetic image: `docker pull osrf/ros:noetic-desktop-full`
 
 For GUI access: `xhost +local:root`
 
-
-
 Run image and mount full workspace:
 ```
 docker run -it \
@@ -26,7 +24,12 @@ docker run -it \
 
 If your Device is using Nvidia Optimus, the nvidia GPU is unlikely to work within Docker: https://download.nvidia.com/XFree86/Linux-x86_64/535.54.03/README/primerenderoffload.html
 
+The following uses Software rendering for all GUI:
 
+```
+LIBGL_ALWAYS_SOFTWARE=1 rviz
+LIBGL_ALWAYS_SOFTWARE=1 gazebo
+```
 
 Reenter the container: `docker start -ai arhs_noetic`
 
