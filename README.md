@@ -1,3 +1,44 @@
+# AHRS 
+
+Porting to ROS 2 missing
+
+# Setup commands 
+
+Pull ROS Noetic image: `docker pull osrf/ros:noetic-desktop-full`
+
+For GUI access: `xhost +local:root`
+
+
+
+Run image and mount full workspace:
+```
+docker run -it \
+  --name arhs_noetic \
+  --net=host \
+  --env="DISPLAY" \
+  --env="QT_X11_NO_MITSHM=1" \
+  --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+  --volume="$HOME/arhs_docker_ws:/root/arhs_ws" \
+  osrf/ros:noetic-desktop-full \
+  bash
+```
+
+Reenter the container: `docker start -ai arhs_noetic`
+
+Inside the container:
+
+```
+# Source ROS 1 environment
+source /opt/ros/noetic/setup.bash
+
+# (One-time) install catkin_tools and git, rosdep, etc., if needed
+apt update
+apt install -y python3-catkin-tools git
+
+rosdep init
+rosdep update
+```
+
 # ROS Notes
 
 ## Installing and Configuring the Environment
