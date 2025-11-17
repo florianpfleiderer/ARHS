@@ -13,15 +13,20 @@ For GUI access: `xhost +local:root`
 Run image and mount full workspace:
 ```
 docker run -it \
+  --gpus all \
   --name arhs_noetic \
   --net=host \
-  --env="DISPLAY" \
-  --env="QT_X11_NO_MITSHM=1" \
-  --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-  --volume="$HOME/arhs_docker_ws:/root/arhs_ws" \
+  -e DISPLAY=$DISPLAY \
+  -e QT_X11_NO_MITSHM=1 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $HOME/arhs_docker_ws:/root/arhs_ws \
   osrf/ros:noetic-desktop-full \
   bash
 ```
+
+If your Device is using Nvidia Optimus, the nvidia GPU is unlikely to work within Docker: https://download.nvidia.com/XFree86/Linux-x86_64/535.54.03/README/primerenderoffload.html
+
+
 
 Reenter the container: `docker start -ai arhs_noetic`
 
@@ -38,6 +43,7 @@ apt install -y python3-catkin-tools git
 rosdep init
 rosdep update
 ```
+
 
 # ROS Notes
 
@@ -64,6 +70,12 @@ will create devel and build folder
 source devel/setup.bash 
 ```
 needs to be run everytime (-> added to .bashrc)
+
+To write source commands directly into bashrc:
+```
+echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+echo "source /root/arhs_ws/devel/setup.bash" >> ~/.bashrc
+```
 
 ## Navigating ROS
 ### rospack find <package_name>
